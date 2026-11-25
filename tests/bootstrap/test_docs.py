@@ -76,7 +76,7 @@ def test_testing_gives_every_part_a_tier_and_names_the_profiles_driver(profile, 
 @pytest.mark.parametrize("profile", ["cli", "web"])
 def test_testing_unit_tests_pure_logic(profile):
     text = templates(profile)["testing.md"]
-    assert "| unit | `domain/`, `application/logic/`, `adapters/`, `kernel/logic/`, `kernel/` |" in text
+    assert "| unit | `domain/`, `application/logic/`, `adapters/`, `kernel/`, `kernel/logic/` |" in text
     assert "or by calling a pure function from `logic/`" in text.split("## 3. Placement")[1]
 
 

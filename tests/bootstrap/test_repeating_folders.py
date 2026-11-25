@@ -14,44 +14,41 @@ PROFILE = """\
 name: duo
 testing: pytest
 parts:
-  kernel: {path: kernel, role: shared primitives, litmus: "Is it a primitive?", tests: unit}
-  domain:
-    path: modules/<module>/domain
-    role: entities and rules of one module
-    litmus: Is it an invariant of one module?
-    imports:
-      may: [kernel]
-    tests: unit
-  contract:
-    path: modules/<module>/contract
-    role: what a module shows to the others
-    litmus: Does another folder need it?
-    imports:
-      may: [domain, kernel]
-    tests: integration
-    package_only: true
-  adapters:
-    path: modules/<module>/adapters
-    role: talks to a technology
-    litmus: Does it touch a technology?
-    imports:
-      may: [domain, kernel, contract@any, hooks@any]
-    tests: unit
-  hooks:
-    path: plugins/<plugin>/hooks
-    role: what a plugin runs
-    litmus: Does a plugin run it?
-    imports:
-      may: [manifest, kernel, contract@any]
-      must: [manifest, contract@any]
-    tests: integration
-  manifest:
-    path: plugins/<plugin>/manifest.py
-    role: what a plugin declares
-    litmus: Does a plugin declare it?
-    imports:
-      may: [kernel]
-    tests: unit
+  kernel/: {role: shared primitives, litmus: "Is it a primitive?", tests: unit}
+  modules/<module>/:
+    domain/:
+      role: entities and rules of one module
+      litmus: Is it an invariant of one module?
+      imports:
+        may: [kernel]
+      tests: unit
+    contract/:
+      role: what a module shows to the others
+      litmus: Does another folder need it?
+      imports:
+        may: [domain, kernel]
+      tests: integration
+      package_only: true
+    adapters/:
+      role: talks to a technology
+      litmus: Does it touch a technology?
+      imports:
+        may: [domain, kernel, contract@any, hooks@any]
+      tests: unit
+  plugins/<plugin>/:
+    hooks/:
+      role: what a plugin runs
+      litmus: Does a plugin run it?
+      imports:
+        may: [manifest, kernel, contract@any]
+        must: [manifest, contract@any]
+      tests: integration
+    manifest.py:
+      role: what a plugin declares
+      litmus: Does a plugin declare it?
+      imports:
+        may: [kernel]
+      tests: unit
 tiers:
   unit: {proves: a rule, litmus: "Does it run with nothing outside?"}
   integration: {proves: a seam, litmus: "Does it cross a folder?"}

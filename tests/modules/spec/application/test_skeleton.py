@@ -8,7 +8,7 @@ from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import PYTHON
 from xarch.modules.spec.contract import Entry, ProfileRefused, Skeleton
 
-LAYERED = {"name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
+LAYERED = {"name": "layered", "parts": {"src/": {"role": "code"}}}
 SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"name": "broken"}}))
 
 
@@ -25,7 +25,7 @@ def test_skeleton(given, when, then):
 
 
 NEAR = {"name": "near", "testing": {"files": ["test_*.py"], "declared": [{"function": "test_*"}], "beside": True},
-        "parts": {"src": {"path": "src", "role": "code", "tests": "unit"}},
+        "parts": {"src/": {"role": "code", "tests": "unit"}},
         "tiers": {"unit": {}, "guard": {"folder": "architecture"}}, "fakes": {"folder": "fakes", "for": ["src"]}}
 
 

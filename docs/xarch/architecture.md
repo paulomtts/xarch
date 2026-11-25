@@ -126,15 +126,15 @@ Each row lists what a part may import, and anything not listed is forbidden. Fil
 | `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/`, `kernel/logic/`, `profile_values/` |
 | `application/controller.py` | its own module's `application/services/`, `contract/` and `domain/errors`, `kernel/`, `kernel/logic/`, `profile_values/` |
 | `adapters/` | its own module's `application/ports/` and `domain/`, `kernel/`, `kernel/logic/`, `profile_values/`, `platform/`, any module's `contract/` |
+| `contract/` | its own module's `domain/values:*Id` and `domain/published`, `kernel/`, `kernel/logic/`, `profile_values/` |
 | `platform/` | `kernel/`, `kernel/logic/` |
 | `cli/` | `cli/reports/`, any module's `application/controller.py` and `contract/`, `kernel/`, `kernel/logic/` |
 | `cli/reports/` | any module's `contract/`, `kernel/`, `kernel/logic/` |
 | `__main__.py` | `bootstrap/` |
 | `bootstrap/` | everything |
-| `contract/` | its own module's `domain/values:*Id` and `domain/published`, `kernel/`, `kernel/logic/`, `profile_values/` |
 | `profile_values/` | `kernel/` |
-| `kernel/logic/` | `kernel/`, `profile_values/` |
 | `kernel/` | nothing |
+| `kernel/logic/` | `kernel/`, `profile_values/` |
 
 > [!IMPORTANT]
 > Two consequences follow from the table.
@@ -180,7 +180,7 @@ def build_controllers() -> Controllers:
 
 When a piece of code does not obviously fit, run the litmus tests in this order. The first one it passes is where it goes.
 
-`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `platform` → `cli` → `reports` → `main` → `bootstrap` → `contract` → `profile-values` → `kernel-logic` → `kernel`
+`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `contract` → `platform` → `cli` → `reports` → `main` → `bootstrap` → `profile-values` → `kernel` → `kernel-logic`
 
 `kernel` comes last because its test is the broadest. The "if not" pointers inside each test name the usual near-miss; when they disagree with the order, the order decides. `xarch where <path>` prints a path's part and its litmus test before the file is written, and `xarch review` asks a decision model the same question of a file that exists.
 

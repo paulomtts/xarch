@@ -77,7 +77,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "review", False, False, opens=REVIEW, read_by=READ_BY_REVIEW),
     Key(PROFILE, "evals", False, False, opens=EVALS, read_by=READ_BY_REVIEW),
 
-    Key(PART, "path", True, rules=("structure", "may-import")),
+    Key(PART, "name", rules=("structure",)),
     Key(PART, "role", True, False),
     Key(PART, "litmus", False, False),
     Key(PART, "imports", rules=("may-import", "must-import", "libraries"), opens=PART_IMPORTS),
@@ -88,7 +88,6 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "tests", rules=("tiers",)),
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
-    Key(PART, "folders", rules=("structure",)),
 
     Key(PART_IMPORTS, "may", rules=("may-import",), opens=PART_IMPORTS_MAY),
     Key(PART_IMPORTS, "must", rules=("must-import",)),

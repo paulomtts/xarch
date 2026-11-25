@@ -20,13 +20,11 @@ testing: pytest
 never:
   pure: [builtins.print]
 parts:
-  core:
-    path: core
+  core/:
     role: the rules
     uses: {never: pure}
     tests: unit
-  cli:
-    path: cli
+  cli/:
     role: commands and output
     imports:
       may: [core]
@@ -39,8 +37,9 @@ PRESET_PROFILE = """\
 name: preset
 testing: pytest
 parts:
-  results: {path: modules/<module>/results, role: the results, tests: unit}
-  ports: {path: modules/<module>/ports, role: the ports, tests: unit}
+  modules/<module>/:
+    results/: {role: the results, tests: unit}
+    ports/: {role: the ports, tests: unit}
 tiers:
   unit: {}
 fakes: {folder: fakes, for: [ports], prefix: Fake}
@@ -209,7 +208,7 @@ def test_beside_that_is_no_bool_is_refused_naming_the_file(tmp_path):
 
 def test_a_part_naming_a_tier_with_a_folder_is_refused_under_beside_naming_the_file(tmp_path):
     text = (PROFILE.replace("testing: pytest", "testing: {preset: pytest, beside: true}")
-            .replace("    tests: unit\n  cli:", "    tests: guard\n  cli:")
+            .replace("    tests: unit\n  cli/:", "    tests: guard\n  cli/:")
             .replace("tiers:\n  unit: {}\n", "tiers:\n  unit: {}\n  guard: {folder: architecture}\n"))
     path = profile_in(tmp_path, text)
     with pytest.raises(InvalidArchitecture) as caught:
@@ -224,3 +223,40 @@ def test_beside_true_loads_with_the_preset_s_framework(tmp_path):
     loaded = load_architecture(path)
     assert loaded.framework.beside is True
     assert loaded.framework.files == load_architecture(profile_in(tmp_path, PROFILE)).framework.files
+
+
+FLAT = """\
+name: old
+language: python
+parts:
+  domain:
+    path: modules/<module>/domain
+    role: the rules
+  platform:
+    path: platform
+    role: the clients
+"""
+
+KNOWN = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
+
+
+def test_a_profile_of_0_2_0_is_refused_with_where_each_part_goes(tmp_path):
+    path = profile_in(tmp_path, FLAT)
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(path)
+    assert caught.value.problems == (
+        f"{path}: parts.domain: unknown key 'path': moved in 0.3.0: write the part as the folder domain/: under the "
+        f"folder it lies in (modules/<module>/); use {KNOWN}",
+        f"{path}: parts.platform: unknown key 'path': moved in 0.3.0: write the part as the folder platform/: at the "
+        f"top of parts; use {KNOWN}")
+    result = CliRunner().invoke(app, ["profile", "check", str(path)])
+    assert result.exit_code == 1
+    assert "parts.domain: unknown key 'path': moved in 0.3.0" in result.output
+
+
+def test_a_file_part_of_another_extension_is_refused_under_python(tmp_path):
+    path = profile_in(tmp_path, PROFILE.replace("parts:\n", "parts:\n  notes.txt:\n    role: the notes\n", 1))
+    with pytest.raises(InvalidArchitecture) as caught:
+        load_architecture(path)
+    assert (f"{path}: parts.notes: 'notes.txt' is a file, since its key holds a dot, but it does not end in .py: write "
+            "a folder as notes.txt/") in caught.value.problems

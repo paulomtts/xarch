@@ -89,11 +89,11 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
         "- `never-use`: a part neither imports nor uses by name what its `uses.never` list names (`domain/`, "
-        "`application/logic/`, `application/ports/`, `kernel/logic/` and `kernel/`: "
+        "`application/logic/`, `application/ports/`, `kernel/` and `kernel/logic/`: "
         + ", ".join(f"`{n}`" for n in PURE) + "; `application/services/`, `application/controller.py` and `adapters/`: "
-        + ", ".join(f"`{n}`" for n in AMBIENT) + "; `platform/` and `web/`: "
-        + ", ".join(f"`{n}`" for n in ENVIRONMENT) + "; `contract/`: "
-        + ", ".join(f"`{n}`" for n in PUBLISHED)
+        + ", ".join(f"`{n}`" for n in AMBIENT) + "; `contract/`: "
+        + ", ".join(f"`{n}`" for n in PUBLISHED) + "; `platform/` and `web/`: "
+        + ", ".join(f"`{n}`" for n in ENVIRONMENT)
         + "), and neither do the unit tests of those parts. It catches what is written in the part's own files, "
         "through their imports and aliases, and a method written `.name()` called on anything but the object itself "
         "and what it holds; not a name reached through a variable or `getattr`, nor I/O done on the part's behalf "

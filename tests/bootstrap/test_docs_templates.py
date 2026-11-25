@@ -86,8 +86,9 @@ def write(path: Path, text: str) -> Path:
 ARCHITECTURE = """\
 name: layered
 parts:
-  api:   {path: "src/<module>/api", role: handlers, litmus: "Does it parse?", imports: {may: [store]}}
-  store: {path: "src/<module>/store", role: database access, litmus: "Does it query?"}
+  src/<module>/:
+    api/: {role: handlers, litmus: "Does it parse?", imports: {may: [store]}}
+    store/: {role: database access, litmus: "Does it query?"}
 docs:
   entry: api
   pages:

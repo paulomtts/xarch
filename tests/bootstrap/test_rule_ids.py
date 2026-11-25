@@ -186,8 +186,7 @@ def test_a_file_no_test_of_its_tier_reaches_is_listed_as_weak_with_its_fix(tmp_p
 
 def test_a_shared_part_names_its_rule_and_its_fix(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    text = (BUNDLED / "web.yaml").read_text().replace("  kernel:\n    path: kernel\n",
-                                                       "  kernel:\n    path: kernel\n    shared: 2\n")
+    text = (BUNDLED / "web.yaml").read_text().replace("  kernel/:\n", "  kernel/:\n    shared: 2\n")
     (tmp_path / "arch/shared.yaml").write_text(text)
     write(tmp_path / "app", {"kernel/__init__.py": "", "kernel/ids.py": "PREFIX = 'doc'\n",
                              "modules/docs/domain/values.py": "from app.kernel.ids import PREFIX\n\nNAME = PREFIX\n"})
@@ -201,8 +200,7 @@ def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
     """No bundled profile holds a part to types_only now that services build their module's contract types, so the
     web profile is given one."""
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    services = ('    imports:\n      may: [logic, domain, ports, contract, kernel, kernel-logic]\n'
-                '    holds: {classes: {names: "*Service", built_by: [bootstrap]}}\n')
+    services = "          may: [logic, domain, ports, contract, kernel, kernel-logic]\n"
     marked = services.replace("ports, contract,", "ports, {contract: types_only},")
     text = (BUNDLED / "web.yaml").read_text()
     assert text.count(services) == 1
@@ -228,8 +226,7 @@ def test_a_class_built_through_a_relative_import_is_held_to_built_by(tmp_path, c
 def test_a_part_used_only_as_a_type_is_held_to_it_through_a_relative_import(tmp_path):
     """The web profile is given types_only on services, as in the test above, and the service imports relatively."""
     shutil.copytree(BUNDLED, tmp_path / "arch")
-    services = ('    imports:\n      may: [logic, domain, ports, contract, kernel, kernel-logic]\n'
-                '    holds: {classes: {names: "*Service", built_by: [bootstrap]}}\n')
+    services = "          may: [logic, domain, ports, contract, kernel, kernel-logic]\n"
     marked = services.replace("ports, contract,", "ports, {contract: types_only},")
     text = (BUNDLED / "web.yaml").read_text()
     assert text.count(services) == 1

@@ -166,12 +166,12 @@ Dependencies point inward: a part imports only from the rings inside it (section
 | `application/services/` | its own module's `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/`, `kernel/logic/` |
 | `application/controller.py` | its own module's `application/services/`, `application/logic/`, `domain/`, `application/ports/` and `contract/`, `kernel/`, `kernel/logic/` |
 | `adapters/` | its own module's `application/ports/` and `domain/`, `kernel/`, `kernel/logic/`, `platform/`, any module's `contract/` |
+| `contract/` | its own module's `domain/values:*Id` and `domain/published`, `kernel/`, `kernel/logic/` |
 | `platform/` | `kernel/`, `kernel/logic/` |
 | `cli/` | any module's `application/controller.py` and `contract/`, `kernel/`, `kernel/logic/` |
 | `bootstrap/` | everything |
-| `contract/` | its own module's `domain/values:*Id` and `domain/published`, `kernel/`, `kernel/logic/` |
-| `kernel/logic/` | `kernel/` |
 | `kernel/` | nothing |
+| `kernel/logic/` | `kernel/` |
 
 > [!IMPORTANT]
 > Two consequences follow from the table.
@@ -245,7 +245,7 @@ class ModerationContentReview:
 
 When a piece of code does not obviously fit, run the litmus tests in this order. The first one it passes is where it goes. The order governs code that belongs in the tree. Code that is deliberately outside the tree (section 1) has no home to find and is not checked.
 
-`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `platform` → `cli` → `bootstrap` → `contract` → `kernel-logic` → `kernel`
+`domain` → `logic` → `ports` → `services` → `controller` → `adapters` → `contract` → `platform` → `cli` → `bootstrap` → `kernel` → `kernel-logic`
 
 The ports test excludes generic primitives, so `Clock` falls through to `kernel`. The logic test excludes a rule another module also needs, so it falls through to `kernel/logic/`. `kernel` comes last because its test is the broadest: anything that fails every earlier test and either carries no business meaning or is a pure function that modules share goes there.
 

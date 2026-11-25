@@ -6,7 +6,7 @@ from tests.modules.spec.application.helpers import controller as spec_controller
 from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import ProfileRefused, ProjectFile, ProjectFiles
 
-LAYERED = {"name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
+LAYERED = {"name": "layered", "parts": {"src/": {"role": "code"}}}
 GUARD = {"tests/architecture/test_rules.py": {"from": "guard.py"}}
 PRESET = {"preset/tokens.css": "a {{app}}\n", "preset/fonts/f.woff": b"\xff\x00"}
 TEXTS = {"guard.py": "check('{{app}}')\n", **PRESET}

@@ -2,7 +2,7 @@
 test under tests/ is only read, one in a part obeys its rules. Each example is given as the reader of the app's
 language reads it: its imports, or where it does not parse."""
 from tests.modules.spec.languages import BRACE, PYTHON
-from tests.modules.spec.profiles import covered, parsed
+from tests.modules.spec.profiles import covered, parsed, part_of
 from tests.modules.spec.profiles import layered as layered_v2
 from tests.modules.spec.profiles import parsed as v2
 from xarch.kernel.source import Import, Unparsable
@@ -21,12 +21,12 @@ def whole(module: str) -> Import:
 
 PROFILE = {
     "name": "layered",
-    "parts": {"shared": {"path": "shared", "role": "code every module uses"},
-              "store": {"path": "src/<module>/store", "role": "database access", "imports": {"may": ["sql", "shared/text"]}},
-              "sql": {"path": "src/<module>/store/sql", "role": "queries"},
-              "service": {"path": "src/<module>/service", "role": "business logic",
-                          "imports": {"may": ["store", "api@any"]}},
-              "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "imports": {"may": "everything"}}},
+    "parts": {"shared/": {"role": "code every module uses"},
+              "src/<module>/": {
+                  "store/": {"role": "database access", "imports": {"may": ["sql", "shared/text"]},
+                             "sql/": {"role": "queries"}},
+                  "service/": {"role": "business logic", "imports": {"may": ["store", "api@any"]}},
+                  "api.py": {"role": "HTTP handlers", "imports": {"may": "everything"}}}},
 }
 PATHS = {"shared": "shared/x.py", "store": "src/billing/store/x.py", "sql": "src/billing/store/sql/x.py",
          "service": "src/billing/service/x.py", "api": "src/billing/api.py"}
@@ -123,7 +123,7 @@ INTEGRATION = "src/billing/service/test_api.py"
 
 def test_a_tier_example_under_tests_is_only_parsed_and_one_in_a_part_obeys_its_rules():
     document = covered(docs={"examples": ["ex"]})
-    document["parts"]["service"]["imports"] = {"may": []}
+    part_of(document, "service")["imports"] = {"may": []}
     document["tiers"]["unit"]["docs"] = {"example": UNIT}
     document["tiers"]["integration"]["docs"] = {"example": INTEGRATION}
     architecture = parsed(document, folders={"ex": (UNIT, INTEGRATION)})

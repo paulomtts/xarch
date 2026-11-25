@@ -4,105 +4,131 @@ language: python
 testing: pytest
 
 parts:
-  domain:
-    path: modules/<module>/domain
-    role: "entities, values (incl. ids), errors: invariants only"
-    litmus: >-
-      Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run
-      with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the
-      module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors
-      the module's rules raise, each named for the module's thing; the bases they subclass, which name no module's
-      thing, are `kernel/`'s. If it is a value the module hands out as it is, with nothing to reshape, it goes in
-      `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant,
-      it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds
-      it to its `uses.never` list: no clock and no I/O by name.
-    imports:
-      may: [kernel, kernel-logic]
-    uses: {never: pure}
-    holds: {classes: {}}
-    tests: unit
-
-  logic:
-    path: modules/<module>/application/logic
-    role: pure functions over the module's domain objects, one file per rule
-    litmus: >-
-      Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If
-      yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity
-      in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything,
-      it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
-    imports:
-      may: [domain, kernel, kernel-logic]
-    uses: {never: pure}
-    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
-    tests: unit
-
-  ports:
-    path: modules/<module>/application/ports
-    role: Protocols for what the module needs from the outside
-    litmus: >-
-      Is it something the application needs from outside itself (storage, search, email, or another module's rule)
-      that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or
-      vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it
-      belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check`
-      holds it to its `uses.never` list: no clock and no I/O by name.
-    imports:
-      may: [domain, kernel, kernel-logic]
-    uses: {never: pure}
-    holds: {classes: {}}
-    tests: integration
-
-  services:
-    path: modules/<module>/application/services
-    role: "use-case steps: load, check, act, persist; they assemble what the use case hands out"
-    litmus: >-
-      Does it run one use case as the sequence "load → check preconditions → act → persist → notify", calling ports,
-      logic and domain objects, and then assemble what the use case hands out on success (the DTO, or the `Result`
-      variant that carries it) from the values they return? If yes, it goes here. If it decides what is valid, it
-      belongs in `domain/`. If it is a pure rule with no port, or a decision about what the DTO says (a condition, a
-      default, a sentence), it belongs in `application/logic/`, and the service calls it. If it turns a failure into
-      a `Result` variant, it belongs in the controller. If it touches a database, it belongs in `adapters/`.
-    imports:
-      may: [logic, domain, ports, contract, kernel, kernel-logic]
-    holds: {classes: {names: "*Service", built_by: [bootstrap]}}
-    uses: {never: ambient}
-    tests: integration
-
-  controller:
-    path: modules/<module>/application/controller.py
-    role: maps failures to Result variants
-    litmus: >-
-      Does it call this module's own services, turn each exception a service raises into the `Result` variant that
-      says it, and return what the service assembled on success, without deciding any business rule? If yes, it goes
-      here, and no module's error leaves the module past it. When a use case cannot fail, it builds the `Result` from
-      the plain values the service returns. If it names HTTP status codes, templates or translated text, it belongs
-      in `web/`. If it handles a table row, or reads another module's `Result` to answer one of this module's ports,
-      it belongs in `adapters/`.
-    imports:
-      may: [services, logic, domain, ports, contract, kernel, kernel-logic]
-    holds: {classes: {names: "*Controller", built_by: [bootstrap]}}
-    uses: {never: ambient}
-    tests: integration
-
-  adapters:
-    path: modules/<module>/adapters
-    role: "driven only: repos, which translate the platform/ table models; use platform/ clients"
-    litmus: >-
-      Does it implement one of this module's ports against a real system, or against another module's controller (it
-      calls that controller and turns the `Result` that comes back into the port's own answer), translating between
-      the module's types and theirs, and naming no other module except the `contract/` of one whose controller it
-      wraps? If yes, it goes here, and so does the private `Protocol` it declares for the little it calls of what it
-      wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in
-      `platform/`. If it contains a business rule, it belongs in `domain/`.
-    imports:
-      may: [ports, domain, kernel, kernel-logic, platform, contract@any]
-      must: [platform, contract@any]
-      libraries: [sqlmodel]
-    uses: {never: ambient}
-    holds: {classes: {built_by: [bootstrap]}}
-    tests: unit
-
-  platform:
-    path: platform
+  modules/<module>/:
+    domain/:
+      role: "entities, values (incl. ids), errors: invariants only"
+      litmus: >-
+        Is it an invariant of one of this module's entities or values (a state transition or a validation) that can
+        run with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the
+        module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors
+        the module's rules raise, each named for the module's thing; the bases they subclass, which name no module's
+        thing, are `kernel/`'s. If it is a value the module hands out as it is, with nothing to reshape, it goes in
+        `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant,
+        it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check`
+        holds it to its `uses.never` list: no clock and no I/O by name.
+      imports:
+        may: [kernel, kernel-logic]
+      uses:
+        never: pure
+      holds:
+        classes: {}
+      tests: unit
+    application/:
+      logic/:
+        role: "pure functions over the module's domain objects, one file per rule"
+        litmus: >-
+          Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no
+          I/O? If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in
+          that entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or
+          save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by
+          name.
+        imports:
+          may: [domain, kernel, kernel-logic]
+        uses:
+          never: pure
+        holds:
+          functions: {}
+          records:
+            immutable: true
+          exceptions: {}
+        tests: unit
+      ports/:
+        role: Protocols for what the module needs from the outside
+        litmus: >-
+          Is it something the application needs from outside itself (storage, search, email, or another module's rule)
+          that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL
+          or vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as
+          `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`.
+          `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
+        imports:
+          may: [domain, kernel, kernel-logic]
+        uses:
+          never: pure
+        holds:
+          classes: {}
+        tests: integration
+      services/:
+        role: "use-case steps: load, check, act, persist; they assemble what the use case hands out"
+        litmus: >-
+          Does it run one use case as the sequence "load → check preconditions → act → persist → notify", calling
+          ports, logic and domain objects, and then assemble what the use case hands out on success (the DTO, or the
+          `Result` variant that carries it) from the values they return? If yes, it goes here. If it decides what is
+          valid, it belongs in `domain/`. If it is a pure rule with no port, or a decision about what the DTO says (a
+          condition, a default, a sentence), it belongs in `application/logic/`, and the service calls it. If it turns
+          a failure into a `Result` variant, it belongs in the controller. If it touches a database, it belongs in
+          `adapters/`.
+        imports:
+          may: [logic, domain, ports, contract, kernel, kernel-logic]
+        uses:
+          never: ambient
+        holds:
+          classes:
+            names: "*Service"
+            built_by: [bootstrap]
+        tests: integration
+      controller.py:
+        role: maps failures to Result variants
+        litmus: >-
+          Does it call this module's own services, turn each exception a service raises into the `Result` variant that
+          says it, and return what the service assembled on success, without deciding any business rule? If yes, it
+          goes here, and no module's error leaves the module past it. When a use case cannot fail, it builds the
+          `Result` from the plain values the service returns. If it names HTTP status codes, templates or translated
+          text, it belongs in `web/`. If it handles a table row, or reads another module's `Result` to answer one of
+          this module's ports, it belongs in `adapters/`.
+        imports:
+          may: [services, logic, domain, ports, contract, kernel, kernel-logic]
+        uses:
+          never: ambient
+        holds:
+          classes:
+            names: "*Controller"
+            built_by: [bootstrap]
+        tests: integration
+    adapters/:
+      role: "driven only: repos, which translate the platform/ table models; use platform/ clients"
+      litmus: >-
+        Does it implement one of this module's ports against a real system, or against another module's controller (it
+        calls that controller and turns the `Result` that comes back into the port's own answer), translating between
+        the module's types and theirs, and naming no other module except the `contract/` of one whose controller it
+        wraps? If yes, it goes here, and so does the private `Protocol` it declares for the little it calls of what it
+        wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in
+        `platform/`. If it contains a business rule, it belongs in `domain/`.
+      imports:
+        may: [ports, domain, kernel, kernel-logic, platform, contract@any]
+        must: [platform, contract@any]
+        libraries: [sqlmodel]
+      uses:
+        never: ambient
+      holds:
+        classes:
+          built_by: [bootstrap]
+      tests: unit
+    contract/:
+      role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
+      litmus: >-
+        Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
+        back, or an id that names the module's things? If yes, it goes here; an id is only re-exported here, and the
+        line that defines it stays in `domain/values.py`. A value with nothing to reshape may be handed out as it is:
+        it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the
+        module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
+        where it is, and a DTO goes here instead.
+      imports:
+        may: ["domain/values:*Id", domain/published, kernel, kernel-logic]
+      uses:
+        never: published
+      package_only: true
+      tests: integration
+  platform/:
     role: >-
       shared technology clients: llm, embeddings, email, crypto, blob_storage, system clock, sql engine, sessions and
       table models
@@ -114,12 +140,11 @@ parts:
     imports:
       may: [kernel, kernel-logic]
       libraries: [sqlmodel]
-    uses: {never: environment}
-    untested: it wraps outside technology; adapters are tested against a stub of it
-
-  web:
-    path: web
-    role: the only place for routes, translations and rendered output
+    uses:
+      never: environment
+    untested: "it wraps outside technology; adapters are tested against a stub of it"
+  web/:
+    role: "the only place for routes, translations and rendered output"
     litmus: >-
       Does it parse a request, pick a status code, translate text or render output, whichever module's data it shows,
       or fetch for a route, from the request it serves, a controller that was built elsewhere? If yes, it goes here.
@@ -128,15 +153,13 @@ parts:
     imports:
       may: [controller@any, contract@any, kernel, kernel-logic]
       libraries: [fastapi]
-    uses: {never: environment}
+    uses:
+      never: environment
     tests: rendering
-    folders:
-      routes: one file per route group; each calls module controllers
-      i18n: translated strings and locale selection
-      ui: pages and components that render a Result
-
-  bootstrap:
-    path: bootstrap
+    routes/: "one file per route group; each calls module controllers"
+    i18n/: translated strings and locale selection
+    ui/: pages and components that render a Result
+  bootstrap/:
     role: "composition root: binds ports to adapters, hands controllers to web/"
     litmus: >-
       Does it choose which adapter fills which port, build the services and controller around them, wrap one module's
@@ -147,54 +170,40 @@ parts:
     imports:
       may: everything
       libraries: [sqlmodel, fastapi, uvicorn]
-    untested: it wires the app and holds no rule; it has no test of its own
-    folders:
-      migrations: the schema and its history; the only place migrations live
-
-  contract:
-    path: modules/<module>/contract
-    role: "the module's published language: commands, DTOs, Results (one union per use case), ids"
-    litmus: >-
-      Is it part of what the module promises to callers outside it: an input a caller sends, an output that comes
-      back, or an id that names the module's things? If yes, it goes here; an id is only re-exported here, and the
-      line that defines it stays in `domain/values.py`. A value with nothing to reshape may be handed out as it is:
-      it is listed, on purpose, in `domain/published.py`, and re-exported here as an id is; everything else the
-      module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
-      where it is, and a DTO goes here instead.
-    imports:
-      may: ["domain/values:*Id", "domain/published", kernel, kernel-logic]
-    uses: {never: published}
-    tests: integration
-    package_only: true
-
-  kernel-logic:
-    path: kernel/logic
-    role: pure functions that modules share, including a rule two modules need
-    litmus: >-
-      Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more
-      modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that
-      module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it
-      must load or save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and
-      no I/O by name.
-    imports:
-      may: [kernel]
-    uses: {never: pure}
-    holds: {functions: {}, records: {immutable: true}, exceptions: {}}
-    tests: unit
-
-  kernel:
-    path: kernel
+    untested: "it wires the app and holds no rule; it has no test of its own"
+    migrations/: "the schema and its history; the only place migrations live"
+  kernel/:
     role: "pure primitives: id helpers, base errors, lifecycle fields, tracing, Clock"
     litmus: >-
       Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base
-      type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing
-      carriers, the `Clock` protocol, but no class that implements it)? If yes, it goes here. A function that works a
-      result out of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`.
-      If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an
-      error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real
-      time, it belongs in `platform/`. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
-    uses: {never: pure}
+      type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing carriers,
+      the `Clock` protocol, but no class that implements it)? If yes, it goes here. A function that works a result out
+      of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one
+      module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an error like
+      `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real time, it belongs
+      in `platform/`. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
+    uses:
+      never: pure
     tests: unit
+    logic/:
+      name: kernel-logic
+      role: "pure functions that modules share, including a rule two modules need"
+      litmus: >-
+        Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more
+        modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in
+        that module's `application/logic/`. If it is a value or a type rather than a function, it belongs in
+        `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `uses.never`
+        list: no clock and no I/O by name.
+      imports:
+        may: [kernel]
+      uses:
+        never: pure
+      holds:
+        functions: {}
+        records:
+          immutable: true
+        exceptions: {}
+      tests: unit
 
 never:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,

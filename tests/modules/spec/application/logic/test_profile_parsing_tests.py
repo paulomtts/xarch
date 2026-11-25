@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from tests.modules.spec.languages import BRACE, PYTHON
-from tests.modules.spec.profiles import EX, PRESETS, PYTEST_FORM, TESTING, covered, layered, parsed, problems
+from tests.modules.spec.profiles import EX, PRESETS, PYTEST_FORM, TESTING, covered, layered, parsed, part_of, problems
 from xarch.modules.spec.domain.values import (
     ClosedTree,
     DeadCode,
@@ -253,7 +253,7 @@ def test_tiers_load_in_order_with_what_each_part_says_and_their_litmus_lines_kep
 
 def test_the_subject_of_a_tier_is_its_parts_in_the_order_of_the_parts():
     document = covered()
-    document["parts"] = {name: document["parts"][name] for name in ("store", "shared", "service", "api")}
+    document["parts"] = {f"{name}/": part_of(document, name) for name in ("store", "shared", "service", "api")}
     assert [t.subject for t in parsed(document).tiers] == [(Subject("service"),), (Subject("store"), Subject("api"))]
 
 
@@ -279,7 +279,7 @@ def test_what_only_fills_the_docs_sits_under_docs_and_loads_into_the_same_fields
 
 def test_the_tests_of_a_tier_are_held_to_forbidden_and_may_use_parts_as_types_only_when_it_says_so():
     document = covered(never={"pure": ["socket"]})
-    document["parts"]["service"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
     document["tiers"]["unit"]["uses"] = {"apply_never": True}
     document["tiers"]["integration"]["imports"] = {"types_only": ["service", "store"]}
     tiers = parsed(document).tiers
@@ -427,10 +427,10 @@ def test_the_example_and_helpers_of_a_tier_must_be_files_of_an_example_project()
 
 def test_a_part_names_its_tier_or_says_why_it_has_none_when_the_profile_has_tiers():
     document = covered()
-    document["parts"]["shared"].pop("untested")
-    document["parts"]["store"].pop("tests")
-    document["parts"]["api"]["untested"] = "no need"
-    document["parts"]["service"]["tests"] = "nope"
+    part_of(document, "shared").pop("untested")
+    part_of(document, "store").pop("tests")
+    part_of(document, "api")["untested"] = "no need"
+    part_of(document, "service")["tests"] = "nope"
     assert problems(document) == [
         "layered.yaml: parts.api: has `tests` and is `untested`: drop one",
         "layered.yaml: parts.service.tests: no tier named 'nope': use unit, integration",
@@ -440,47 +440,47 @@ def test_a_part_names_its_tier_or_says_why_it_has_none_when_the_profile_has_tier
 
 def test_a_part_naming_a_tier_in_a_profile_with_no_tiers_is_refused():
     document = layered()
-    document["parts"]["api"]["tests"] = "unit"
+    part_of(document, "api")["tests"] = "unit"
     assert problems(document) == [
         "layered.yaml: parts.api.tests: the profile has no `tiers`: add them, or drop the key"]
 
 
 def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     document = covered()
-    document["parts"]["api"]["tests"] = 3
+    part_of(document, "api")["tests"] = 3
     assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
-PART_KEYS = ("folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses")
+PART_KEYS = ("holds, imports, litmus, name, package_only, role, shared, tests, untested, uses")
 RETIRED_TIER = f"unknown key 'tier': renamed in 0.3.0: write tests; use {PART_KEYS}"
 NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
 
 
 def test_a_part_still_writing_tier_is_refused_with_the_rename_and_is_tested_by_no_tier():
     document = covered()
-    document["parts"]["store"].pop("tests")
-    document["parts"]["store"]["tier"] = "integration"
+    part_of(document, "store").pop("tests")
+    part_of(document, "store")["tier"] = "integration"
     assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}", f"layered.yaml: parts.store: {NO_TIER}"]
 
 
 def test_a_part_writing_tier_beside_tests_is_refused_for_tier_alone():
     document = covered()
-    document["parts"]["store"]["tier"] = "integration"
+    part_of(document, "store")["tier"] = "integration"
     assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}"]
 
 
 def test_a_part_writing_tier_and_a_key_only_unknown_gets_the_retired_problem_first():
     document = covered()
-    document["parts"]["store"]["tier"] = "integration"
-    document["parts"]["store"]["tierr"] = 1
+    part_of(document, "store")["tier"] = "integration"
+    part_of(document, "store")["tierr"] = 1
     assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}",
                                   f"layered.yaml: parts.store: unknown key 'tierr': use {PART_KEYS}"]
 
 
 def test_the_value_written_under_tier_is_in_no_problem():
     document = covered()
-    document["parts"]["store"].pop("tests")
-    document["parts"]["store"]["tier"] = "secret-value"
+    part_of(document, "store").pop("tests")
+    part_of(document, "store")["tier"] = "secret-value"
     found = problems(document)
     assert found == [f"layered.yaml: parts.store: {RETIRED_TIER}", f"layered.yaml: parts.store: {NO_TIER}"]
     assert not any("secret-value" in problem for problem in found)
@@ -488,7 +488,7 @@ def test_the_value_written_under_tier_is_in_no_problem():
 
 def test_a_part_writing_tier_in_a_profile_with_no_tiers_gets_the_retired_problem_alone():
     document = layered()
-    document["parts"]["api"]["tier"] = "unit"
+    part_of(document, "api")["tier"] = "unit"
     assert problems(document) == [f"layered.yaml: parts.api: {RETIRED_TIER}"]
 
 
@@ -501,7 +501,7 @@ def test_tier_under_a_tier_is_only_unknown_with_the_plain_message():
 
 def test_a_path_written_for_tests_is_told_it_names_a_tier_not_a_folder():
     document = covered()
-    document["parts"]["api"]["tests"] = "tests/units"
+    part_of(document, "api")["tests"] = "tests/units"
     assert problems(document) == [
         "layered.yaml: parts.api.tests: no tier named 'tests/units': it names a tier of `tiers`, not a folder: "
         "use unit, integration"]
@@ -520,7 +520,7 @@ FOLDER = ": it names a tier of `tiers`, not a folder"
 ])
 def test_a_value_of_tests_that_is_no_tier_name(value, clause):
     document = covered()
-    document["parts"]["api"]["tests"] = value
+    part_of(document, "api")["tests"] = value
     assert problems(document) == [
         f"layered.yaml: parts.api.tests: no tier named {value!r}{clause}: use unit, integration"]
 
@@ -528,7 +528,7 @@ def test_a_value_of_tests_that_is_no_tier_name(value, clause):
 def test_a_tier_whose_name_holds_a_slash_is_named_by_tests_with_no_problem():
     document = covered()
     document["tiers"]["a/b"] = {}
-    document["parts"]["api"]["tests"] = "a/b"
+    part_of(document, "api")["tests"] = "a/b"
     architecture = parsed(document)
     assert [subject.part for tier in architecture.tiers if tier.name == "a/b" for subject in tier.subject] == ["api"]
 
@@ -539,7 +539,7 @@ def test_a_tier_whose_name_holds_a_slash_is_named_by_tests_with_no_problem():
 ])
 def test_a_value_of_tests_that_is_no_string_must_be_the_name_of_a_tier(value):
     document = covered()
-    document["parts"]["api"]["tests"] = value
+    part_of(document, "api")["tests"] = value
     assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
@@ -603,7 +603,7 @@ def test_the_guards_in_use_are_those_named_with_the_framework_s_words_taken_from
 
 def test_guards_are_off_unless_named_and_package_only_comes_first():
     document = covered(guards={"no-comments": {}})
-    document["parts"]["store"]["package_only"] = True
+    part_of(document, "store")["package_only"] = True
     assert parsed(document).guards == (PackageOnly(("store",)), NoComments())
     assert parsed(covered()).guards == ()
 
@@ -917,7 +917,7 @@ def guarded(testing: dict, *parts: str) -> dict:
     document = covered(testing=testing)
     document["tiers"]["guard"] = dict(FOLDER_TIER)
     for name in parts:
-        document["parts"][name]["tests"] = "guard"
+        part_of(document, name)["tests"] = "guard"
     return document
 
 

@@ -1,6 +1,7 @@
 """Plain values written as YAML: block style, the shortest safe form of each scalar, and a literal or folded block for
 a long text, so that the file reads as one written by hand."""
 import pytest
+import yaml
 
 from xarch.platform.yaml_writer import YamlWriter
 
@@ -44,3 +45,18 @@ def test_a_long_text_of_one_line_is_folded_at_the_width_and_a_long_list_wraps_un
 def test_a_text_that_folding_would_change_stays_on_one_line():
     spaced = "a  " + "b " * 80 + "c"
     assert YamlWriter().dump({"a": spaced}, width=40) == f"a: {spaced}\n"
+
+
+@pytest.mark.parametrize("key, text", [
+    pytest.param("modules/<module>/", "modules/<module>/: 1\n", id="a joined folder with a repeating step"),
+    pytest.param("domain/", "domain/: 1\n", id="a folder"),
+    pytest.param("controller.py", "controller.py: 1\n", id="a file"),
+    pytest.param("__main__.py", "__main__.py: 1\n", id="a file named with underscores"),
+    pytest.param("[slug]/", '"[slug]/": 1\n', id="a folder YAML reads as a list is quoted"),
+    pytest.param("@types/", '"@types/": 1\n', id="a folder starting with @ is quoted"),
+    pytest.param("(group)/", '"(group)/": 1\n', id="a folder starting with a bracket is quoted"),
+])
+def test_a_key_of_the_folder_tree_is_plain_when_yaml_reads_it_back_as_written(key, text):
+    written = YamlWriter().dump({key: 1})
+    assert written == text
+    assert yaml.safe_load(written) == {key: 1}

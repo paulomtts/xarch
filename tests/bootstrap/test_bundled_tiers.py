@@ -31,17 +31,16 @@ CUSTOM = """\
 name: layered
 testing: pytest
 parts:
-  api:
-    path: "src/<module>/api"
-    role: handlers
-    imports:
-      may: [store]
-    tests: driver
-  store:
-    path: "src/<module>/store"
-    role: database access
-    tests: unit
-  shared: {path: shared, role: helpers, untested: reached through the parts that use it}
+  src/<module>/:
+    api/:
+      role: handlers
+      imports:
+        may: [store]
+      tests: driver
+    store/:
+      role: database access
+      tests: unit
+  shared/: {role: helpers, untested: reached through the parts that use it}
 tiers:
   unit:
     proves: a query

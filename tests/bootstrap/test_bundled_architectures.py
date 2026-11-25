@@ -89,3 +89,18 @@ def test_published_is_pure_then_typing_any_and_pure_is_as_written(location):
 @pytest.mark.parametrize("path", FILES, ids=lambda path: path.name)
 def test_each_profile_writes_published_as_an_include_of_pure(path):
     assert path.read_text(encoding="utf-8").count("\n  published: [pure, typing.Any]\n") == 1
+
+
+WEB_ORDER = ("domain", "logic", "ports", "services", "controller", "adapters", "contract", "platform", "web",
+             "bootstrap", "kernel", "kernel-logic")
+
+
+@pytest.mark.parametrize("source, order", [
+    pytest.param("web", WEB_ORDER, id="web"),
+    pytest.param("cli", tuple("cli" if part == "web" else part for part in WEB_ORDER), id="cli"),
+    pytest.param(OWN, ("domain", "logic", "ports", "services", "controller", "adapters", "contract", "platform", "cli",
+                       "reports", "main", "bootstrap", "profile-values", "kernel", "kernel-logic"), id="xarch"),
+])
+def test_the_placement_of_each_profile_is_its_tree_s_reading_order(source, order):
+    architecture = load_architecture(source)
+    assert architecture.placement == order == tuple(architecture.parts)

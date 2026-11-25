@@ -6,7 +6,7 @@ from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import PYTHON
 from xarch.modules.spec.contract import GuardsView, PartView, ProfileRefused, ProfileView
 
-LAYERED = {"name": "layered", "parts": {"src": {"path": "src", "role": "code"}}}
+LAYERED = {"name": "layered", "parts": {"src/": {"role": "code"}}}
 SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "broken": {"name": "broken"}}))
 
 

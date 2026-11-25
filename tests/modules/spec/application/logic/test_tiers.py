@@ -3,7 +3,7 @@ docs."""
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, part_of, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
 from xarch.modules.spec.domain.values import TierExample
@@ -120,7 +120,7 @@ def test_tiers_that_are_no_mapping_of_tiers_are_refused(tiers):
 ])
 def test_a_bad_untested_reason_is_refused(untested):
     document = covered()
-    document["parts"]["shared"]["untested"] = untested
+    part_of(document, "shared")["untested"] = untested
     assert problems(document) == [UNTESTED_PROBLEM]
 
 
@@ -185,8 +185,8 @@ def test_a_tier_with_a_folder_and_no_part_is_shown_by_the_text_of_the_docs():
 def test_untested_parts_say_why_in_one_line_each():
     assert rendered("{{untested}}") == "`shared/` gets no tier of its own: reached through the parts that use it."
     document = tiered()
-    del document["parts"]["shared"]["untested"]
-    document["parts"]["shared"]["tests"] = "integration"
+    del part_of(document, "shared")["untested"]
+    part_of(document, "shared")["tests"] = "integration"
     assert rendered("{{untested}}", document) == ""
 
 

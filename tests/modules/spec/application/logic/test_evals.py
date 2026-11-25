@@ -6,7 +6,7 @@ of writing either wrong refused at its address."""
 import pytest
 
 from tests.modules.spec.languages import BRACE, PYTHON
-from tests.modules.spec.profiles import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.modules.spec.domain.published import CHOICE, SCORE, YES_NO, Eval
 from xarch.profile_values.checks import Condition, Scope
 
@@ -184,7 +184,7 @@ def alike(*groups, **parts) -> dict:
     """layered(), its placement reading the groups given alike, each part named changed as given."""
     document = layered(evals={"placement": {"alike": [list(group) for group in groups]}})
     for name, changes in parts.items():
-        document["parts"][name] |= changes
+        part_of(document, name).update(changes)
     return document
 
 
@@ -263,7 +263,7 @@ def test_parts_that_forbid_different_things_are_not_alike():
     document["never"] = {"pure": ["time.time"], "ambient": ["os.getcwd"]}
     assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in uses.never: {NOT_ALIKE}" in problems(
         document)
-    document["parts"]["shared"].pop("uses")
+    part_of(document, "shared").pop("uses")
     assert f"layered.yaml: evals.placement.alike[0]: store and shared differ in uses.never: {NOT_ALIKE}" in problems(
         document)
 

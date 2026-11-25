@@ -1,22 +1,25 @@
 """Filling a docs template from a profile file: the prose is the author's, the file supplies the structure."""
 
+from copy import deepcopy
+
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.languages import BRACE, PYTHON
-from tests.modules.spec.profiles import parsed
+from tests.modules.spec.profiles import parsed, part_of
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidTemplate
 from xarch.modules.spec.domain.values import FileType
 
 PARTS = {
-    "store": {"path": "src/<module>/store", "role": "database access", "litmus": "Does it touch the database?",
-              "imports": {"may": ["shared/text"]}, "folders": {"sql": "the queries"}},
-    "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
-                "imports": {"may": ["store", "api@any", "shared"]}},
-    "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "litmus": "Does it parse a request?",
-            "imports": {"may": "everything"}},
-    "shared": {"path": "shared", "role": "code every module uses", "litmus": "Is it shared?", "imports": {"may": []}},
+    "src/<module>/": {
+        "store/": {"role": "database access", "litmus": "Does it touch the database?",
+                   "imports": {"may": ["shared/text"]}, "sql/": "the queries"},
+        "service/": {"role": "business logic", "litmus": "Does it decide?",
+                     "imports": {"may": ["store", "api@any", "shared"]}},
+        "api.py": {"role": "HTTP handlers", "litmus": "Does it parse a request?", "imports": {"may": "everything"}},
+    },
+    "shared/": {"role": "code every module uses", "litmus": "Is it shared?", "imports": {"may": []}},
 }
 NAMING = [{"kind": "service", "where": ["service/"], "pattern": "thing and `Service`",
            "example": ["BillingService", "TaxService"]}]
@@ -34,8 +37,18 @@ def layered(**extra) -> dict:
             "docs": DOCS} | extra
 
 
+def brace(document: dict) -> dict:
+    """The document with its file part ending in .ts, the ending of the language brace."""
+    parts = deepcopy(document["parts"])
+    parts["src/<module>/"] = {key.replace("api.py", "api.ts"): value for key, value in parts["src/<module>/"].items()}
+    return document | {"parts": parts, "language": "brace"}
+
+
 def parts(**changes) -> dict:
-    return {name: part | changes.get(name, {}) for name, part in PARTS.items()}
+    document = {"parts": deepcopy(PARTS)}
+    for name, change in changes.items():
+        part_of(document, name).update(change)
+    return document["parts"]
 
 
 def filled(template: str, **extra) -> str:
@@ -172,8 +185,9 @@ def test_a_part_or_layer_the_file_does_not_define_is_rejected():
 
 
 def test_what_the_file_leaves_out_is_reported_when_a_placeholder_needs_it():
-    shared = {key: value for key, value in PARTS["shared"].items() if key != "litmus"}
-    document = layered(docs={}, parts={**PARTS, "shared": shared})
+    document = {"parts": deepcopy(PARTS)}
+    del part_of(document, "shared")["litmus"]
+    document = layered(docs={}, parts=document["parts"])
     assert problems("{{naming}}{{entry}}{{litmus:shared}}", document) == [
         "layered.md: {{naming}}: the architecture has no `docs.naming`",
         "layered.md: {{entry}}: no part is the entry point: set `docs.entry` to a part",
@@ -206,7 +220,7 @@ def test_the_docs_tree_of_an_architecture_without_docs_is_refused():
 
 
 def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
-    feature = {name: part | {"path": part["path"].replace("<module>", "<feature>")} for name, part in PARTS.items()}
+    feature = {key.replace("<module>", "<feature>"): value for key, value in PARTS.items()}
     text = filled("{{tree}}\n\n{{rules_table}}", parts=feature)
     assert "└── <feature>/" in text
     assert "its own feature's `store/`, any feature's `api.py`" in text
@@ -214,12 +228,14 @@ def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
 
 
 TWO = {
-    "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
-                "imports": {"may": ["hooks@any", "shared"]}},
-    "hooks": {"path": "ext/<plugin>/hooks", "role": "what a plugin runs", "litmus": "Does a plugin run it?",
-              "imports": {"may": ["service@any", "manifest", "shared"], "libraries": ["yaml"]}},
-    "manifest": {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares", "litmus": "Does it declare?"},
-    "shared": {"path": "shared", "role": "code both use", "litmus": "Is it shared?"},
+    "src/<module>/": {"service/": {"role": "business logic", "litmus": "Does it decide?",
+                                   "imports": {"may": ["hooks@any", "shared"]}}},
+    "ext/<plugin>/": {
+        "hooks/": {"role": "what a plugin runs", "litmus": "Does a plugin run it?",
+                   "imports": {"may": ["service@any", "manifest", "shared"], "libraries": ["yaml"]}},
+        "manifest.py": {"role": "what a plugin declares", "litmus": "Does it declare?"},
+    },
+    "shared/": {"role": "code both use", "litmus": "Is it shared?"},
 }
 
 
@@ -312,7 +328,7 @@ def test_a_profile_without_the_guard_has_no_no_callbacks_line():
 
 def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_the_language_s_name():
     view = "src/billing/api/view.tsx"
-    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace"), folders={"ex": (view,)},
+    architecture = parsed(brace(layered(docs=DOCS | {"example_notes": {}})), folders={"ex": (view,)},
                           languages={"python": PYTHON, "brace": BRACE})
     assert fill("{{example:" + view + "}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES) == (
         "```brace\n// src/billing/api/view.tsx\nx\n```")
@@ -320,7 +336,7 @@ def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_t
 
 def test_the_no_comments_line_says_the_first_comment_marker_of_the_language_and_each_directive_after_it():
     view = "src/billing/api/view.tsx"
-    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace", guards={"no-comments": {}}),
+    architecture = parsed(brace(layered(docs=DOCS | {"example_notes": {}}, guards={"no-comments": {}})),
                           folders={"ex": (view,)}, languages={"python": PYTHON, "brace": BRACE})
     filled_in = fill("{{guards}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES)
     assert [line for line in filled_in.splitlines() if "`no-comments`" in line] == [
@@ -337,7 +353,7 @@ def test_the_private_imports_line_says_the_prefix_the_language_gives():
 
 def test_the_private_imports_line_of_a_language_that_gives_no_prefix_says_the_rule_by_what_a_file_keeps_private():
     view = "src/billing/api/view.tsx"
-    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace", guards={"private-imports": {}}),
+    architecture = parsed(brace(layered(docs=DOCS | {"example_notes": {}}, guards={"private-imports": {}})),
                           folders={"ex": (view,)}, languages={"python": PYTHON, "brace": BRACE})
     filled_in = fill("{{guards}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES)
     lines = [line for line in filled_in.splitlines() if "`private-imports`" in line]
@@ -396,3 +412,9 @@ def test_the_names_line_of_classes_beside_records_and_exceptions_leaves_both_out
 def test_the_built_by_line_reads_the_built_by_of_classes():
     assert keyed("built-by", service={"holds": {"classes": {"built_by": ["api"]}}}) == [
         "- `built-by`: only code of `api.py` builds a class of `service/`; tests are not read."]
+
+
+def test_a_profile_with_no_part_has_no_placement_order_and_is_told_to_write_its_parts_under_parts():
+    assert problems("{{placement}}", {"name": "layered", "parts": {}}) == [
+        "layered.md: {{placement}}: the architecture has no placement order: write its parts under `parts`, whose "
+        "reading order is the order the litmus tests run"]

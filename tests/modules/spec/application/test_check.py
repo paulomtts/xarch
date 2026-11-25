@@ -28,7 +28,7 @@ COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, 
     pytest.param(dict(files={"mine.yaml": MINE}), CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (), 2, COPY),
                  id="a profile that loads and keeps to its rules is valid, with how many files it points to"),
-    pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}}),
+    pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core/": {"litmus": "q"}}}}),
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("load", "mine.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, fakes, files, "
@@ -81,7 +81,7 @@ def test_with_against_the_profile_checked_is_compared_with_the_one_it_names():
 
 
 def test_against_a_profile_with_several_problems_is_refused_with_all_of_them_on_one_line():
-    broken = {**MINE, "colour": 1, "parts": {"core": {"path": "core"}}}
+    broken = {**MINE, "colour": 1, "parts": {"core/": {"litmus": "q"}}}
     spec, _ = spec_controller(files={"mine.yaml": MINE, "broken.yaml": broken})
     assert spec.check_profile(CheckProfile(APP, "mine.yaml", "broken.yaml")) == ProfileRefused(
         "--against does not load: broken.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, "

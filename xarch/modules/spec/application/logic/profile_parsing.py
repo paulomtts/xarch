@@ -14,11 +14,15 @@ key_catalogue); the shape:
                                whether every test of a part sits beside the code it tests (a tier with a `folder`
                                keeps its tests below the tests folder, and no part may name it then).
                                Required with `tiers` and with the guards scenario-coverage and stand-ins
-    parts: {<part>: {path, role, ...}}
-                               in the order their litmus tests run. A part's path is a folder below the app, or a file
-                               when its last step holds a dot; one step written `<word>` is the repeating folder, one
-                               instance per name, and the word is what the docs call one instance. The layout is the
-                               paths of the parts and their `folders` (each with an optional note), nothing else
+    parts: {<folder>/: {<key of the part>, <folder>/, <file>, ...}, <file>: {role, ...}}
+                               the folder tree of the app: a key ending in / is a folder of one or more steps, one
+                               written `<word>` the repeating folder, one instance per name, the word what the docs
+                               call one instance; a key holding a dot is a file; any other key is a key of the part
+                               the folder or file is. A folder with a part's keys is a part, a file always is; a folder
+                               with none is only a folder, its value one line of text (its note) or nothing. A part is
+                               named by its folder's last step or its file's name before the first dot, or by `name`;
+                               the reading order, a part before the parts inside it, is the order their litmus tests run
+        name: <name>           the part's name, when its folder or file does not give it
         imports: {may, must, libraries}
                                what the part may import besides itself, which it always may: each entry a target
                                (a bare name of a part in the repeating folder is the importer's own instance, `@any`
@@ -32,8 +36,6 @@ key_catalogue); the shape:
         tests: <tier> | untested: <reason>
                                one tier covers the part, or the reason none does; with `tiers`, one of the two
         package_only: true     the part is imported only as a package from outside it
-        folders: {<folder>: <note>} | [<folder>, ...]
-                               folders below the part that the layout shows
     never: {<list>: [<name> | <list>, ...]}    named lists of what a part never uses; an entry naming another
                                list includes it
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `imports.libraries` list them
@@ -82,6 +84,7 @@ from xarch.kernel.logic.placement import root_of, stem
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic import imports_written as iw
 from xarch.modules.spec.application.logic import never_lists as nl
+from xarch.modules.spec.application.logic import parts_tree as pt
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
@@ -90,7 +93,6 @@ from xarch.modules.spec.application.logic.evals import evals, unlike, unplaced
 from xarch.modules.spec.application.logic.holds_written import holds as held_kinds
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
-from xarch.modules.spec.application.logic.layout_walk import is_file
 from xarch.modules.spec.application.logic.sending import sending
 from xarch.modules.spec.application.logic.targets_written import WORD, allowed_targets
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -103,7 +105,6 @@ from xarch.modules.spec.domain.profile_keys import (
     NO_CALLBACKS,
     NO_DUPLICATES,
     NO_TWINS,
-    PART,
     PART_USES,
     PASS_THROUGH,
     PROFILE,
@@ -178,6 +179,9 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     names of the bundled profiles, which `based_on` may name; languages are the languages xarch ships, by name."""
     if not isinstance(document, Mapping):
         raise InvalidArchitecture(source, ["must be a mapping of keys"])
+    tree = pt.parts_tree(document.get("parts", {}), _language(document, languages or {}, []))
+    if tree.old:
+        raise InvalidArchitecture(source, list(tree.old))
     problems: list[str] = []
     problems += _keys(document)
     name = document.get("name")
@@ -189,9 +193,10 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     based_on = _based_on(document["based_on"], bundled, problems) if "based_on" in document else ""
     never_lists = (nl.never_lists(document["never"], problems, language, _named_packages(document, language))
                    if "never" in document else {})
-    specs = _specs(document.get("parts", {}), problems)
+    problems += tree.problems
+    specs = {part.name: part.keys for part in tree.parts}
     declared = set(specs)
-    built = _layout(specs, problems)
+    built = _layout(tree, problems)
     parts = built.parts
     examples = ex.example_files(document.get("docs", {}), files, problems, language)
     imports = {part: iw.group(specs[part], f"parts.{part}", problems) for part in parts}
@@ -279,95 +284,49 @@ def _bare_from(value: Any) -> Any:
     return {key: {"from": item} if isinstance(item, str) else item for key, item in value.items()}
 
 
-def _specs(value: Any, problems: list[str]) -> dict[str, Any]:
-    """Every part with a valid name, by name, whatever it holds: a part already reported is not reported again."""
-    if not isinstance(value, Mapping):
-        problems.append("parts: must be a mapping of part names to {path, role, ...}")
-        return {}
-    specs: dict[str, Any] = {}
-    for name, spec in value.items():
-        if not ck.text(name) or not ck.PART_NAME.fullmatch(name):
-            problems.append(f"parts: {name!r} is not a part name: use letters, digits, '_' and '-'")
-        else:
-            specs[name] = spec
-    return specs
-
-
-def _layout(specs: dict[str, Any], problems: list[str]) -> _Layout:
-    """The parts that place validly, in the order of the file, and the layout their paths and `folders` make."""
+def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
+    """The parts that place validly, in reading order, and the layout they make; then the folders that are no part,
+    added after them as the folders of the parts were before 0.3.0, so the layout keeps that order, with their notes."""
     parts: dict[str, Part] = {}
-    tree: Layout = {}
+    layout: Layout = {}
     notes: dict[tuple[str, ...], str] = {}
     repeats: list[Repeat] = []
-    claimed: dict[tuple[str, ...], str] = {}
     owners: dict[tuple[str, ...], str] = {}
-    for name, spec in specs.items():
-        where = f"parts.{name}"
-        if not isinstance(spec, Mapping):
-            problems.append(f"{where}: must be a mapping with `path` and `role`")
+    for entry in sorted(tree.parts, key=lambda part: part.order):
+        where = f"parts.{entry.name}"
+        problems += _own_problems(entry)
+        if len(entry.words) > 1:
+            problems.append(f"{where}: '{entry.shown}' has two repeating steps, <{entry.words[0]}> and "
+                            f"<{entry.words[1]}>: a repeating folder cannot sit inside another, so give each its own "
+                            "folder")
             continue
-        problems += ck.unknown_keys(spec, names_of(PART), where, PART)
-        problems += [f"{where}: missing `{key}`" for key in required_of(PART) if key not in spec]
-        for key in ("role", "litmus"):
-            if key in spec and not isinstance(spec[key], str):
-                problems.append(f"{where}.{key}: must be a string")
-        if "untested" in spec and not ck.line(spec["untested"]):
-            problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
-        if "package_only" in spec and not isinstance(spec["package_only"], bool):
-            problems.append(f"{where}.package_only: must be true or false")
-        placed = _path(spec["path"], where, problems) if "path" in spec else None
-        if placed is None:
+        word = entry.words[0] if entry.words else ""
+        if not _repeats_alike(entry.name, entry.steps, word, repeats, owners, f"{where}: '{entry.shown}'", problems):
             continue
-        steps, word = placed
-        if not _repeats_alike(name, steps, word, repeats, owners, where, spec["path"], problems):
-            continue
-        if steps in claimed:
-            problems.append(f"{where}.path: '{_shown(steps, word)}' is already claimed by part '{claimed[steps]}'")
-            continue
-        if not _insert(tree, steps, name, owners, where, _shown(steps, word), problems):
-            continue
-        claimed[steps] = name
-        parts[name] = Part(name, steps, ck.string(spec.get("role")), ck.string(spec.get("litmus")), False,
-                                 spec["untested"] if ck.line(spec.get("untested")) else "")
-    for name, part in parts.items():
-        problems += _folders(specs[name].get("folders"), part, tree, notes, claimed, f"parts.{name}.folders",
-                             "folders" in specs[name])
-    return _Layout(parts, tree, notes, tuple(repeats))
+        _insert(layout, entry.steps, entry.file, entry.name, owners)
+        parts[entry.name] = Part(entry.name, entry.steps, ck.string(entry.keys.get("role")),
+                                 ck.string(entry.keys.get("litmus")), False,
+                                 entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "")
+    for folder in tree.folders:
+        _add_folder(layout, notes, folder)
+    return _Layout(parts, layout, notes, tuple(repeats))
 
 
-def _path(value: Any, where: str, problems: list[str]) -> tuple[tuple[str, ...], str] | None:
-    """A part's path as steps, the repeating step as EACH, and the word between its brackets ("" if none)."""
-    if not ck.text(value):
-        problems.append(f"{where}.path: must be a path such as 'src/<name>/api'")
-        return None
-    steps = value.strip("/").split("/")
-    if any(step in ("", ".", "..") or "\\" in step for step in steps):
-        problems.append(f"{where}.path: '{value}' has an empty, `.` or `..` step")
-        return None
-    if any(EACH in step for step in steps):
-        problems.append(f"{where}.path: '{value}' has a `*` step: write the repeating folder as one word between `<` "
-                        "and `>`")
-        return None
-    words = [_REPEATING.fullmatch(step) for step in steps if "<" in step or ">" in step]
-    if any(match is None for match in words):
-        problems.append(f"{where}.path: '{value}' has a step with `<` or `>` that is not one word between them: write "
-                        "the repeating folder as `<name>`")
-        return None
-    if len(words) > 1:
-        first, second = (match.group(1) for match in words[:2] if match)
-        problems.append(f"{where}.path: '{value}' has two repeating steps, <{first}> and <{second}>: a repeating "
-                        "folder cannot sit inside another, so give each its own folder")
-        return None
-    return (tuple(EACH if _REPEATING.fullmatch(step) else step for step in steps),
-            words[0].group(1) if words and words[0] else "")
-
-
-def _shown(steps: tuple[str, ...], word: str) -> str:
-    return "/".join(f"<{word}>" if step == EACH else step for step in steps)
+def _own_problems(entry: pt.TreePart) -> list[str]:
+    """What is wrong with the values of the part's own keys that the layout reads."""
+    where, spec, problems = f"parts.{entry.name}", entry.keys, []
+    for key in ("role", "litmus"):
+        if key in spec and not isinstance(spec[key], str):
+            problems.append(f"{where}.{key}: must be a string")
+    if "untested" in spec and not ck.line(spec["untested"]):
+        problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
+    if "package_only" in spec and not isinstance(spec["package_only"], bool):
+        problems.append(f"{where}.package_only: must be true or false")
+    return problems
 
 
 def _repeats_alike(name: str, steps: tuple[str, ...], word: str, repeats: list[Repeat],
-                   owners: dict[tuple[str, ...], str], where: str, value: str, problems: list[str]) -> bool:
+                   owners: dict[tuple[str, ...], str], where: str, problems: list[str]) -> bool:
     """A word repeats in one folder, and a folder is repeated by one word."""
     root = root_of(steps)
     if root is None:
@@ -375,13 +334,13 @@ def _repeats_alike(name: str, steps: tuple[str, ...], word: str, repeats: list[R
     here = next((repeat for repeat in repeats if repeat.root == root), None)
     named = next((repeat for repeat in repeats if repeat.word == word), None)
     if here is not None and here.word != word:
-        problems.append(f"{where}.path: '{value}' calls the repeating folder <{word}>, but part "
-                        f"'{owners[(*root, EACH)]}' called it <{here.word}> in the same folder '{'/'.join(root)}': two "
-                        "words may not share a parent, use one word")
+        problems.append(f"{where} calls the repeating folder <{word}>, but part '{owners[(*root, EACH)]}' called it "
+                        f"<{here.word}> in the same folder '{'/'.join(root)}': two words may not share a parent, use "
+                        "one word")
     elif named is not None and named.root != root:
-        problems.append(f"{where}.path: '{value}' repeats <{word}> below '{'/'.join(root)}', but part "
-                        f"'{owners[(*named.root, EACH)]}' repeats it below '{'/'.join(named.root)}': one word repeats "
-                        "in one folder, so give this one a word of its own")
+        problems.append(f"{where} repeats <{word}> below '{'/'.join(root)}', but part '{owners[(*named.root, EACH)]}' "
+                        f"repeats it below '{'/'.join(named.root)}': one word repeats in one folder, so give this one a "
+                        "word of its own")
     else:
         if here is None:
             repeats.append(Repeat(word, root))
@@ -390,76 +349,26 @@ def _repeats_alike(name: str, steps: tuple[str, ...], word: str, repeats: list[R
     return False
 
 
-def _insert(tree: Layout, steps: tuple[str, ...], name: str, owners: dict[tuple[str, ...], str], where: str,
-            shown: str, problems: list[str]) -> bool:
-    """The path in the tree: folders for every step, a file for a last step holding a dot; False when it clashes."""
+def _insert(tree: Layout, steps: tuple[str, ...], file: bool, name: str, owners: dict[tuple[str, ...], str]) -> None:
+    """The part's steps in the layout: a folder for every step, the last a file when the part is one."""
     here = tree
-    for i, step in enumerate(steps[:-1], 1):
-        if step in here and here[step] is None:
-            problems.append(f"{where}.path: '{shown}' lies below '{'/'.join(steps[:i])}', which part "
-                            f"'{owners[steps[:i]]}' makes a file")
-            return False
+    for step in steps[:-1]:
         here = here.setdefault(step, {})
-    last = steps[-1]
-    if "." in last:
-        if last in here:
-            problems.append(f"{where}.path: '{shown}' is a file, since its last step holds a dot, but part "
-                            f"'{owners[steps]}' lies below it: rename one of them")
-            return False
-        here[last] = None
+    if file:
+        here[steps[-1]] = None
     else:
-        here.setdefault(last, {})
+        here.setdefault(steps[-1], {})
     for i in range(1, len(steps) + 1):
         owners.setdefault(steps[:i], name)
-    return True
 
 
-def _folders(value: Any, part: Part, tree: Layout, notes: dict[tuple[str, ...], str],
-             claimed: dict[tuple[str, ...], str], where: str, given: bool) -> list[str]:
-    """The `folders` of a part: each goes in the layout below the part, and its note, if any, in the notes."""
-    if not given:
-        return []
-    problems: list[str] = []
-    if isinstance(value, Mapping):
-        entries = list(value.items())
-    elif isinstance(value, list):
-        entries = [(item, "") for item in value]
-    else:
-        return [f"{where}: must be a mapping of folder paths to one line of text, or a list of folder paths"]
-    if is_file(tree, part.path):
-        return [f"{where}: a file has no folders: drop the key"]
-    seen: list[str] = []
-    for key, note in entries:
-        steps = tuple(key.strip("/").split("/")) if ck.text(key) else ()
-        if not steps or any(step in ("", ".", "..") or EACH in step or "<" in step or "\\" in step for step in steps):
-            problems.append(f"{where}: {key!r} is not a folder below the part: write a path of plain names such as "
-                            "io/disk")
-        elif key in seen:
-            problems.append(f"{where}: {key!r} is listed twice")
-        elif isinstance(value, Mapping) and not ck.line(note):
-            problems.append(f"{where}.{key}: must be one line of text")
-        else:
-            seen.append(key)
-            full = (*part.path, *steps)
-            if full in claimed:
-                problems.append(f"{where}.{key}: '{key}' is part '{claimed[full]}', whose note is its role: drop it "
-                                "from `folders`")
-                continue
-            if not _add_folder(tree, full):
-                problems.append(f"{where}.{key}: '{key}' lies below a file")
-                continue
-            if note:
-                notes[full] = note
-    return problems
-
-
-def _add_folder(tree: Layout, path: tuple[str, ...]) -> bool:
+def _add_folder(tree: Layout, notes: dict[tuple[str, ...], str], folder: pt.TreeFolder) -> None:
+    """The folder that is no part in the layout, and its note, if it has one, in the notes."""
     here = tree
-    for step in path:
-        if step in here and here[step] is None:
-            return False
+    for step in folder.steps:
         here = here.setdefault(step, {})
-    return True
+    if folder.note:
+        notes[folder.steps] = folder.note
 
 
 def _imports_libraries(written: Mapping[Any, Any], where: str, problems: list[str], language: Language,
@@ -478,17 +387,16 @@ def _imports_libraries(written: Mapping[Any, Any], where: str, problems: list[st
 
 
 def _named_packages(document: Mapping[Any, Any], language: Language) -> dict[str, str]:
-    """Each package the profile names, by the key of the first place naming it: the parts' `imports.libraries` in the
-    order the file writes them, then `reserved`. Read silently, and only from an `imports` that is a map: each is said
+    """Each package the profile names, by the key of the first place naming it: the parts' `imports.libraries` in
+    reading order, then `reserved`. Read silently, and only from an `imports` that is a map: each is said
     at its own place."""
     reserved = ck.reserved_modules(document["reserved"], [], language) if "reserved" in document else {}
-    parts = document.get("parts")
     named: dict[str, str] = {}
-    for part, spec in parts.items() if isinstance(parts, Mapping) else ():
-        written = spec.get("imports") if isinstance(spec, Mapping) else None
-        found = (_imports_libraries(written, f"parts.{part}.imports.libraries", [], language, reserved)
+    for part in pt.parts_tree(document.get("parts"), language).parts:
+        written = part.keys.get("imports")
+        found = (_imports_libraries(written, f"parts.{part.name}.imports.libraries", [], language, reserved)
                  if isinstance(written, Mapping) else ())
-        named |= {package: f"parts.{part}.imports.libraries" for package in found
+        named |= {package: f"parts.{part.name}.imports.libraries" for package in found
                   if package != EVERYTHING and package not in named}
     named |= {module: "reserved" for module in reserved if module not in named}
     return named

@@ -5,7 +5,7 @@ from tests.fakes.architecture_files import FakeArchitectureFiles
 from tests.modules.spec.application.helpers import controller
 from xarch.modules.spec.contract import DocFile, Docs, ProfileRefused
 
-LAYERED = {"name": "layered", "parts": {"src": {"path": "src", "role": "code"}},
+LAYERED = {"name": "layered", "parts": {"src/": {"role": "code"}},
            "docs": {"entry": "src", "pages": {"notes.md": "notes.md"}}}
 BAD = LAYERED | {"docs": {"entry": "src", "pages": {"notes.md": "bad.md"}}}
 SPEC = controller(FakeArchitectureFiles({"cli": LAYERED, "bad": BAD, "broken": {"name": "broken"}},

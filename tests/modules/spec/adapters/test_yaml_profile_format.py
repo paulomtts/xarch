@@ -3,7 +3,11 @@ named for the copy and based on what it was copied from. The checks of a profile
 `checks`: each slot as the format writes it, a default left out, a word quoted only where the format would read it
 otherwise, the sayings but the last as cases, a target as it was written (its kind alone, or a map of its values), and
 the examples when a check has any."""
+import json
+from pathlib import Path
+
 import pytest
+import yaml
 
 from xarch.kernel.logic.conditions import condition
 from xarch.modules.spec.adapters.yaml_profile_format import YamlProfileFormat
@@ -20,6 +24,7 @@ from xarch.profile_values.checks import (
 )
 
 FORMAT = YamlProfileFormat(YamlWriter())
+ROOT = Path(__file__).parents[4]
 
 
 def test_a_profile_is_written_as_yaml_in_utf_8():
@@ -95,3 +100,70 @@ def test_checks_are_written_each_under_its_id_with_their_examples_when_they_have
         'checks:\n  one:\n    read: comment\n    may_not: exist\n    message: "a \\"comment\\""\n    fix: "f"\n'
         '  two:\n    read: comment\n    may_not: exist\n    message: "m"\n    fix: "f"\n    examples:\n'
         '      flagged: {docs/notes.py: "# TODO\\n"}\n      clean: {docs/notes.py: "# done\\n"}\n')
+
+
+def parts_written(parts: dict) -> str:
+    """The text written for a document of only parts, without the `parts:` line."""
+    return FORMAT.written({"parts": parts}).decode().split("parts:\n", 1)[1]
+
+
+def test_a_chain_of_folders_that_are_no_part_is_written_as_one_joined_key():
+    assert parts_written({"modules/": {"<module>/": {"domain/": {"role": "the rules"},
+                                                     "adapters/": {"role": "the repos"}}}}) == (
+        "  modules/<module>/:\n"
+        "    domain/:\n      role: the rules\n"
+        "    adapters/:\n      role: the repos\n")
+
+
+def test_a_part_s_own_keys_come_first_in_the_fixed_order_then_its_folders_and_files():
+    assert parts_written({"cli/": {"reports/": {"role": "r"}, "tests": "unit", "commands/": {}, "imports": {"may": ["x"]},
+                                   "role": "c", "name": "cli"}}) == (
+        "  cli/:\n    name: cli\n    role: c\n    imports:\n      may: [x]\n    tests: unit\n"
+        "    reports/:\n      role: r\n    commands/: {}\n")
+
+
+def test_a_part_folder_with_one_folder_inside_it_is_written_nested_never_joined():
+    assert parts_written({"kernel/": {"role": "k", "logic/": {"name": "kernel-logic", "role": "l"}}}) == (
+        "  kernel/:\n    role: k\n    logic/:\n      name: kernel-logic\n      role: l\n")
+
+
+def test_a_joined_part_key_is_split_and_written_under_its_folder():
+    assert parts_written({"kernel/": {"role": "k"}, "lib/logic/": {"role": "l"}}) == (
+        "  kernel/:\n    role: k\n  lib/logic/:\n    role: l\n")
+    assert parts_written({"a/": {"b/": {"role": "x"}, "c.py": {"role": "z"}}}) == (
+        "  a/:\n    b/:\n      role: x\n    c.py:\n      role: z\n")
+
+
+@pytest.mark.parametrize("value", [None, {}], ids=["null", "an empty map"])
+def test_a_folder_with_neither_note_nor_children_is_written_as_an_empty_map(value):
+    assert parts_written({"web/": {"role": "w", "ui/": value}}) == "  web/:\n    role: w\n    ui/: {}\n"
+
+
+def test_a_note_is_written_as_the_folder_s_string():
+    assert parts_written({"web/": {"role": "w", "routes/": "one file per route group"}}) == (
+        "  web/:\n    role: w\n    routes/: one file per route group\n")
+
+
+def test_a_lone_folder_holding_one_file_is_joined_with_it():
+    assert parts_written({"bin/": {"run.py": {"role": "starts it"}}}) == "  bin/run.py:\n    role: starts it\n"
+
+
+def test_the_rest_of_the_document_is_written_as_before():
+    document = {"name": "x", "parts": {"core/": {"role": "r"}}, "layers": {"a": ["core"]}}
+    assert yaml.safe_load(FORMAT.written(document)) == document
+
+
+@pytest.mark.parametrize("path", ["xarch/architectures/web.yaml", "xarch/architectures/cli.yaml", "architecture.yaml",
+                                  "tests/bootstrap/corpora/7cc6111.yaml", "tests/bootstrap/corpora/df537ca.yaml",
+                                  "tests/bootstrap/corpora/stress.yaml"])
+def test_each_profile_shipped_or_archived_is_its_tree_as_the_writer_writes_it(path):
+    document = yaml.safe_load((ROOT / path).read_text(encoding="utf-8"))
+    written = yaml.safe_load(FORMAT.written(document))["parts"]
+    assert written == document["parts"]
+    assert json.dumps(written) == json.dumps(document["parts"])
+    assert all(key.endswith("/") or "." in key for key in document["parts"])
+
+
+def test_a_folder_given_twice_is_written_once_with_all_it_holds_its_own_keys_first():
+    assert parts_written({"a/b/c/": {"role": "c"}, "a/": {"b/": {"role": "b"}, "role": "a"}}) == (
+        "  a/:\n    role: a\n    b/:\n      role: b\n      c/:\n        role: c\n")

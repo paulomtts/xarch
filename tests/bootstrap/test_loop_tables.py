@@ -13,14 +13,15 @@ testing:
   tables: [{loop: true, columns_from: bound, row: literal, id: {position: 0}}]
   mocks: {calls: [doubles.Double], specs: [{keyword: of}]}
 parts:
-  contract:   {path: modules/<module>/contract, role: results, tests: integration}
-  controller:
-    path: modules/<module>/application/controller.py
-    role: maps
-    imports:
-      may: [contract, ports]
-    tests: integration
-  ports:      {path: modules/<module>/application/ports, role: ports, tests: integration}
+  modules/<module>/:
+    contract/: {role: results, tests: integration}
+    application/:
+      controller.py:
+        role: maps
+        imports:
+          may: [contract, ports]
+        tests: integration
+      ports/: {role: ports, tests: integration}
 tiers:
   integration: {proves: a use case, litmus: "Does it drive a controller?", plain_tables: true}
 fakes: {folder: fakes, for: [ports], prefix: Fake}

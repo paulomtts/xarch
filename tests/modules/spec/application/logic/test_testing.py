@@ -6,7 +6,7 @@ import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
 from tests.modules.spec.languages import BRACE, PYTHON, READS_EVERY_FACT
-from tests.modules.spec.profiles import PYTEST_FORM, PYTEST_TABLE, TESTING, covered, parsed, problems
+from tests.modules.spec.profiles import PYTEST_FORM, PYTEST_TABLE, TESTING, covered, parsed, part_of, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.application.logic.profile_checks import use_case_file
 from xarch.profile_values.language import SpecWriting, Writing
@@ -327,7 +327,7 @@ def test_a_bad_skips_entry_is_refused(skips, expected):
 def test_a_tier_with_plain_tables_and_a_part_of_immutable_records_each_have_a_line_of_the_guards():
     document = covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES)
     document["tiers"]["unit"]["plain_tables"] = True
-    document["parts"]["service"]["holds"] = {"functions": {}, "records": {"immutable": True}, "exceptions": {}}
+    part_of(document, "service")["holds"] = {"functions": {}, "records": {"immutable": True}, "exceptions": {}}
     lines = fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
     assert ("- `plain tables`: no table test of the unit tests holds a branch in its body: no `if`, `match`, `try`, "
             "`for` or `while` statement and no `if` expression.") in lines

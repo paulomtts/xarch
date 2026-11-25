@@ -83,7 +83,7 @@ def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key
             "required": False, "enforced": True, "read_by": None} in whole["shape"]
     assert {"key": "review", "depth": 0, "meaning": "what `xarch review` may send: never, mask", "required": False,
             "enforced": False, "read_by": "review"} in whole["shape"]
-    assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("name: documents-app")
+    assert whole["symbols"][0]["symbol"] == "<folder>/" and whole["smallest"].startswith("name: documents-app")
     assert "xarch profile explain parts.imports.may" in whole["deeper"]
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.imports.may", "--format", "json"]).output)
     assert key["ok"] is True and key["key"] == "parts.imports.may" and key["rules"] == ["may-import"]
@@ -426,3 +426,15 @@ def test_the_loop_holder_of_a_table_form_says_python_supplies_its_fact_exactly()
 def test_a_slot_of_a_form_that_declares_a_test_is_explained_by_the_key_without_an_index():
     result = runner.invoke(app, ["profile", "explain", "testing.declared.call"])
     assert result.exit_code == 0 and "the calls that declare a test" in result.output
+
+
+def test_parts_states_the_reading_order_and_name_is_explained_and_path_is_retired():
+    whole = runner.invoke(app, ["profile", "explain", "parts"])
+    assert whole.exit_code == 0, whole.output
+    assert "a part before the parts inside it, is the order their litmus tests run" in " ".join(whole.output.split())
+    named = runner.invoke(app, ["profile", "explain", "parts.name"])
+    assert named.exit_code == 0, named.output
+    assert "the part's name, when its folder or file does not give it" in named.output
+    old = runner.invoke(app, ["profile", "explain", "parts.path"])
+    assert old.exit_code == 2
+    assert "moved in 0.3.0: a part is the folder or file it is written as under parts: drop it" in old.output

@@ -14,14 +14,15 @@ testing:
             id: {keyword: name}}]
   mocks: {calls: [doubles.Double], specs: [{keyword: of}]}
 parts:
-  contract:   {path: modules/<module>/contract, role: results, tests: integration}
-  controller:
-    path: modules/<module>/application/controller.py
-    role: maps
-    imports:
-      may: [contract, ports]
-    tests: integration
-  ports:      {path: modules/<module>/application/ports, role: ports, tests: integration}
+  modules/<module>/:
+    contract/: {role: results, tests: integration}
+    application/:
+      controller.py:
+        role: maps
+        imports:
+          may: [contract, ports]
+        tests: integration
+      ports/: {role: ports, tests: integration}
 tiers:
   integration: {proves: a use case, litmus: "Does it drive a controller?"}
 fakes: {folder: fakes, for: [ports], prefix: Fake}
@@ -145,5 +146,5 @@ def test_a_profile_with_no_testing_key_names_no_framework_and_still_checks(tmp_p
     (tmp_path / "app" / "sub" / "a.py").write_text("x = 1\n")
     (tmp_path / "tests" / "test_a.py").write_text("import pytest\n")
     (tmp_path / "min.yaml").write_text('name: min\n'
-                                       'parts: {sub: {path: sub, role: "the only part"}}\n')
+                                       'parts: {sub/: {role: "the only part"}}\n')
     assert source_check(tmp_path / "app", str(tmp_path / "min.yaml"), tmp_path / "tests").violations == ()

@@ -4,7 +4,7 @@ on a target of imports.may, what each test of a tier must reach, and the guards 
 import pytest
 
 from tests.modules.spec.languages import BRACE, PYTHON
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import covered, layered, parsed, part_of, problems
 from xarch.modules.spec.domain.published import Held
 from xarch.modules.spec.domain.values import DeadCode, PrivateImports
 from xarch.profile_values.placement import Target
@@ -14,7 +14,7 @@ FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 
 def with_part(**keys) -> dict:
     document = layered()
-    document["parts"]["service"].update(keys)
+    part_of(document, "service").update(keys)
     return document
 
 

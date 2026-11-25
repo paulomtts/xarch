@@ -13,9 +13,8 @@ name: presets
 never:
   nothing_printed: [builtins.print]
 parts:
-  kernel: {path: kernel, role: primitives}
-  ui:
-    path: web/ui
+  kernel/: {role: primitives}
+  web/ui/:
     role: pages
     uses: {never: nothing_printed}
 files:

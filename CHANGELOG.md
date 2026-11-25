@@ -131,6 +131,16 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- `parts` is the app's folder tree: a key ending in `/` is a folder, a key holding a dot a file, any other key a key
+  of the part; a folder with a `role` is a part, a file always is, and a part is named by its folder's last step or
+  its file's name before the first dot. `name` is new, for a part whose place does not give its name (`kernel/logic/`
+  with `name: kernel-logic`). `path` and `folders` are retired: a profile written with them is refused with one line
+  per part saying where it goes (`parts.domain: unknown key 'path': moved in 0.3.0: write the part as the folder
+  domain/: under the folder it lies in (modules/<module>/); use ...`), and a folder of a part is written below it, its
+  note as its value. The placement order is the tree's reading order, a part before the parts inside it: in the
+  bundled profiles `contract` moves up to follow `adapters`, and `kernel` now comes before `kernel-logic`, so review's
+  placement question offers its options in that order. `profile new` copies the tree, and the profile writer writes
+  it, single chains of plain folders joined.
 - `testing.functions` is replaced by `testing.declared`: a profile or a preset writing it is refused with `unknown key
   'functions': moved in 0.3.0: write declared: [{function: "<pattern>"}]`. The bundled `pytest` preset writes
   `declared: [{function: "test_*"}]`; the same functions are tests as before, and findings and docs read as before.

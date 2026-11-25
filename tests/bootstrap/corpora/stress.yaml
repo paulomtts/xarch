@@ -3,157 +3,151 @@ based_on: cli
 language: python
 testing: pytest
 parts:
-  domain:
-    path: modules/<module>/domain
-    role: 'entities, values, errors: invariants only'
+  modules/<module>/:
+    domain/:
+      role: "entities, values, errors: invariants only"
+      imports:
+        may: [kernel]
+      uses:
+        never: pure
+      holds:
+        classes:
+          built_by: [bootstrap, adapters]
+      package_only: true
+      tests: unit
+    application/:
+      logic/:
+        role: pure functions over the module's domain objects
+        imports:
+          may: [domain, kernel]
+        uses:
+          never: pure
+        holds:
+          functions: {}
+          records: {}
+          exceptions: {}
+        package_only: true
+        tests: unit
+      ports/:
+        role: Protocols for what the module needs from the outside
+        imports:
+          may: [domain, kernel]
+        uses:
+          never: pure
+        holds:
+          classes: {}
+        package_only: true
+        tests: integration
+      services/:
+        role: "use-case steps: load, check, act"
+        imports:
+          may:
+            - logic
+            - domain
+            - ports
+            - contract: types_only
+            - kernel
+          must: [ports]
+        uses:
+          never: ambient
+        holds:
+          classes:
+            names: "*Service"
+            built_by: [bootstrap]
+        tests: integration
+      controller.py:
+        role: maps failures to a Result
+        imports:
+          may: [services, logic, domain, ports, contract, kernel]
+        uses:
+          never: ambient
+        holds:
+          classes:
+            names: "*Controller"
+            built_by: [bootstrap]
+        tests: integration
+    adapters/:
+      role: implement the ports on the filesystem or another module's contract
+      imports:
+        may:
+          - ports
+          - domain: types_only
+          - kernel
+          - platform
+          - contract@any
+        must: [platform, contract@any]
+        libraries: [ast, tokenize]
+      uses:
+        never: pure
+      holds:
+        classes:
+          built_by: [bootstrap]
+          names: Fs*
+      tests: unit
+    contract/:
+      role: "the module's published language: commands, Results"
+      imports:
+        may: ["domain/values:*Id", kernel]
+      uses:
+        never: pure
+      package_only: true
+      tests: integration
+  platform/:
+    role: "the filesystem, the package data, the TOML and YAML readers and the YAML writer"
     imports:
-      may:
-      - kernel
-    uses: {never: pure}
-    holds: {classes: {built_by: [bootstrap, adapters]}}
+      may: [kernel]
+      libraries: [yaml]
+    holds:
+      functions: {}
+      records:
+        names: "*Reader"
+      exceptions:
+        names: "*Reader"
     tests: unit
-    package_only: true
-  logic:
-    path: modules/<module>/application/logic
-    role: pure functions over the module's domain objects
-    imports:
-      may:
-      - domain
-      - kernel
-    uses: {never: pure}
-    holds: {functions: {}, records: {}, exceptions: {}}
-    tests: unit
-    package_only: true
-  ports:
-    path: modules/<module>/application/ports
-    role: Protocols for what the module needs from the outside
-    imports:
-      may:
-      - domain
-      - kernel
-    uses: {never: pure}
-    holds: {classes: {}}
-    tests: integration
-    package_only: true
-  services:
-    path: modules/<module>/application/services
-    role: 'use-case steps: load, check, act'
-    imports:
-      may:
-      - logic
-      - domain
-      - ports
-      - {contract: types_only}
-      - kernel
-      must:
-      - ports
-    holds: {classes: {names: '*Service', built_by: [bootstrap]}}
-    uses: {never: ambient}
-    tests: integration
-  controller:
-    path: modules/<module>/application/controller.py
-    role: maps failures to a Result
-    imports:
-      may:
-      - services
-      - logic
-      - domain
-      - ports
-      - contract
-      - kernel
-    holds: {classes: {names: '*Controller', built_by: [bootstrap]}}
-    uses: {never: ambient}
-    tests: integration
-  adapters:
-    path: modules/<module>/adapters
-    role: implement the ports on the filesystem or another module's contract
-    imports:
-      may:
-      - ports
-      - {domain: types_only}
-      - kernel
-      - platform
-      - contract@any
-      must:
-      - platform
-      - contract@any
-      libraries:
-      - ast
-      - tokenize
-    holds: {classes: {built_by: [bootstrap], names: Fs*}}
-    tests: unit
-    uses: {never: pure}
-  platform:
-    path: platform
-    role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
-    imports:
-      may:
-      - kernel
-      libraries:
-      - yaml
-    tests: unit
-    holds: {functions: {}, records: {names: '*Reader'}, exceptions: {names: '*Reader'}}
-  cli:
-    path: cli
+  cli/:
     role: the only place for commands and terminal output
     imports:
-      may:
-      - reports
-      - controller@any
-      - contract@any
-      - kernel
-      libraries:
-      - typer
-      - json
+      may: [reports, controller@any, contract@any, kernel]
+      libraries: [typer, json]
+    uses:
+      never: ambient
     tests: wired
-    folders:
-    - commands
-    uses: {never: ambient}
-  reports:
-    path: cli/reports
-    role: formatting of Results into text and JSON
+    commands/: {}
+    reports/:
+      role: formatting of Results into text and JSON
+      imports:
+        may: [contract@any, kernel]
+        libraries: []
+      uses:
+        never: pure
+      holds:
+        functions: {}
+        records: {}
+        exceptions: {}
+      tests: unit
+  __main__.py:
+    name: main
+    role: "`python -m xarch`: starts the same app as the console script"
+    litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?"
     imports:
-      may:
-      - contract@any
-      - kernel
-      libraries: []
-    uses: {never: pure}
-    holds: {functions: {}, records: {}, exceptions: {}}
-    tests: unit
-  main:
-    path: __main__.py
-    role: '`python -m xarch`: starts the same app as the console script'
-    litmus: Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?
-    imports:
-      may:
-      - bootstrap
-    untested: a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive that same app
-  bootstrap:
-    path: bootstrap
-    role: 'composition root: binds ports to adapters, hands controllers to cli/'
+      may: [bootstrap]
+    untested: >-
+      a two-line shim that runs the app bootstrap/ builds; no test runs `python -m xarch`, and the wired tests drive
+      that same app
+  bootstrap/:
+    role: "composition root: binds ports to adapters, hands controllers to cli/"
     imports:
       may: everything
     tests: wired
-    folders:
-    - migrations
-  contract:
-    path: modules/<module>/contract
-    role: 'the module''s published language: commands, Results'
-    imports:
-      may:
-      - domain/values:*Id
-      - kernel
-    uses: {never: pure}
-    tests: integration
-    package_only: true
-  kernel:
-    path: kernel
+    migrations/: {}
+  kernel/:
     role: pure primitives and the rules two modules share
-    uses: {never: pure}
+    uses:
+      never: pure
+    holds:
+      classes: {}
     tests: unit
-    folders:
-    - logic
-    holds: {classes: {}}
+    logic/: {}
 never:
   pure:
   - datetime.datetime.now

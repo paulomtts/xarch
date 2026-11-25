@@ -13,33 +13,29 @@ from xarch.profile_values.placement import Repeat, Target
 LAYERED = """\
 name: layered
 parts:
-  api:
-    path: "src/<module>/api"
-    role: "HTTP handlers"
-    litmus: "Does it parse a request and call a service?"
-    imports:
-      may: [service]
-  service:
-    path: "src/<module>/service"
-    role: "business logic"
-    litmus: "Does it decide what is allowed?"
-    imports:
-      may: [store]
-  store:
-    path: "src/<module>/store"
-    role: "database access"
-    litmus: "Does it touch the database?"
+  src/<module>/:
+    api/:
+      role: "HTTP handlers"
+      litmus: "Does it parse a request and call a service?"
+      imports:
+        may: [service]
+    service/:
+      role: "business logic"
+      litmus: "Does it decide what is allowed?"
+      imports:
+        may: [store]
+    store/:
+      role: "database access"
+      litmus: "Does it touch the database?"
 """
 LAYERED_DATA = {
     "name": "layered",
-    "parts": {"api": {"path": "src/<module>/api", "role": "HTTP handlers",
-                      "litmus": "Does it parse a request and call a service?",
-                      "imports": {"may": ["service"]}},
-              "service": {"path": "src/<module>/service", "role": "business logic",
-                          "litmus": "Does it decide what is allowed?",
-                          "imports": {"may": ["store"]}},
-              "store": {"path": "src/<module>/store", "role": "database access",
-                        "litmus": "Does it touch the database?"}},
+    "parts": {"src/<module>/": {
+        "api/": {"role": "HTTP handlers", "litmus": "Does it parse a request and call a service?",
+                 "imports": {"may": ["service"]}},
+        "service/": {"role": "business logic", "litmus": "Does it decide what is allowed?",
+                     "imports": {"may": ["store"]}},
+        "store/": {"role": "database access", "litmus": "Does it touch the database?"}}},
 }
 """LAYERED as data, as its YAML reads."""
 MUST_BE_A_MAPPING = "must be a mapping of keys"
@@ -92,8 +88,8 @@ def test_docs_template_and_examples_resolve_next_to_the_file(tmp_path):
 
 def test_the_entry_point_an_untested_part_folder_notes_layers_and_naming_load(tmp_path):
     text = LAYERED.replace(
-        'role: "HTTP handlers"\n', 'role: "HTTP handlers"\n    folders: {routes: one file per route}\n').replace(
-        'role: "database access"\n', 'role: "database access"\n    untested: "reached through the service"\n') + (
+        'role: "HTTP handlers"\n', 'role: "HTTP handlers"\n      routes/: one file per route\n').replace(
+        'role: "database access"\n', 'role: "database access"\n      untested: "reached through the service"\n') + (
         "layers:\n  inside: [store, service, api]\n"
         "docs:\n  entry: api\n"
         "  naming:\n"
@@ -126,11 +122,11 @@ def test_a_missing_docs_template_example_folder_or_file_is_rejected(tmp_path):
 
 
 def test_duplicate_part_names_are_rejected(tmp_path):
-    text = LAYERED.replace('  store:\n    path: "src/<module>/store"', '  api:\n    path: "src/<module>/store"')
+    text = LAYERED.replace('    store/:\n', '    api/:\n')
     path = write(tmp_path / "layered.yaml", text)
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(path)
-    assert caught.value.problems == (f"{path}: line 15: duplicate key 'api'",)
+    assert caught.value.problems == (f"{path}: line 14: duplicate key 'api/'",)
 
 
 def test_duplicate_keys_in_json_are_rejected(tmp_path):
@@ -154,7 +150,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                  ['`name` must be a non-empty string',
                   'never: must be a mapping of list names to lists of dotted names, such as '
                   '{pure: [datetime.datetime.now, socket]}',
-                  'parts: must be a mapping of part names to {path, role, ...}',
+                  'parts: must be the folder tree of the app: folders ending in /, files with their extension',
                   'layers: must be a mapping of names to lists of parts, from the inside out',
                   'tiers: must be a mapping of tier names to {proves, litmus, ...}, in the order their litmus tests run',
                   "fakes: must be a mapping {folder, for} and optionally prefix: the folder of the fakes below the "
@@ -168,26 +164,26 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   '{vendor: copied code}',
                   'hints: must be a mapping of rule ids to one line of text, such as {may-import: see the docs}'],
                  id='every top-level value of the wrong type'),
-    pytest.param('name: n\nparts: {a: {path: a/<x>/<y>, role: r}}\n',
-                 ["parts.a.path: 'a/<x>/<y>' has two repeating steps, <x> and <y>: a repeating folder cannot sit inside "
+    pytest.param('name: n\nparts: {a/<x>/<y>/: {name: p, role: r}}\n',
+                 ["parts.p: 'a/<x>/<y>/' has two repeating steps, <x> and <y>: a repeating folder cannot sit inside "
                   "another, so give each its own folder"],
                  id='a path with two repeating folders'),
-    pytest.param('name: n\nparts: {1: {path: 1}, p: {path: [a]}, q: 3}\n',
-                 ["parts: 1 is not a part name: use letters, digits, '_' and '-'",
+    pytest.param('name: n\nparts: {1/: {role: r}, p/: {litmus: [a]}, q: 3}\n',
+                 ["parts: '1/' is named '1', which is not a part name: write name: with letters, digits, '_' and '-'",
                   'parts.p: missing `role`',
-                  "parts.p.path: must be a path such as 'src/<name>/api'",
-                  'parts.q: must be a mapping with `path` and `role`'],
+                  "parts: unknown key 'q': a key under parts is a folder ending in / or a file ending in .py",
+                  'parts.p.litmus: must be a string'],
                  id='keys that are not names'),
-    pytest.param('name: n\nparts: {1: {path: a}, null: {}, yes: {path: b}}\n',
+    pytest.param('name: n\nparts: {1: {role: a}, null: {}, yes: {role: b}}\n',
                  ["line 2: duplicate key 'True'"],
                  id='a key 1 and a key yes are one key, True'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r, imports: {may: [a]}}}\n',
+    pytest.param('name: n\nparts: {a/: {role: r, imports: {may: [a]}}}\n',
                  ["parts.a.imports.may: 'a' is implied: a part may always import itself; remove it"],
                  id='an imports.may that only says a part may import itself'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r, uses: {never: l}}}\nnever: {l: [open]}\n',
+    pytest.param('name: n\nparts: {a/: {role: r, uses: {never: l}}}\nnever: {l: [open]}\n',
                  ["never.l: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],
                  id='a bare builtin in a never list'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r, untested: 3, litmus: 4}}\n'
+    pytest.param('name: n\nparts: {a/: {role: r, untested: 3, litmus: 4}}\n'
                  'docs: {entry: 1, pages: 2, naming: 3, examples: 4}\n',
                  ['parts.a.litmus: must be a string',
                   'parts.a.untested: must be one line of text: why no tier tests the part',
@@ -198,11 +194,10 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'docs/statement.md}}',
                   'docs.naming: must be a list of rows such as {kind, where, pattern, example}'],
                  id='the optional keys of a part and of docs of the wrong type'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r, untested: [1], folders: 3}}\n'
+    pytest.param('name: n\nparts: {a/: {role: r, untested: [1]}}\n'
                  'layers: {1: [a], x: [[1]], y: a}\n'
                  'docs: {naming: [{kind: 1, where: [1], pattern: [], example: {}}, null]}\n',
                  ['parts.a.untested: must be one line of text: why no tier tests the part',
-                  'parts.a.folders: must be a mapping of folder paths to one line of text, or a list of folder paths',
                   "layers: 1 is not a name: use letters, digits, '_' and '-'",
                   'layers.x: no part named [1]',
                   'layers.y: must be a list of parts, from the inside out',
@@ -212,7 +207,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'docs.naming[0].example: must be a string or a list of strings',
                   'docs.naming[1]: must be a mapping with `kind`, `where`, `pattern` and `example`'],
                  id='the entries of the optional keys of the wrong type'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r}}\n'
+    pytest.param('name: n\nparts: {a/: {role: r}}\n'
                  'tiers: {unit: 3, 1: {}, integ: {proves: 1, litmus: [], docs: {example: 3, helpers: x, subject: 1}}}\n',
                  ["parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`",
                   'tiers.unit: must be a mapping, {} if it takes nothing',
@@ -225,22 +220,22 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, or '
                   'testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}'],
                  id='tiers of the wrong shape'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r}}\nfiles: {1: {from: 2}, x: [1], y: {z: 1}}\n',
+    pytest.param('name: n\nparts: {a/: {role: r}}\nfiles: {1: {from: 2}, x: [1], y: {z: 1}}\n',
                  ['files.1: must be a path of plain names below the project root',
                   'files.x: must be a mapping such as {from: <file>}',
                   "files.y: unknown key 'z': use fill, from, pinned",
                   'files.y: missing `from`, the template file'],
                  id='files of the wrong shape'),
-    pytest.param('name: n\ntesting: pytest\ntiers: {unit: {}}\nparts: {a: {path: a, role: r, tier: secret-value}}\n',
-                 ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use folders, holds, imports, "
-                  "litmus, package_only, path, role, shared, tests, untested, uses",
+    pytest.param('name: n\ntesting: pytest\ntiers: {unit: {}}\nparts: {a/: {role: r, tier: secret-value}}\n',
+                 ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use holds, imports, "
+                  "litmus, name, package_only, role, shared, tests, untested, uses",
                   "parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"],
                  id='a part still writing tier'),
-    pytest.param('name: n\nnever: {pure: [socket]}\nparts: {a: {path: a, role: r, forbidden: secret-list}}\n',
-                 ["parts.a: unknown key 'forbidden': moved in 0.3.0: write uses: {never: <list>}; use folders, "
-                  "holds, imports, litmus, package_only, path, role, shared, tests, untested, uses"],
+    pytest.param('name: n\nnever: {pure: [socket]}\nparts: {a/: {role: r, forbidden: secret-list}}\n',
+                 ["parts.a: unknown key 'forbidden': moved in 0.3.0: write uses: {never: <list>}; use holds, "
+                  "imports, litmus, name, package_only, role, shared, tests, untested, uses"],
                  id='a part still writing forbidden'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
+    pytest.param('name: n\nparts: {a/: {role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, guards, hints, "
                   "language, layers, name, never, parts, reserved, review, testing, tiers"],
                  id='two keys that are nowhere'),

@@ -12,6 +12,7 @@ from xarch.bootstrap.app import app
 from xarch.modules.spec.domain.profile_keys import PART
 
 runner = CliRunner()
+KNOWN = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +25,13 @@ def in_tmp(tmp_path, monkeypatch):
 COPY = "architecture/mine/mine.yaml"
 XARCH = Path(__file__).parents[2] / "architecture.yaml"
 """xarch's own profile, based on cli."""
+
+
+def part_of(document: dict, name: str) -> dict:
+    """The part of the copied web profile named name, below its module folder."""
+    module = document["parts"]["modules/<module>/"]
+    return {"domain": module["domain/"], "logic": module["application/"]["logic/"],
+            "services": module["application/"]["services/"]}[name]
 
 
 def edit(tmp_path, change):
@@ -73,7 +81,7 @@ def test_an_unknown_key_fails_with_the_keys_that_exist(tmp_path):
 
 
 def test_a_part_importing_a_part_that_does_not_exist_fails(tmp_path):
-    edit(tmp_path, lambda d: d["parts"]["domain"].update(imports={"may": ["kernel", "ghost"]}))
+    edit(tmp_path, lambda d: part_of(d, "domain").update(imports={"may": ["kernel", "ghost"]}))
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 1 and "ghost" in result.output and "INVALID" in result.output
 
@@ -92,7 +100,7 @@ def test_an_example_that_imports_what_its_part_may_not_fails_with_the_example_an
 
 
 def test_a_looser_copy_is_still_valid_and_the_difference_is_information(tmp_path):
-    edit(tmp_path, lambda d: d["parts"]["domain"].update(imports={"may": ["kernel", "platform"]}))
+    edit(tmp_path, lambda d: part_of(d, "domain").update(imports={"may": ["kernel", "platform"]}))
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 0, result.output
     assert "looser than web" in result.output
@@ -179,25 +187,25 @@ def test_an_example_in_which_an_eval_reads_nothing_fails_at_its_address(tmp_path
 
 def test_a_key_xarch_retired_fails_like_any_profile_that_does_not_load_with_its_fixed_text(tmp_path, monkeypatch):
     retiring(monkeypatch, PART, "tested_by", "renamed in 0.3.0: write tier")
-    edit(tmp_path, lambda d: d["parts"]["domain"].update(tested_by="unit"))
+    edit(tmp_path, lambda d: part_of(d, "domain").update(tested_by="unit"))
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 1
-    assert "parts.domain: unknown key 'tested_by': renamed in 0.3.0: write tier; use folders, " in result.output
+    assert f"parts.domain: unknown key 'tested_by': renamed in 0.3.0: write tier; use {KNOWN}" in result.output
     assert "examples: not checked" in result.output and "INVALID: 1 problem" in result.output
 
 
 def test_a_profile_writing_holds_as_one_word_or_names_on_a_part_fails_like_any_profile_that_does_not_load(tmp_path):
     def old(document: dict) -> None:
-        document["parts"]["logic"]["holds"] = "functions"
-        document["parts"]["services"]["holds"] = {"classes": {}}
-        document["parts"]["services"]["names"] = "*Service"
+        part_of(document, "logic")["holds"] = "functions"
+        part_of(document, "services")["holds"] = {"classes": {}}
+        part_of(document, "services")["names"] = "*Service"
     edit(tmp_path, old)
     result = runner.invoke(app, ["profile", "check", COPY])
     assert result.exit_code == 1
     assert ("parts.logic.holds: 'functions': holds as one word was removed in 0.3.0: write holds: {functions: {}, "
             "records: {}, exceptions: {}}, which allows what holds: functions allowed") in result.output
     assert ("parts.services: unknown key 'names': moved in 0.3.0: write it under the kind it names, such as holds: "
-            '{classes: {names: "*Service"}}; use folders, holds, ') in result.output
+            '{classes: {names: "*Service"}}; use ' + KNOWN) in result.output
     assert "examples: not checked: the profile does not load" in result.output
     checked = runner.invoke(app, ["check", "--profile", COPY])
     assert checked.exit_code == 2

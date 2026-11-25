@@ -3,17 +3,17 @@ of its files must import one of, and its outside packages; every refusal of the 
 `must`, each at its address in fixed text."""
 import pytest
 
-from tests.modules.spec.profiles import layered, parsed, problems
+from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.kernel.placement import EVERYTHING
 from xarch.profile_values.placement import Target
 
-USE = "use folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses"
+USE = "use holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
 """What every unknown-key problem of a part ends with."""
 
 
 def with_imports(part: str, imports) -> dict:
     document = layered()
-    document["parts"][part]["imports"] = imports
+    part_of(document, part)["imports"] = imports
     return document
 
 
@@ -35,7 +35,7 @@ def test_what_may_allows(imports, rules):
 
 def test_a_part_with_no_imports_imports_only_itself_and_no_outside_package():
     document = layered()
-    del document["parts"]["store"]["imports"]
+    del part_of(document, "store")["imports"]
     architecture = parsed(document)
     assert architecture.rules["store"] == () and architecture.imports_libraries["store"] == ()
 
@@ -137,20 +137,20 @@ def test_must_without_may_is_refused_entry_by_entry():
 ])
 def test_each_old_key_of_a_part_is_refused_with_the_form_that_replaces_it(key, text):
     document = layered()
-    document["parts"]["shared"][key] = ["api"]
+    part_of(document, "shared")[key] = ["api"]
     assert problems(document) == [f"layered.yaml: parts.shared: unknown key {key!r}: {text}; {USE}"]
 
 
 def test_old_keys_written_together_give_one_problem_each_in_sorted_order():
     document = layered()
-    document["parts"]["shared"] |= {"may_import": ["api"], "types_only": ["api"], "libraries": ["yaml"]}
+    part_of(document, "shared").update({"may_import": ["api"], "types_only": ["api"], "libraries": ["yaml"]})
     assert [problem.split(": unknown key ")[1].split("'")[1] for problem in problems(document)] == [
         "libraries", "may_import", "types_only"]
 
 
 def test_a_retired_key_beside_the_group_is_its_own_problem_and_the_group_is_still_read():
     document = with_imports("store", {"may": ["repo"]})
-    document["parts"]["store"]["may_import"] = ["shared"]
+    part_of(document, "store")["may_import"] = ["shared"]
     assert problems(document) == [
         f"layered.yaml: parts.store: unknown key 'may_import': moved in 0.3.0: write imports: {{may: [...]}}; {USE}",
         "layered.yaml: parts.store.imports.may: 'repo' names no part 'repo'"]
@@ -166,6 +166,6 @@ def test_a_standard_library_name_in_libraries_is_refused_at_imports_libraries():
 def test_a_never_list_beside_imports_written_as_no_map_names_no_package_and_says_nothing_of_it():
     document = with_imports("store", True)
     document["never"] = {"pure": ["time.time"]}
-    document["parts"]["service"]["uses"] = {"never": "pure"}
+    part_of(document, "service")["uses"] = {"never": "pure"}
     assert problems(document) == [
         "layered.yaml: parts.store.imports: must be a map of may, must and libraries, such as {may: [<part>]}"]

@@ -14,8 +14,7 @@ runner = CliRunner()
 EVERY_KEY = """name: every-key
 testing: pytest
 parts:
-  core:
-    path: core
+  core/:
     role: the rules
     imports:
       may: [{api: types_only}]
@@ -25,8 +24,7 @@ parts:
     package_only: true
     holds: {functions: {names: "*"}, records: {names: "*", immutable: true}, exceptions: {names: "*"}}
     tests: unit
-  api:
-    path: api
+  api/:
     role: the api
     holds: {classes: {names: "*", immutable: true, built_by: [core]}}
     tests: unit

@@ -53,7 +53,7 @@ def test_nothing_is_written_when_any_file_exists():
 
 
 def test_a_copy_that_would_not_load_is_refused_before_anything_is_written():
-    broken = {**{"name": "base"}, "parts": {"core": {"path": "core"}}}
+    broken = {**{"name": "base"}, "parts": {"core/": {"litmus": "q"}}}
     spec, output = spec_controller({"base": broken})
     refused = spec.new_profile(NewProfile("mine", "base", APP, ROOT))
     assert isinstance(refused, ProfileRefused) and refused.reason.startswith("base: ")

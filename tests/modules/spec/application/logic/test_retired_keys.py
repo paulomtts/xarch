@@ -4,7 +4,7 @@ the address `profile explain` is typed with; every unknown key of a mapping, of 
 message for the others, which is unchanged. A table built for each test is set where the lookup reads it."""
 import pytest
 
-from tests.modules.spec.profiles import PRESETS, covered, layered, parsed, problems
+from tests.modules.spec.profiles import PRESETS, covered, layered, parsed, part_of, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic import key_lookup
 from xarch.modules.spec.application.logic.key_lookup import names_of, retired, retired_at, retired_value
@@ -50,7 +50,7 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = ("folders, holds, imports, litmus, package_only, path, role, shared, tests, untested, uses")
+PART_USE = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
 TIER_USE = "docs, folder, imports, litmus, plain_tables, proves, uses"
 PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")
@@ -245,7 +245,7 @@ def test_an_address_that_is_no_entry_gives_nothing(monkeypatch, entry, address):
 
 def test_a_retired_key_gets_its_own_problem_ahead_of_the_one_only_unknown(monkeypatch):
     table(monkeypatch, (PART, "banned", RENAMED))
-    assert unknown_keys({"path": "a", "banned": 1, "colour": 2}, names_of(PART), "parts.api", PART) == [
+    assert unknown_keys({"role": "a", "banned": 1, "colour": 2}, names_of(PART), "parts.api", PART) == [
         f"parts.api: unknown key 'banned': {RENAMED}; use {PART_USE}",
         f"parts.api: unknown key 'colour': use {PART_USE}"]
 
@@ -282,7 +282,7 @@ def test_the_shipped_table_changes_no_message():
 @pytest.mark.parametrize("value", [True, False], ids=["true", "false"])
 def test_a_part_writing_no_callbacks_is_refused_with_the_guard_that_replaces_it(value):
     document = layered()
-    document["parts"]["service"]["no_callbacks"] = value
+    part_of(document, "service")["no_callbacks"] = value
     assert problems(document) == [
         f"layered.yaml: parts.service: unknown key 'no_callbacks': {CALLBACKS_MOVED}; use {PART_USE}"]
 
@@ -303,13 +303,13 @@ def test_the_one_word_values_of_holds_have_entries_of_their_own(value, text):
 ])
 def test_a_part_writing_a_setting_of_holds_as_its_own_key_is_refused_with_the_form_that_replaces_it(key, value, text):
     document = layered()
-    document["parts"]["service"][key] = value
+    part_of(document, "service")[key] = value
     assert problems(document) == [f"layered.yaml: parts.service: unknown key '{key}': {text}; use {PART_USE}"]
 
 
 def test_a_part_writing_the_three_settings_as_its_own_keys_gets_one_problem_each_in_sorted_order():
     document = layered()
-    document["parts"]["service"] |= {"names": "*Service", "immutable": True, "built_by": ["api"]}
+    part_of(document, "service").update({"names": "*Service", "immutable": True, "built_by": ["api"]})
     assert problems(document) == [
         f"layered.yaml: parts.service: unknown key 'built_by': {BUILT_BY_MOVED}; use {PART_USE}",
         f"layered.yaml: parts.service: unknown key 'immutable': {IMMUTABLE_MOVED}; use {PART_USE}",
@@ -322,13 +322,13 @@ def test_a_part_writing_the_three_settings_as_its_own_keys_gets_one_problem_each
 ])
 def test_holds_written_as_one_word_is_refused_with_the_map_that_allows_the_same(value, text):
     document = layered()
-    document["parts"]["service"]["holds"] = value
+    part_of(document, "service")["holds"] = value
     assert problems(document) == [f"layered.yaml: parts.service.holds: '{value}': {text}"]
 
 
 def test_a_part_writing_no_callbacks_beside_the_guard_gets_only_the_retired_key_s_problem():
     document = layered(guards={"no-callbacks": {"parts": ["service"]}})
-    document["parts"]["service"]["no_callbacks"] = True
+    part_of(document, "service")["no_callbacks"] = True
     assert problems(document) == [
         f"layered.yaml: parts.service: unknown key 'no_callbacks': {CALLBACKS_MOVED}; use {PART_USE}"]
 
@@ -348,7 +348,7 @@ def test_an_entry_of_a_part_key_leaves_a_tier_and_the_file_alone(monkeypatch):
 
 def test_a_known_key_with_an_entry_is_accepted(monkeypatch):
     table(monkeypatch, (PART, "role", RENAMED))
-    assert unknown_keys({"role": "x", "path": "a"}, names_of(PART), "parts.api", PART) == []
+    assert unknown_keys({"role": "x", "name": "a"}, names_of(PART), "parts.api", PART) == []
     assert parsed(layered()).parts["api"].role == "HTTP handlers"
 
 
@@ -368,8 +368,9 @@ def test_a_key_yaml_reads_as_no_string_is_looked_up_as_it_is_shown(monkeypatch):
 def test_a_mapping_written_as_a_list_keeps_its_own_problem_and_reads_no_entry(monkeypatch):
     table(monkeypatch, (PART, "x", RENAMED))
     document = layered()
-    document["parts"]["api"] = ["x"]
-    assert problems(document) == ["layered.yaml: parts.api: must be a mapping with `path` and `role`"]
+    document["parts"]["src/<module>/"]["api/"] = ["x"]
+    assert problems(document) == ["layered.yaml: parts: 'src/<module>/api/': a folder is a map, one line of text (its "
+                                  "note), or nothing"]
 
 
 def test_a_retired_rule_id_under_hints_is_refused_with_its_text_and_another_keeps_todays(monkeypatch):
@@ -402,7 +403,7 @@ def test_a_file_whose_only_unknown_keys_are_retired_gives_no_joined_problem(monk
 
 
 @pytest.mark.parametrize("scope, document, problem", [
-    pytest.param(PART, writing(layered(), "parts", "api"),
+    pytest.param(PART, writing(layered(), "parts", "src/<module>/", "api/"),
                  f"parts.api: unknown key 'banned': {RENAMED}; use {PART_USE}", id="a part"),
     pytest.param(TIER, writing(covered(), "tiers", "unit"),
                  f"tiers.unit: unknown key 'banned': {RENAMED}; use {TIER_USE}", id="a tier"),
@@ -507,3 +508,41 @@ def test_functions_beside_a_preset_is_refused_with_its_hint_alone():
     assert problems(layered(testing={"preset": "pytest", "functions": "test_*"})) == [
         "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
         "use beside, declared, files, globals, mocks, preset, skips, tables"]
+
+
+KNOWN = PART_USE
+
+
+def test_path_and_folders_inside_a_node_say_how_the_tree_writes_them_and_nothing_else_of_the_node():
+    document = layered()
+    part_of(document, "shared")["path"] = "shared"
+    part_of(document, "api")["folders"] = {"a": "n"}
+    assert problems(document) == [
+        "layered.yaml: parts.api: unknown key 'folders': moved in 0.3.0: write each folder below the part as a key "
+        f"ending in /, with its note as its value; use {KNOWN}",
+        "layered.yaml: parts.shared: unknown key 'path': moved in 0.3.0: a part is the folder or file it is written "
+        f"as under parts: drop it; use {KNOWN}"]
+
+
+OLD = {"domain": {"path": "modules/<module>/domain", "role": "r", "imports": {"may": ["nothing"]}},
+       "platform": {"path": "platform", "role": "r"},
+       "controller": {"path": "modules/<module>/application/controller.py", "role": "r"},
+       "kernel-logic": {"path": "kernel/logic", "role": "r"}}
+OLD_LINES = [
+    "layered.yaml: parts.domain: unknown key 'path': moved in 0.3.0: write the part as the folder domain/: under the "
+    f"folder it lies in (modules/<module>/); use {KNOWN}",
+    "layered.yaml: parts.platform: unknown key 'path': moved in 0.3.0: write the part as the folder platform/: at the "
+    f"top of parts; use {KNOWN}",
+    "layered.yaml: parts.controller: unknown key 'path': moved in 0.3.0: write the part as the file controller.py: "
+    f"under the folder it lies in (modules/<module>/application/); use {KNOWN}",
+    "layered.yaml: parts.kernel-logic: unknown key 'path': moved in 0.3.0: write the part as the folder logic/: with "
+    f"name: kernel-logic, under the folder it lies in (kernel/); use {KNOWN}"]
+
+
+def test_an_old_flat_profile_is_refused_with_one_line_per_part_and_no_other_problem():
+    assert problems(layered(parts=OLD, colour=1, layers={"a": ["nothing"]})) == OLD_LINES
+
+
+def test_a_profile_mixing_tree_keys_with_an_old_part_gets_only_the_old_part_s_line():
+    assert problems(layered(parts={"core/": {"rol": "x"}, "platform": {"path": "platform", "role": "r"}})) == [
+        OLD_LINES[1]]

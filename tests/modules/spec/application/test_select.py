@@ -14,7 +14,7 @@ from xarch.modules.spec.domain.values import Configured
 
 APP = Path("/src/app")
 PYPROJECT = Path("/src/pyproject.toml")
-LAYERED = {"name": "layered", "parts": {"api": {"path": "src/<module>/api", "role": "handlers"}}}
+LAYERED = {"name": "layered", "parts": {"src/<module>/": {"api/": {"role": "handlers"}}}}
 
 
 def controller(configured: Configured | None = None, error: Exception | None = None, tests: Path | None = None,
@@ -26,7 +26,8 @@ def controller(configured: Configured | None = None, error: Exception | None = N
 
 
 FILE = "/src/layered.yaml"
-BROKEN = {**LAYERED, "parts": {"api": {**LAYERED["parts"]["api"], "imports": {"may": ["api@mine", "nowhere"]}}}}
+API = LAYERED["parts"]["src/<module>/"]["api/"]
+BROKEN = {**LAYERED, "parts": {"src/<module>/": {"api/": {**API, "imports": {"may": ["api@mine", "nowhere"]}}}}}
 
 
 @pytest.mark.parametrize("given, when, then", [
