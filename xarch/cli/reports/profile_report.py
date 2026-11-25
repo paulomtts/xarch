@@ -80,7 +80,7 @@ def _row(shown: Shown) -> str:
 def overview_lines(whole: FormatExplained) -> list[str]:
     lines = ["xarch profile format: one yaml file; `check` enforces what is marked enforced, "
              "the rest only fills the docs",
-             "need: a key under another is needed in the map it sits in, such as parts.path in each part", "",
+             "need: a key under another is needed in the map it sits in, such as parts.role in each part", "",
              f"{'key':<{KEY}} {'need':<{NEED}} {'check':<12} what it is"]
     lines += [_row(shown) for shown in whole.shape]
     lines += ["", "symbols"]

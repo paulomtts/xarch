@@ -10,8 +10,9 @@ All notable changes to this project are written here. The format follows
 ### Breaking changes
 
 A profile, a data file or a reader of the JSON written for 0.2.0 reads as the table says in 0.3.0. A retired key
-or value is refused with a hint saying what to write (`xarch profile check` lists every one); the entries after the
-table say each change in full.
+or value is refused with a hint saying what to write (`xarch profile check` refuses a profile still written with
+`parts.path` for that key first, one problem per part, and lists the other retired keys only once that is fixed); the
+entries after the table say each change in full.
 
 | 0.2.0 | 0.3.0 |
 |---|---|
