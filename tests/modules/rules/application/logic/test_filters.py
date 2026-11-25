@@ -32,10 +32,11 @@ from tests.modules.rules.builders import BRACE, imp, source
 from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.application.logic import filters
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.application.logic.filters import question
+from xarch.modules.rules.application.logic.filters import in_scope, question
 from xarch.modules.rules.domain.parsed import Class
 from xarch.modules.rules.domain.rule import Found
 from xarch.modules.rules.domain.vocabulary import FILTERS
+from xarch.profile_values.checks import APP, TESTS, Scope
 
 
 @pytest.mark.parametrize("text, file, kind, lines, profile, hit", [
@@ -56,6 +57,7 @@ from xarch.modules.rules.domain.vocabulary import FILTERS
                  id="may-import-everything: a file of a part that may not"),
     pytest.param("below fakes", FAKE, "file", [0], PROFILE, None, id="below: a file below the folder"),
     pytest.param("below fakes", TEST, "file", [], PROFILE, None, id="below: a file elsewhere"),
+    pytest.param("beside", TEST, "file", [], PROFILE, None, id="beside: a test below the tests root is not"),
     pytest.param("relative", DOMAIN, "import", [3], PROFILE, None, id="relative"),
     pytest.param("standard", DOMAIN, "import", [4], PROFILE, None, id="standard"),
     pytest.param("standard", DOMAIN, "import", [4], RESERVED, None, id="standard: a module the profile reserves too"),
@@ -140,3 +142,20 @@ def test_the_public_filter_holds_of_the_names_the_reader_says_are_public_whateve
     read = built.files[0]
     assert [fact.name for fact in read.facts["imported-name"]
             if question(condition("public"))(Found(RULE, read, fact, None), built, PROFILE)] == ["_shown"]
+
+
+def test_beside_holds_of_a_test_beside_the_code_which_is_on_the_tests_side_and_below_no_folder_of_it():
+    beside = replace(source("fakes/test_repo.py"), beside=True)
+    built = facts_of([], [beside], PROFILE, "app", "tests")
+    read = built.files[0]
+    asked = [Found(RULE, read, fact, None) for fact in read.facts["file"]]
+    assert [question(condition("beside"))(f, built, PROFILE) for f in asked] == [True]
+    assert [question(condition("below fakes"))(f, built, PROFILE) for f in asked] == [False]
+    assert (in_scope(Scope(TESTS), read, built, PROFILE), in_scope(Scope(APP), read, built, PROFILE)) == (True, False)
+
+
+def test_a_test_beside_a_part_s_code_mirrors_the_part():
+    read = facts_of([], [replace(source("modules/docs/domain/test_doc.py"), beside=True)], PROFILE, "app",
+                    "tests").files[0]
+    assert read.mirrors == ("domain",)
+    assert in_scope(Scope(TESTS, "domain"), read, facts_of([], [read.file], PROFILE, "app", "tests"), PROFILE)

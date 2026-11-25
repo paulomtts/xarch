@@ -4,7 +4,8 @@ import pytest
 from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.contract import GuardsView
 from xarch.modules.spec.domain.values import NoCallbacks
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Fakes, Fixture, Framework, Place, RowId, ScenarioCoverage, SpecEntry, StandIns, TableForm
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 
 @pytest.mark.parametrize("name, expected", [
@@ -21,22 +22,24 @@ def test_the_bundled_profiles_list_the_libraries_their_examples_use(name, expect
 @pytest.mark.parametrize("name", ["cli", "web"])
 def test_the_bundled_profiles_use_every_guard_of_their_own(name):
     mocks = ("Mock", "MagicMock", "AsyncMock", "NonCallableMock", "NonCallableMagicMock")
-    table = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+    form = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
+                     decorator=("pytest", "mark", "parametrize"))
     profile = build_controllers().spec.profile(name)
     assert profile.guards == GuardsView(
         package_only=("contract",),
-        scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), table, "test_{name}.py"),
+        scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), "test_{name:snake}.py"),
         no_comments=True,
         closed_tree=True,
         stand_ins=StandIns(tuple(("unittest", "mock", m) for m in mocks), (("unittest", "mock", "create_autospec"),),
-                               ("spec", "spec_set"), (Fixture("mocker", mocks, ("create_autospec",)),), 0),
+                           (SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"), SpecEntry(position=0)),
+                           (Fixture("mocker", mocks, ("create_autospec",)),)),
         no_duplicates=4, no_twins=3, no_twins_renamed=3, no_twins_subset=3, dead_code=True, untested=True,
         pass_through=("services", "controller", "adapters"), no_callbacks=("domain", "logic"),
         private_imports=True)
     skips = ("pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail", "pytest.skip", "pytest.xfail",
              "pytest.importorskip", "unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure")
-    assert profile.framework == Framework(("test_*.py", "*_test.py"), "test_*",
-                                              tuple(tuple(s.split(".")) for s in skips), table)
+    assert profile.framework == Framework(("test_*.py", "*_test.py"), (DeclaredForm(function="test_*"),),
+                                              tuple(tuple(s.split(".")) for s in skips), (form,))
     assert [(file.path, file.pinned) for file in load_architecture(name).files] == [
         (("tests", "architecture", "test_rules.py"), True), (("AGENTS.md",), False), (("ruff.toml",), False)]
     assert profile.fakes == Fakes(("fakes",), ("ports",), "Fake")

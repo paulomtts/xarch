@@ -43,10 +43,13 @@ SHAPE = (
           False, False),
     Shown('language', 0, 'the language of the app', False, True),
     Shown('testing', 0, 'how the test framework names things', False, True),
+    Shown('testing.preset', 1, 'the preset the framework is read from', False, True),
+    Shown('testing.beside', 1, 'whether every test of a part sits beside the code it tests', False, True),
     Shown('testing.files', 1, "patterns of a test file's name", True, True),
-    Shown('testing.functions', 1, "the pattern of a test function's name", True, True),
+    Shown('testing.declared', 1, 'the forms a test is declared in', True, True),
+    Shown('testing.globals', 1, 'the names the framework binds without an import', False, True),
     Shown('testing.skips', 1, 'what skips a test or expects it to fail', False, True),
-    Shown('testing.table', 1, 'how a test function holds a table of cases', False, True),
+    Shown('testing.tables', 1, 'the forms a table of cases is written in', False, True),
     Shown('testing.mocks', 1, 'how a mock is built', False, True),
     Shown('parts', 0, 'where code sits, in the order their litmus tests run', True, True),
     Shown('parts.path', 1, 'where the part lives below the app', True, True),
@@ -227,6 +230,17 @@ def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():
     assert isinstance(found, KeyExplained) and found.key == "guards.scenario-coverage.tier"
 
 
+def test_the_columns_of_scenario_coverage_are_required_only_where_the_framework_writes_a_table_form():
+    found = explained("guards.scenario-coverage.columns")
+    assert (found.key, found.where, found.required) == (
+        "guards.scenario-coverage.columns", "guards.scenario-coverage", False)
+    assert found.accepts == ("[<state>, <command>, <result>]: required when `testing.tables` writes a form, refused "
+                             "when it writes none")
+    assert explained("tiers.<tier>.plain_tables").accepts.endswith("refused when `testing.tables` writes no form")
+    assert "`columns` is written only when `testing.tables` writes a form" in explained(
+        "guards.scenario-coverage").accepts
+
+
 def test_the_lists_a_part_never_uses_are_the_top_level_never_and_the_key_never_of_its_uses():
     block, group, held = (explained(address) for address in ("never", "parts.uses", "parts.<part>.uses.never"))
     assert (block.key, block.meaning) == ("never", "named lists of names a part never uses")
@@ -345,3 +359,26 @@ def test_holds_says_it_reads_no_top_level_functions_in_a_language_that_does_not_
 ])
 def test_a_key_is_explained_typed_plain_or_with_the_part_it_sits_on(address, key):
     assert explained(address).key == key
+
+
+def test_the_forms_of_a_table_and_each_slot_of_a_form_are_keys_of_the_format():
+    tables, slot = explained("testing.tables"), explained("testing.tables.id")
+    assert (tables.key, tables.meaning, tables.rules) == (
+        "testing.tables", "the forms a table of cases is written in", ("scenario-coverage",))
+    assert [(held.key, held.required) for held in tables.keys] == [
+        ("testing.tables.decorator", False), ("testing.tables.call", False), ("testing.tables.loop", False),
+        ("testing.tables.columns_from", True), ("testing.tables.rows", False), ("testing.tables.row", True),
+        ("testing.tables.id", True)]
+    assert (slot.key, slot.where, slot.required, slot.meaning) == (
+        "testing.tables.id", "testing.tables[]", True, "what gives a row its id")
+
+
+def test_the_forms_that_declare_a_test_and_each_slot_of_a_form_are_keys_of_the_format():
+    declared, slot = explained("testing.declared"), explained("testing.declared.call")
+    assert (declared.key, declared.meaning, declared.rules) == (
+        "testing.declared", "the forms a test is declared in", ("scenario-coverage", "stand-ins"))
+    assert [(held.key, held.required) for held in declared.keys] == [
+        ("testing.declared.function", False), ("testing.declared.call", False), ("testing.declared.title", False),
+        ("testing.declared.body", False)]
+    assert (slot.key, slot.where, slot.required, slot.meaning) == (
+        "testing.declared.call", "testing.declared[]", False, "the calls that declare a test")

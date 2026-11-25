@@ -48,6 +48,66 @@ class CommentForm:
     closing: str = ""
 
 
+SPEC_FORMS = ("keyword", "position", "type_argument")
+"""The ways a call that builds a mock names its spec, in the order a problem lists them: a keyword argument, the
+positional argument at a place, the type argument at a place. They are the keys of an entry of a profile's
+`testing.mocks.specs` and of the data file's `writing.specs`."""
+
+
+@dataclass(frozen=True)
+class SpecWriting:
+    """How the language writes a call that builds a mock and names its spec, one one-line template per way of naming it
+    (empty: the file does not write it): keyword, {callee}, {keyword} and {value} standing for what is called, the
+    keyword and the spec; position and type_argument, {callee}, {before} and {value} standing for what is called, the
+    places before the spec's own and the spec."""
+    keyword: str = ""
+    position: str = ""
+    type_argument: str = ""
+
+
+@dataclass(frozen=True)
+class Writing:
+    """How the language writes a row of a table of cases, and a call that builds a mock, as its data file's `writing`
+    says it, each template one line (empty: the file does not write it): call, a row that is a call, {callee} standing
+    for what it calls; keyword, a row call whose id a keyword gives, {callee}, {keyword} and {text} standing for what
+    it calls, the keyword and the id's text; field, a literal row whose id a field gives, {field} and {text} standing
+    for the field and the id's text; specs, how a call that builds a mock names its spec (see SpecWriting). A template
+    is filled by `row_call`, `keyword_id`, `field_id` and `spec`: each placeholder replaced in one pass, any other
+    text, braces included, kept as it is."""
+    call: str = ""
+    keyword: str = ""
+    field: str = ""
+    specs: SpecWriting = SpecWriting()
+
+    def row_call(self, callee: str) -> str:
+        """The `call` template for a row that calls callee."""
+        return self._fill(self.call, callee=callee)
+
+    def keyword_id(self, callee: str, keyword: str, text: str) -> str:
+        """The `keyword` template for a row that calls callee, its id given by keyword with the value text."""
+        return self._fill(self.keyword, callee=callee, keyword=keyword, text=text)
+
+    def field_id(self, field: str, text: str) -> str:
+        """The `field` template for a literal row, its id given by field with the value text."""
+        return self._fill(self.field, field=field, text=text)
+
+    def writes_spec(self, form: str) -> bool:
+        """Whether the language writes how a call names its spec in form, one of SPEC_FORMS."""
+        return bool(getattr(self.specs, form))
+
+    def spec(self, form: str, callee: str, value: str, keyword: str = "", place: int = 0) -> str:
+        """The `specs` template of form, one of SPEC_FORMS, for a call of callee whose spec is value: given by keyword
+        for a keyword form, else at place, from 0, each place before it written `..., `."""
+        held = {"keyword": keyword} if form == SPEC_FORMS[0] else {"before": "..., " * place}
+        return self._fill(getattr(self.specs, form), callee=callee, value=value, **held)
+
+    @staticmethod
+    def _fill(template: str, **values: str) -> str:
+        """The template with each `{<name>}` of the values replaced in one pass, so that a value holding a
+        placeholder is not filled again."""
+        return re.sub("{(" + "|".join(values) + ")}", lambda found: values[found.group(1)], template)
+
+
 @dataclass(frozen=True)
 class CheckedLanguage:
     """The language of the app as a check reads it: how a message names it, the endings of a source file's name
@@ -67,12 +127,13 @@ class CheckedLanguage:
     (branching_expressions); and what makes a class an immutable record (immutable). An empty token: the language
     has none. supplies are the facts its reader supplies, each graded (None: its data file does not say); importing
     is how a file imports a name from another file of the app, {dotted} standing for that file's dotted path and
-    {name} for the name (empty: its data file does not say); names is the pattern of a name the language allows, a
-    regular expression (empty: its data file gives none); package is the pattern of what an import names from
-    outside the app as one step, and member the text that joins a package to a name in it in a profile's lists (both
-    empty: its data file does not say, and an outside name is then its whole text); standard_modules are the top-level
-    modules of its standard library, which the reader is handed to mark an import of one: spec fills them from the
-    data file's lists or from the runtime (empty: no module is standard)."""
+    {name} for the name (empty: its data file does not say); writing is how it writes a row of a table of cases (see
+    Writing); names is the pattern of a name the language allows, a regular expression (empty: its data file gives
+    none); package is the pattern of what an import names from outside the app as one step, and member the text that
+    joins a package to a name in it in a profile's lists (both empty: its data file does not say, and an outside name is
+    then its whole text); standard_modules are the top-level modules of its standard library, which the reader is handed
+    to mark an import of one: spec fills them from the data file's lists or from the runtime (empty: no module is
+    standard)."""
     title: str = ""
     extensions: tuple[str, ...] = ()
     package_files: tuple[str, ...] = ()
@@ -96,6 +157,7 @@ class CheckedLanguage:
     member: str = ""
     unannotated: str = ""
     standard_modules: frozenset[str] = frozenset()
+    writing: Writing = Writing()
 
     @property
     def marks(self) -> Marks:

@@ -183,16 +183,13 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
                                            exceptions={"names": "*Error"}))),
         (parsed(layered()), parsed(given(layered(), "service", shared=3))),
         (parsed(covered()), parsed(tight())),
+        (near(True), near(None)),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
-    assert LATER <= set(LOOSER)
-    assert sorted({item.key for item in found}) == sorted(key for key in LOOSER if key not in LATER)
+    assert sorted({item.key for item in found}) == sorted(LOOSER)
     assert [item.key for item in found if "is no longer reserved" in item.sentence] == ["reserved"]
 
 
-LATER = {"testing.beside"}
-"""The keys of LOOSER no pair reaches yet: testing.beside is said here, and its line is found and tested with the key
-itself (card 6.10), which empties this set."""
 MARK = "imports.may.types_only"
 """The key a types_only mark dropped from an entry of a part's imports.may is listed under."""
 
@@ -679,3 +676,33 @@ def test_a_profile_compared_with_a_bundled_one_rests_on_it_and_any_other_rests_o
     assert origin_of("mine.yaml", mine, False, {"other": bare(web="web")}).anchor is None
     assert origin_of("alpha", mine, True, {}).anchor is None
     assert origin_of("mine.yaml", mine, False, {"alpha": bare(a="a")}, against="alpha").anchor is None
+
+
+BESIDE = Loosened("testing.beside", "", "",
+                  "tests may sit beside the code: the mirrored tests tree is no longer checked (testing.beside)")
+
+
+def near(beside: bool | None) -> Architecture:
+    """covered(), its testing saying beside as given (None: not at all)."""
+    document = covered()
+    if beside is not None:
+        document["testing"]["beside"] = beside
+    return parsed(document)
+
+
+def test_a_profile_whose_tests_sit_beside_the_code_is_looser_than_one_whose_tests_mirror_it():
+    assert loosened(near(True), near(None)) == (BESIDE,)
+    assert loosened(near(True), near(False)) == (BESIDE,)
+
+
+@pytest.mark.parametrize("custom, base", [
+    pytest.param(True, True, id="both beside"),
+    pytest.param(False, True, id="beside dropped"),
+    pytest.param(None, None, id="neither"),
+])
+def test_beside_is_looser_only_where_the_compared_profile_leaves_it_out(custom, base):
+    assert loosened(near(custom), near(base)) == ()
+
+
+def test_a_profile_with_no_testing_compared_with_one_beside_is_not_looser_by_beside():
+    assert "testing.beside" not in [item.key for item in loosened(parsed(layered()), near(True))]

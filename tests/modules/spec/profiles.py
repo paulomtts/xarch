@@ -13,14 +13,21 @@ from xarch.modules.spec.application.logic.profile_listing import listing, refere
 from xarch.modules.spec.application.logic.profile_parsing import parse_profile
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Architecture
+from xarch.profile_values.testing import Place, RowId, TableForm
 
 SOURCE = "layered.yaml"
-TESTING = {"files": ["test_*.py", "*_test.py"], "functions": "test_*", "skips": ["pytest.mark.skip", "pytest.skip"],
-           "table": {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
-                     "keywords": ["argnames", "argvalues"]},
+PYTEST_TABLE = {"decorator": "pytest.mark.parametrize", "columns_from": {"position": 0, "keyword": "argnames"},
+                "rows": {"position": 1, "keyword": "argvalues"}, "row": "pytest.param", "id": {"keyword": "id"}}
+"""The one form pytest writes a table of cases in, as an entry of `testing.tables`."""
+PYTEST_FORM = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
+                        decorator=("pytest", "mark", "parametrize"))
+"""PYTEST_TABLE as the loader reads it."""
+TESTING = {"files": ["test_*.py", "*_test.py"], "declared": [{"function": "test_*"}], "skips": ["pytest.mark.skip", "pytest.skip"],
+           "tables": [PYTEST_TABLE],
            "mocks": {"calls": ["unittest.mock.Mock", "unittest.mock.MagicMock"],
-                     "autospec": ["unittest.mock.create_autospec"], "spec_keywords": ["spec", "spec_set"],
-                     "spec_position": 0, "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}
+                     "autospec": ["unittest.mock.create_autospec"],
+                     "specs": [{"keyword": "spec"}, {"keyword": "spec_set"}, {"position": 0}],
+                     "fixtures": {"mocker": {"calls": ["Mock", "MagicMock"], "autospec": ["create_autospec"]}}}}
 PRESETS = {"pytest": TESTING}
 LANGUAGES = {"python": PYTHON}
 EX = {"ex": ("tests/src/billing/service/test_rules.py", "tests/src/billing/builders.py", "tests/checks/rules/test_x.py")}

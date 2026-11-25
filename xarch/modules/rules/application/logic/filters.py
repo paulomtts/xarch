@@ -76,12 +76,17 @@ def _may_import_everything(read: Read, profile: Profile, value: str) -> bool:
 
 def _below(read: Read, profile: Profile, value: str) -> bool:
     folder = _folder(value)
-    return read.file.path[:len(folder)] == folder
+    return not read.file.beside and read.file.path[:len(folder)] == folder
+
+
+def _beside(read: Read, profile: Profile, value: str) -> bool:
+    return read.file.beside
 
 
 _FILE: dict[str, Callable[[Read, Profile, str], bool]] = {
     "test": _test, "tiered": _tiered, "placed": _placed_file, "package-file": _package_file,
-    "mirrors-a-part": _mirrors_a_part, "may-import-everything": _may_import_everything, "below": _below}
+    "mirrors-a-part": _mirrors_a_part, "may-import-everything": _may_import_everything, "below": _below,
+    "beside": _beside}
 """Each filter about the file by its name, the question it asks of the file."""
 
 

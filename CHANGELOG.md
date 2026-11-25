@@ -83,9 +83,77 @@ All notable changes to this project are written here. The format follows
 - `profile check` lists a `types_only` mark dropped from an entry of a part's `imports.may`, whose target the part
   still may import and no mark of the part covers, under the key `imports.may.types_only`: `<part> may now call
   <target>, which it used only as a type (parts.<part>.imports.may.types_only)`.
+- A test framework that writes no table form (`testing.tables: []`, or `tables` left out) can switch on
+  `guards.scenario-coverage`: every variant of a use case's union must then be named by a test of its test file
+  (`<Union> variant <V> is named by no test`), and a variant named only by tests that never assert is weak. The
+  guard's `columns` is refused for such a framework (`drop \`columns\`: the framework writes no table, so each result
+  is its own test`), and `tiers.<tier>.plain_tables` says `needs a table form: the framework <framework> writes none
+  in \`testing.tables\``.
+- The table forms are proved neutral to a language by tests alone: a test-only framework (a loop form and a call form
+  with literal rows) is loaded under a test-only TypeScript-like language and checked on hand-built facts, each finding
+  worded from that language's `writing`. Behaviour is unchanged.
+- A framework declares its tests with `testing.declared`, a list of forms, each a `function` form, a function whose
+  name matches a pattern (`declared: [{function: "test_*"}]`), or a `call` form, a call of one of its callees whose
+  arguments hold the test's `title` and its `body` (`{call: [it, test], title: {position: 0}, body: {position: 1}}`);
+  an entry's problem names it by its index (`testing.declared.0.call`). `testing.globals` lists the names the framework
+  binds without an import (`[it, expect]`): a use or a call of one that the file does not bind is read as that name,
+  never as a builtin. The reader turns the forms into the tests of a file (`SourceFile.tests`, each a `Test` with its
+  line, its name, the index of its form, whether the name is a title, and its body), and scenario-coverage,
+  `plain_tables` and `weak` read those alone. Two facts come with it: `test.function`, which Python supplies, and
+  `test.call`, which no reader supplies yet, so a call form under Python is refused at its entry; the call form is
+  proved on hand-built facts. A test declared by a title is named in double quotes (`"places an order" has an \`if\`
+  in its body`), one declared by its function by its bare name, as before.
+- `testing` may name its preset as a map, `testing: {preset: pytest}`, which means `testing: pytest`: the framework
+  comes wholly from the preset. A framework key written beside `preset` is refused, never merged (`testing.files: the
+  preset pytest gives files: drop it, or drop preset and write the whole map`, or `the preset pytest writes no
+  globals` for a key the preset does not hold); a `preset` that names no preset is refused at `testing.preset`, and a
+  preset may not name a preset. `xarch profile explain testing.preset` explains it, and the "use ..." list of
+  `testing` gains `preset`.
+- `testing.beside`: `testing: {preset: pytest, beside: true}` (or `beside: true` in the whole map) keeps every test
+  of a part beside the code it tests. A file of the app whose name `testing.files` matches is then a test of the tier
+  its part names, read with the framework's forms and never as code of its part; a finding on it names its app path.
+  A tier with a `folder` keeps its tests below the tests root, and a part that names such a tier in `tests` is refused
+  (`tiers.guard: parts.domain says tests: guard, and guard keeps its tests in tests/architecture: under
+  testing.beside a part's tests sit beside its code; give the part a tier with no folder`). `test-tree` reports a test
+  file left below the tests root outside every tier `folder` and the fakes' folder (`lies below the tests folder, but
+  testing.beside keeps the tests of a part beside its code: move it beside the code it tests`), in place of the
+  folder check of the mirrored tree. A test beside the code with no tier says `lies in no tier: its part is untested`
+  or `lies in no part`. A preset may not say `beside`; `profile check` lists `testing.beside` as looser; `xarch
+  profile explain testing.beside` explains it, and the "use ..." list of `testing` gains `beside`.
+- A table `call` form's callees must each be listed under a `call` form of `testing.declared`, for a framework written
+  out or named as a preset: one that is not is refused at its entry (`` testing.tables.0.call: `it.each` declares no
+  test: list it under a `call` form of `testing.declared` ``), unless the language's reader is known not to read that
+  form, which refuses the entry already. `xarch profile explain testing.tables.call` says so.
+- The fact `call.type_arguments`, the type arguments a call is given, which Python's reader does not supply; and the
+  language data file's `writing.specs`, one template per way a call that builds a mock names its spec (`keyword`,
+  `position`, `type_argument`), from which the stand-ins fixes and the docs write a mock. Python writes `keyword` and
+  `position`, so its texts read as before.
 
 ### Changed
 
+- `testing.functions` is replaced by `testing.declared`: a profile or a preset writing it is refused with `unknown key
+  'functions': moved in 0.3.0: write declared: [{function: "<pattern>"}]`. The bundled `pytest` preset writes
+  `declared: [{function: "test_*"}]`; the same functions are tests as before, and findings and docs read as before.
+- A framework says how a table of cases is written with `testing.tables`, a list of table forms, each with one of
+  `decorator`, `call` or `loop` and the slots `columns_from`, `rows`, `row` and `id`; an entry's problem names it by
+  its index, `testing.tables.0.id`. `testing.table` is refused with "moved in 0.3.0: write tables, a list of forms
+  (xarch profile explain testing.tables)", and the bundled `pytest` preset writes its one form in the new shape. The
+  guard `scenario-coverage` keeps no copy of the table: it reads the framework's forms. A language data file says how
+  a row is written with `writing: {call, keyword, field}`; Python writes `call` and `keyword`. Findings and docs read
+  as before.
+- The guard `scenario-coverage`'s `file` writes the case of the use case's name: `{name:snake}`, `{name:kebab}`,
+  `{name:camel}` or `{name:pascal}`, so `{name:kebab}.test.ts` looks for `http-check.test.ts`. The words are split as
+  before (HTTPCheck is http, check). A bare `{name}` is refused with "write {name:snake} for what {name} meant". The
+  bundled profiles write `test_{name:snake}.py`.
+- The fact `function.tables` is now three facts, one per form a table is written in: `function.tables.decorator`,
+  `function.tables.call` and `function.tables.loop`. Each holder of an entry of `testing.tables` needs its own fact,
+  and is refused at its index when the language does not supply it (`testing.tables.0.call: its check reads
+  function.tables.call ...`). Python supplies `function.tables.decorator` and `function.tables.loop`, and not
+  `call`. A language data file that writes `function.tables` under `supplies` is refused as an unknown fact.
+- Python's reader reads a table from the first `for` of a test's own body over a list literal of the file (`for
+  given, when, then in CASES:`), its columns the names the loop binds. Its rows are calls of the form's `row` with a
+  keyword id, or tuple or list literals with an id at a position. That `for` is not reported as a branch by
+  scenario-coverage or `plain_tables`.
 - Without `based_on`, a custom profile is compared with the bundled profile of highest match (the first by name on a
   tie, and one no part pairs with never), no longer the one sharing the most part names. Parts pair by name, then by
   layout path, and tiers by name, then by subject, and the ways a profile is looser are compared on the parts and
@@ -258,6 +326,14 @@ All notable changes to this project are written here. The format follows
   `'<value>' is not an outside name such as <package>.<name>` under the testing names; and under a `never` list
   `'<entry>' is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()` and
   `'<entry>' is neither an outside name nor a method: write <entry>() for a method called on anything`.
+- `testing.mocks.specs` replaces `testing.mocks.spec_keywords` and `testing.mocks.spec_position`: a list, in order, of
+  the ways a call that builds a mock names its spec, each `{keyword: <name>}`, `{position: <n>}` or
+  `{type_argument: <n>}`, an entry's problem naming it by its index (`testing.mocks.specs.1.keyword`). A profile or a
+  preset writing either old key is refused with `unknown key 'spec_keywords': moved in 0.3.0: write specs: [{keyword:
+  spec}, {position: 0}]`. The bundled `pytest` preset writes `specs: [{keyword: spec}, {keyword: spec_set}, {position:
+  0}]`: a call giving both a keyword and a first argument now names its spec by the keyword, and a read port named by
+  `spec_set=` is shown with `spec_set=`. A `type_argument` entry needs `call.type_arguments`, and an entry of a form the
+  language's `writing.specs` does not write is refused at its index.
 
 ## [0.2.0] - 2026-11-18
 

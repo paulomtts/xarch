@@ -27,7 +27,12 @@
 # value as written and quoted so that it stays text (keywords left out: however it is written); {fields: <word>}, a
 # keyword that marks every field; or {type: <outside name>}, a wrapper type. Python writes the first two. importing,
 # how a file imports a name from another file of the app, {dotted} standing for that file's dotted path and {name} for
-# the name.
+# the name. writing, how a row of a table of cases is written: call, a row that is a call, {callee} standing for what
+# it calls; keyword, a row call whose id a keyword gives, {keyword} and {text} standing for the keyword and the id's
+# text; field, a literal row whose id a field gives, Python does not write; specs, how a call that builds a mock names
+# its spec: keyword, by a keyword argument, {keyword} and {value} standing for the keyword and the spec; position, by
+# the positional argument at a place, {before} standing for the places before it and {value} for the spec;
+# type_argument, by a type argument, Python does not write.
 # supplies: the facts its reader turns the source into, each exact or {partial: what it misses}; a key whose check
 # needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate. file.package,
 # that a file stands for its folder, is never listed here: it follows package_files.
@@ -54,6 +59,12 @@ branching: [if, match, try, for, while]
 branching_expressions: [if]
 immutable: [{base: typing.NamedTuple}, {decorator: dataclasses.dataclass, keywords: {frozen: "True"}}]
 importing: "from {dotted} import {name}"
+writing:
+  call: "{callee}(...)"
+  keyword: '{callee}(..., {keyword}="{text}")'
+  specs:
+    keyword: "{callee}({keyword}={value})"
+    position: "{callee}({before}{value})"
 supplies:
   file: exact
   syntax: exact
@@ -94,7 +105,9 @@ supplies:
   function.asserts: exact
   function.mentions: exact
   function.named: exact
-  function.tables: exact
+  function.tables.decorator: exact
+  function.tables.loop: exact
+  test.function: exact
   union: exact
   module_functions: exact
   constant: exact

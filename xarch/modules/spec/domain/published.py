@@ -122,6 +122,7 @@ class Loosened:
         imports.also    the tests of tier part may also import what (a target as written)
         uses.apply_never the tests of tier part are no longer held to their part's never list
         testing.skips   what is no longer counted as a skip
+        testing.beside  the tests of a part may sit beside its code, which the compared profile does not allow
         files.pinned    the init file what is no longer pinned
         reserved        the standard-library name what is no longer reserved
         known           the tests-only check accepts the name what as one only the tests use

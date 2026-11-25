@@ -240,7 +240,8 @@ class PackageOnly:
 
 
 NAME = "{name}"
-"""Stands, in the file name a guard expects, for the name of the use case in snake_case."""
+"""A name with no case, which the file a guard expects may no longer hold: refused since 0.3.0, the case written in
+its place ({name:snake} for what it meant)."""
 
 
 @dataclass(frozen=True)
@@ -368,7 +369,7 @@ class Architecture:
     fakes: where the test fakes live; None: no test may import them
     repeats: the repeating folders of the layout, in the order of the profile: each its word, as the docs show one
         instance, and the folder it repeats in
-    framework: how the test framework names test files and functions; None when no tier or guard needs them
+    framework: how the test framework names test files and declares tests; None when no tier or guard needs them
     files: the project files `init` writes besides the docs, in order
     uses_never: the dotted names and modules a part may not use, and the methods it may not call on anything, each as
         ("", "<name>()"), by part; a part not listed has none

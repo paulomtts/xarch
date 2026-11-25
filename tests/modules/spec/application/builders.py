@@ -12,7 +12,7 @@ from tests.modules.spec.application.helpers import controller
 from tests.modules.spec.languages import RUNTIME
 from xarch.kernel.source import CommentSpan, Import, Unparsable
 
-TESTING = {"files": ["test_*.py"], "functions": "test_*"}
+TESTING = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 BASE = {"name": "base", "testing": TESTING,
         "parts": {"core": {"path": "core", "role": "the rules"},
                   "api": {"path": "api", "role": "the handlers", "imports": {"may": ["core"]}}},

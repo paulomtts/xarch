@@ -144,11 +144,8 @@ EXEMPT: dict[tuple[str, str], str] = {
                                                 "purpose (engine R3-2)",
     ("__main__.py", "python"): "`python -m xarch` is how the interpreter that runs xarch starts it, not the language "
                                "xarch checks",
-    ("modules/rules/application/logic/scenarios.py", "_"): "the separator of snake_case, which the profile format "
-                                                            "defines `{name}` to be in the test file of a use case "
-                                                            "(guards.scenario-coverage.file); it is no private prefix, "
-                                                            "and a profile in another language would still say "
-                                                            "{name} in that case",
+    ("kernel/logic/cases.py", "_"): "the separator of snake_case, the case a profile asks for with `{name:snake}` in the "
+                                    "test file of a use case (guards.scenario-coverage.file); it is no private prefix",
 }
 
 
@@ -508,6 +505,7 @@ PRIVACY: dict[str, str] = {
     "modules/scaffold/adapters/spec_skeleton.py": "hands scaffold the prefix spec publishes",
     "modules/layout/application/logic/requirements.py": "layout requires no private file or folder",
     "modules/layout/application/logic/unmirrored.py": "layout leaves a private folder unmirrored",
+    "modules/layout/application/logic/beside.py": "layout leaves a test in a private folder unreported",
     "modules/layout/adapters/spec_skeleton.py": "hands layout the prefix spec publishes",
     "modules/spec/application/services/publishing.py": "publishes the prefix to scaffold and layout",
     "modules/spec/application/logic/explain.py": "fills %private% in the texts of the format",

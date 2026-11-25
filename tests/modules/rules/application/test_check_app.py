@@ -33,6 +33,8 @@ from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
+from xarch.profile_values.testing import Framework
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 ROOT = Path("/src/pkg")
 PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},
@@ -240,3 +242,12 @@ def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_in_the_enf
         weak=(decide, gone), strict=(FindingView("weak", f"pkg/kernel/rules.py:9: {decide.message}"),
                                      FindingView("weak", f"pkg/kernel/rules.py: {gone.message}")),
         known=(KnownName("pkg/kernel/rules.py", 3, "Rule"),))
+
+
+def test_the_tests_are_read_with_the_framework_s_forms_and_globals_and_the_app_with_none():
+    forms = (DeclaredForm(function="test_*"),)
+    framed = replace(entered("cli"), framework=Framework(("test_*.py",), forms, globals=(("it",),)))
+    tests = Path("/src/tests")
+    tree = FakeSourceTree(ROOT, {"kernel/x.py": []}, more={tests: {"kernel/test_x.py": []}})
+    controller(tree, FakeProfiles({"cli": framed})).check_app(CheckApp(ROOT, "cli", ROOT.parent, tests))
+    assert (tree.forms, tree.bound) == ([(), forms], [(), (("it",),)])

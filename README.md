@@ -113,7 +113,7 @@ everything else is optional, and a key left out means off):
 
 ```
 name*  based_on  language  hints  excluded  reserved
-testing:  <preset> | {files*, functions*, skips, table, mocks}
+testing:  <preset> | {preset, beside} | {files*, declared*, globals, skips, tables, mocks, beside}
 parts*:   {<part>: {path*, role*, litmus, imports: {may, must, libraries}, uses: {never}, tests | untested,
                     package_only, folders, shared,
                     holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
@@ -177,7 +177,32 @@ a scope any key opens, however deep, and in each entry of a list, which a proble
 (`<list>.0.<key>`). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
-supplies every fact exactly. One fact is never written under `supplies`: `file.package`, that a file stands for the
+supplies every fact exactly but `function.tables.call`, `test.call` and `call.type_arguments`, so a framework that
+writes a `call` form under Python is refused at that entry (`testing.tables.0.call`, `testing.declared.0.call`), and so
+is a mock spec by a type argument (`testing.mocks.specs.0.type_argument`). A framework declares its tests
+with `testing.declared`, a list of forms: a `function` form, a function whose name matches a pattern, or a `call` form,
+a call whose arguments hold the test's `title` and its `body`; `testing.globals` names what it binds without an import.
+A table `call` form's callees must each be listed under a `call` form of `testing.declared`, the call that declares
+the test it makes or wraps; one that is not is refused at its entry (`` testing.tables.0.call: `it.each` declares no
+test: list it under a `call` form of `testing.declared` ``).
+`testing.mocks.specs` lists, in order, the ways a call that builds a mock names its spec, each `{keyword: <name>}`,
+`{position: <n>}` or `{type_argument: <n>}`: a call names it by the first entry it gives, the fix of a mock with no
+spec writes the first entry by the language's `writing.specs`, and an autospec call reads only the first `keyword`
+entry. It replaces `spec_keywords` and `spec_position`, each refused with what to write (`unknown key 'spec_keywords':
+moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]`). A `type_argument` entry needs `call.type_arguments`,
+which Python's reader does not supply.
+`testing: {preset: pytest}` names a preset as a map, and every framework key then comes from it: one written beside
+it is refused (`testing.files: the preset pytest gives files: drop it, or drop preset and write the whole map`), never
+merged, and a project with its own `files` writes the whole map instead; `testing: pytest` is its short form.
+`testing: {preset: pytest, beside: true}` keeps every test of a part beside its code: a file of the app whose name
+`files` matches is a test of the tier its part names, never code of its part; a tier with a `folder` keeps its tests
+below the tests root, and a part may not name such a tier; `test-tree` then reports a test left below the tests root
+outside every tier `folder` and the fakes' folder.
+That the table forms and the call form are neutral to a language is proved without a TypeScript reader: a test-only
+framework (`tests/fakes/frameworks/stub.yaml`, a function form and a call form of a test, a loop form and a call form of
+a table with literal rows) is checked on hand-built facts and worded by the `writing` of the test-only language
+`brace.yaml`, beside a framework that writes no form and the loop form read by Python's reader. One fact is never written under
+`supplies`: `file.package`, that a file stands for the
 folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `imports.must`,
 `guards.dead-code.untested`) are refused under a language that has none.
 
@@ -321,7 +346,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
 | `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.imports.must`, `tiers.imports.must` |
-| `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier | `guards.scenario-coverage`, `tiers.plain_tables` |
+| `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier; with no table form, a variant named by no test | `guards.scenario-coverage`, `tiers.plain_tables` |
 | `no-comments` | a comment of the language in the app or its tests (`#` for Python), but a doc comment and those its tools read | `guards.no-comments` |
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
@@ -506,7 +531,8 @@ enforcement
 - `approximate`: each key the profile sets whose check reads a fact the language's reader supplies only partly, as
   its data file grades it (`supplies`), with what the reader misses: the check runs, and may miss what it looks for.
   A key whose check reads a fact the language does not supply at all is refused when the profile loads, naming the
-  key and the fact. Python's reader supplies every fact exactly, so a Python project never sees this line.
+  key and the fact. Python's reader supplies every fact exactly but `function.tables.call`, and none partly, so a
+  Python project never sees this line.
 
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile

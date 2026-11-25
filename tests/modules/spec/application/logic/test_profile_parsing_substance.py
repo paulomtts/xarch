@@ -237,6 +237,6 @@ def test_a_bad_parameter_of_the_guards_is_refused(guards, expected):
 def test_dead_code_may_accept_a_public_name_of_a_file_of_any_ending_of_the_language():
     known = ["shared/text.tsx:clean", "shared/run.mts:main"]
     document = covered(guards={"dead-code": {"tests_only": True, "known": known}}, fakes=FAKES, language="brace",
-                       testing={"files": ["*.test.ts"], "functions": "test*"})
+                       testing={"files": ["*.test.ts"], "declared": [{"function": "test*"}]})
     assert parsed(document, languages={"python": PYTHON, "brace": BRACE}).guards == (
         DeadCode(False, True, ("shared/text.tsx:clean", "shared/run.mts:main")),)

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import replace
+from fnmatch import fnmatchcase
 from importlib import resources
 from pathlib import Path
 
@@ -19,11 +20,22 @@ import yaml
 from xarch.kernel.logic.names import is_private_name, outside_steps
 from xarch.kernel.placement import EVERYTHING
 from xarch.kernel.source import Import
-from xarch.modules.rules.domain.parsed import Class, SourceFile
+from xarch.modules.rules.domain.parsed import Class, Function, SourceFile, Test
 from xarch.modules.rules.domain.profile import Profile
-from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
+from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark, SpecWriting, Writing
 from xarch.profile_values.placement import Repeat, Target
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework, ScenarioCoverage, StandIns
+from xarch.profile_values.testing import (
+    Fakes,
+    Fixture,
+    Framework,
+    Place,
+    RowId,
+    ScenarioCoverage,
+    SpecEntry,
+    StandIns,
+    TableForm,
+    TestForm,
+)
 from xarch.profile_values.tiers import CheckedTier
 
 
@@ -47,6 +59,14 @@ def records_of(file: dict) -> tuple[RecordMark, ...]:
     return tuple(_record_mark(mark, file["member"]) for mark in file.get("immutable", ()))
 
 
+def writing_of(file: dict) -> Writing:
+    """How a language's data file writes a row of a table and a call that builds a mock, as its loader reads it: the
+    row templates, and those of a mock's spec under specs."""
+    written = dict(file.get("writing", {}))
+    return Writing(**{key: line for key, line in written.items() if key != "specs"},
+                   specs=SpecWriting(**written.get("specs", {})))
+
+
 def _record_mark(mark: dict, member: str) -> RecordMark:
     if "base" in mark:
         return RecordMark(base=outside_steps(mark["base"], member))
@@ -56,6 +76,35 @@ def _record_mark(mark: dict, member: str) -> RecordMark:
     if "type" in mark:
         return RecordMark(type=outside_steps(mark["type"], member))
     return RecordMark(fields=mark["fields"])
+
+
+def tables_of(file: dict, member: str) -> tuple[TableForm, ...]:
+    """The forms of a table a framework's data file writes, as its loader reads them: a holder (a decorator, the calls
+    of a call, a loop), where the columns come from, the rows' place, the dotted name of a row (empty for a literal) and
+    what gives a row its id, each dotted name split at the language's member."""
+    return tuple(_table_form(form, member) for form in file.get("tables", ()))
+
+
+def _place(value: dict | None) -> Place | None:
+    return None if value is None else Place(value["position"], value.get("keyword", ""))
+
+
+def _table_form(form: dict, member: str) -> TableForm:
+    columns = form["columns_from"]
+    return TableForm(_place(columns) if isinstance(columns, dict) else columns, _place(form.get("rows")),
+                     outside_steps(form["row"], member) if form["row"] != "literal" else (),
+                     RowId(**form["id"]),
+                     decorator=outside_steps(form["decorator"], member) if "decorator" in form else (),
+                     call=tuple(outside_steps(name, member) for name in form.get("call", ())),
+                     loop=form.get("loop", False))
+
+
+def declared_of(file: dict, member: str) -> tuple[TestForm, ...]:
+    """The forms a framework's data file declares a test in, as its loader reads them: a function form's pattern, or a
+    call form's callees split at the language's member, its title and its body."""
+    return tuple(TestForm(function=form["function"]) if "function" in form else
+                 TestForm(call=tuple(outside_steps(name, member) for name in form["call"]), title=_place(form["title"]),
+                          body=_place(form["body"])) for form in file["declared"])
 
 
 PYTHON_FILE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
@@ -70,9 +119,11 @@ PYTHON = CheckedLanguage(title="Python", extensions=(".py",), package_files=("__
                          immutable=(RecordMark(base=("typing", "NamedTuple")),
                                     RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),))),
                          branching_expressions=("if",), names=PYTHON_FILE["name"], package=PYTHON_FILE["package"],
-                         member=PYTHON_FILE["member"], standard_modules=frozenset(sys.stdlib_module_names))
+                         member=PYTHON_FILE["member"], writing=writing_of(PYTHON_FILE),
+                         standard_modules=frozenset(sys.stdlib_module_names))
 """Python as its data file says it, for the checks that read the tokens of its code; the patterns of a name and of a
-package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them."""
+package, and the member that joins them, read from it; its standard modules the interpreter's, as spec hands them;
+how it writes a row of a table, read from it."""
 BRACE_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "brace.yaml")
                             .read_text(encoding="utf-8"))
 BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["extensions"]),
@@ -81,10 +132,18 @@ BRACE = CheckedLanguage(title=BRACE_FILE["title"], extensions=tuple(BRACE_FILE["
                         dynamic=(("node:module", "createRequire"),), nothing=tuple(BRACE_FILE["nothing"]),
                         comments=forms_of(BRACE_FILE), directives=tuple(BRACE_FILE["directives"]),
                         names=BRACE_FILE["name"], package=BRACE_FILE["package"], member=BRACE_FILE["member"],
+                        branching=tuple(BRACE_FILE["branching"]), writing=writing_of(BRACE_FILE),
                         standard_modules=frozenset(BRACE_FILE["standard"]["modules"]))
 """The TypeScript-like test-only language as a check reads it, its endings, package files, patterns, member, interface
-marks, marks of an immutable record, annotations of no value, comment forms, directives and standard modules read from
-its data file."""
+marks, marks of an immutable record, annotations of no value, comment forms, directives, the keywords that branch, how
+it writes a row of a table and standard modules read from its data file."""
+STUB_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "frameworks" / "stub.yaml")
+                           .read_text(encoding="utf-8"))
+STUB = Framework(tuple(STUB_FILE["files"]), declared_of(STUB_FILE, BRACE_FILE["member"]),
+                 tables=tables_of(STUB_FILE, BRACE_FILE["member"]),
+                 globals=tuple(outside_steps(name, BRACE_FILE["member"]) for name in STUB_FILE.get("globals", ())))
+"""The test-only framework as a check reads it: a function form and a call form of a test, a loop form and a call form
+of a table with literal rows, and its one global, read from its data file."""
 PERCENT_FILE = yaml.safe_load((Path(__file__).resolve().parents[2] / "fakes" / "languages" / "percent.yaml")
                               .read_text(encoding="utf-8"))
 PERCENT = CheckedLanguage(title=PERCENT_FILE["title"], extensions=tuple(PERCENT_FILE["extensions"]),
@@ -134,17 +193,21 @@ GUARD = CheckedTier("guard", (), ("architecture",))
 NOW = ("datetime", "datetime", "now")
 MOCK = ("unittest", "mock", "Mock")
 AUTOSPEC = ("unittest", "mock", "create_autospec")
-TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+PYTEST_FORM = TableForm(Place(0, "argnames"), Place(1, "argvalues"), ("pytest", "param"), RowId(keyword="id"),
+                        decorator=("pytest", "mark", "parametrize"))
+"""The one form pytest writes a table of cases in, as its preset says it."""
+PYTEST_SPECS = (SpecEntry(keyword="spec"), SpecEntry(keyword="spec_set"), SpecEntry(position=0))
+"""The ways a mock names its spec under pytest, as its preset says them, in order."""
 PROFILE = Profile(
     parts=PARTS, rules=RULES, folders=FOLDERS, tiers=(UNIT, INTEGRATION, RENDERING, GUARD),
     imports_libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
                        "bootstrap": ("sqlmodel", "fastapi")},
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(MODULES,), package_only=("contract",),
-    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
+    scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), "test_{name:snake}.py"),
     no_comments=True,
-    stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
-                       (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
-    framework=Framework(("test_*.py", "*_test.py"), "test_*"),
+    stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), PYTEST_SPECS,
+                       (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),)),
+    framework=Framework(("test_*.py", "*_test.py"), (TestForm(function="test_*"),), tables=(PYTEST_FORM,)),
     uses_never={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, default_tests="tests")
 
 
@@ -219,6 +282,30 @@ def source(path: str, *imports: Import, root: str = APP, language: CheckedLangua
 def in_tests(path: str, *imports: Import, **fields) -> SourceFile:
     """A file at path below the tests root."""
     return source(path, *imports, root=TESTS, **fields)
+
+
+def tests_of(functions: tuple[Function, ...], framework: Framework) -> tuple[Test, ...]:
+    """The tests a reader finds among functions by the function forms of framework, as the Python reader finds them:
+    each function whose name matches a form's pattern, a test of the first such form, untitled, its body the function
+    itself."""
+    found: list[Test] = []
+    for function in functions:
+        form = next((index for index, held in enumerate(framework.declared)
+                     if held.function and fnmatchcase(function.name, held.function)), None)
+        if form is not None:
+            found.append(Test(function.line, function.name, form, False, function))
+    return tuple(found)
+
+
+def declaring(path: str, *functions: Function, framework: Framework | None = None, language: CheckedLanguage = PYTHON,
+              tests: tuple[Test, ...] | None = None, **fields) -> SourceFile:
+    """A file at path below the tests root holding functions, its tests those given, else those tests_of finds among
+    the functions by framework (PROFILE's unless given), each definition public or not as the reader of language would
+    say."""
+    held = framework if framework is not None else PROFILE.framework
+    assert held is not None
+    return source(path, root=TESTS, language=language, functions=functions,
+                  tests=tests_of(functions, held) if tests is None else tests, **fields)
 
 
 def aliased(line: int, written: str, module: str, *names: str) -> Import:

@@ -7,7 +7,11 @@ each needs."""
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.domain.key_table import KEYS, NEEDS, SLOTS
 from xarch.modules.spec.domain.profile_keys import (
+    CHOICE_PRESETS,
+    DECLARED,
     HELD,
+    MOCK_SPECS,
+    MOCKS,
     PART,
     PART_HOLDS,
     PART_HOLDS_CLASSES,
@@ -20,6 +24,7 @@ from xarch.modules.spec.domain.profile_keys import (
     RETIRED,
     RULE_ID,
     SCOPES,
+    TESTING,
     TIER,
     TIER_IMPORTS,
     Retired,
@@ -83,7 +88,11 @@ def test_the_names_retired_are_tier_the_old_names_of_never_and_its_keys_written_
         Retired(TIER, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
         Retired(TIER, "may_also_import", "moved in 0.3.0: write imports: {also: [...]}"),
         Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
-        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"))
+        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
+        Retired(TESTING, "table", "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"),
+        Retired(TESTING, "functions", 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'),
+        Retired(MOCKS, "spec_keywords", "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"),
+        Retired(MOCKS, "spec_position", "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"))
 
 
 def test_holds_opens_a_scope_of_kinds_each_opening_a_scope_of_the_settings_it_takes():
@@ -180,3 +189,36 @@ def test_the_tier_import_keys_need_what_the_keys_they_replace_needed():
         "tiers.<tier>.imports.also": imports}
     assert not [address for address in NEEDS if address.startswith("tiers.<tier>.") and address.count(".") == 2
                 and address.rsplit(".", 1)[1] in ("may_import", "may_also_import", "must_import", "types_only")]
+
+
+def test_the_forms_that_declare_a_test_are_a_list_scope_of_function_call_title_and_body_and_functions_is_no_key():
+    assert SCOPES[DECLARED] == "testing.declared[]"
+    assert [key.name for key in KEYS if key.scope == DECLARED] == ["function", "call", "title", "body"]
+    assert [key.name for key in KEYS if key.scope == TESTING] == ["preset", "beside", "files", "declared", "globals",
+                                                                  "skips", "tables", "mocks"]
+    assert [(key.required, key.opens) for key in KEYS if (key.scope, key.name) == (TESTING, "declared")] == [
+        (True, DECLARED)]
+
+
+def test_the_ways_a_mock_names_its_spec_are_a_required_list_scope_of_keyword_position_and_type_argument():
+    assert SCOPES[MOCK_SPECS] == "testing.mocks.specs[]"
+    assert [key.name for key in KEYS if key.scope == MOCKS] == ["calls", "autospec", "specs", "fixtures"]
+    assert [key.name for key in KEYS if key.scope == MOCK_SPECS] == ["keyword", "position", "type_argument"]
+    assert [(key.required, key.opens, key.rules) for key in KEYS if (key.scope, key.name) == (MOCKS, "specs")] == [
+        (True, MOCK_SPECS, ("stand-ins",))]
+    assert {key.name: key.rules for key in KEYS if key.scope == MOCK_SPECS} == dict.fromkeys(
+        ("keyword", "position", "type_argument"), ("stand-ins",))
+    assert NEEDS["testing.mocks.specs[].type_argument"] == ("call.type_arguments",)
+
+
+def test_testing_names_its_preset_by_a_key_that_is_not_required_and_offers_the_presets():
+    held = {key.name: key for key in KEYS if key.scope == TESTING}
+    assert (held["preset"].required, held["preset"].choices, held["preset"].rules) == (
+        False, CHOICE_PRESETS, ("tiers", "test-tree"))
+    assert (held["files"].required, held["declared"].required) == (True, True)
+
+
+def test_beside_is_a_setting_of_testing_that_is_not_required_offers_nothing_and_needs_no_fact():
+    held = {key.name: key for key in KEYS if key.scope == TESTING}
+    assert (held["beside"].required, held["beside"].choices, held["beside"].rules, held["beside"].needs,
+            held["beside"].opens) == (False, "", ("tiers", "test-tree"), (), "")

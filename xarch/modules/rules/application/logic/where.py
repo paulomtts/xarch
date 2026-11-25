@@ -118,7 +118,7 @@ def _mirror(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[tuple[
     whole_file = stem(profile.parts[part][-1], marks) is not None
     folder = steps[:-1] if is_source else steps
     sample = pattern.replace("*", SAMPLE) if pattern else f"{SAMPLE}{language.extension}"
-    tier = tested(profile, (*folder, sample)).tier
+    tier = tested(profile, (*folder, sample), False).tier
     if not pattern or not is_source or stands_for_folder(steps, marks):
         return folder, "", tier
     name = stem(steps[-1], marks) or ""
@@ -186,7 +186,7 @@ def _nearest(profile: Profile, steps: tuple[str, ...], exact: bool, app: str) ->
 
 
 def _test(profile: Profile, found: Resolved, tests: str, app: str) -> Placed:
-    where = tested(profile, found.steps)
+    where = tested(profile, found.steps, False)
     if where.is_fake:
         return FakePlace(found, _fakes(profile, tests), f"{tests}/", FAKE_NOTE)
     if where.tier is None:

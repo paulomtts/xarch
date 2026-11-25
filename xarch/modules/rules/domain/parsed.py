@@ -47,25 +47,28 @@ not follow (see Import.unresolved)."""
 @dataclass(frozen=True)
 class Call:
     """A call whose callee is a Ref, and the line it is on: its positional arguments and its keyword arguments as
-    (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs."""
+    (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs; types are the type
+    arguments it is given, in the order written, each a Ref as any name is."""
     line: int
     func: tuple[str, ...]
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
+    types: tuple[Ref, ...] = ()
 
 
 @dataclass(frozen=True)
 class ParameterCall:
     """A call of a method of a function's parameter, `<parameter>.<method>(...)`, and the line it is on: the names of
-    the parameter and of the method, and the arguments as a Call holds them. Only a parameter its function's
-    signature alone binds is read: one the body rebinds, or that is no function's parameter, is not."""
+    the parameter and of the method, and the arguments and the type arguments as a Call holds them. Only a parameter
+    its function's signature alone binds is read: one the body rebinds, or that is no function's parameter, is not."""
     line: int
     parameter: str
     method: str
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
+    types: tuple[Ref, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -155,23 +158,27 @@ class Constant:
 
 @dataclass(frozen=True)
 class Row:
-    """One element of the rows of a table, and the line it is on. param is whether it is a call of the table's row
-    (a bare tuple or anything else is not); id is its id keyword when that is a string literal, as written, else None;
-    cells holds the name that heads each positional value (the callee of a call, a bare name, the last name of an
-    attribute), None where a value has none."""
+    """One row of a table, and the line it is on. written is whether it is written the way the table's form writes a
+    row; id is its id when that is written as a literal text, as written, else None; cells holds, in column order, the
+    name that heads each value (the callee of a call, a bare name, the last name of a dotted one), None where a value
+    has none."""
     line: int
-    param: bool
+    written: bool
     id: str | None
     cells: tuple[str | None, ...]
 
 
 @dataclass(frozen=True)
 class Table:
-    """One table decorating a test function (the decorator the profile names), and the line it is on: its parameter names, and its rows
-    (None when the rows are neither a list or tuple literal nor the name of one assigned at the top of the file)."""
+    """One table of cases of a test function, and the line it is on: its columns, the names of the values each row
+    gives, in order; its rows, None when they cannot be read; form, the index from 0 of the form it was read by in the
+    framework's list of forms; and runs, the line of the statement of the test's own body that runs its rows, 0 when
+    none does."""
     line: int
     columns: tuple[str, ...]
     rows: tuple[Row, ...] | None
+    form: int
+    runs: int
 
 
 @dataclass(frozen=True)
@@ -241,6 +248,19 @@ class Function:
 
 
 @dataclass(frozen=True)
+class Test:
+    """A test a test file declares, in one of the forms of the framework's `testing.declared`: its line; its name, a
+    title's text when titled (a call form's; "" for a title that is no plain literal, and the test still counts), else
+    its function's name; form, the index of its form in that list; and body, the function whose mentions, asserts,
+    blocks, expressions and tables the checks read (for a function form, the very function among the file's)."""
+    line: int
+    name: str
+    form: int
+    titled: bool
+    body: Function
+
+
+@dataclass(frozen=True)
 class SourceFile:
     """A source file as parsed, never run: how it is shown (e.g. "app/kernel/x" and its ending), its path below the root, what
     it imports, its comments, its functions (at module level and in its classes), its unions, its calls, its
@@ -252,8 +272,11 @@ class SourceFile:
     binds at the top level by an assignment (see Constant). unmentioned holds, as (the line of the import, the name it
     takes), each name an import takes from a module that nothing else in the file mentions, in code or an annotation: a
     name it only passes on (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
-    top level and the methods of those classes, in the order of their first line (see Piece). error is how it fails to
-    parse, and then it holds nothing else."""
+    top level and the methods of those classes, in the order of their first line (see Piece). tests are the tests it
+    declares, as its reader reads them by the framework's forms (see Test): a function form's are also among its
+    functions, a call form's are not; a file read with no form holds none. beside: the file is a test that sits beside
+    the code it tests, below the app root (testing.beside); its path is below the app root, and it is no file of the
+    app's code. error is how it fails to parse, and then it holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -272,3 +295,5 @@ class SourceFile:
     constants: tuple[Constant, ...] = ()
     unmentioned: frozenset[tuple[int, str]] = frozenset()
     pieces: tuple[Piece, ...] = ()
+    tests: tuple[Test, ...] = ()
+    beside: bool = False

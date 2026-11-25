@@ -109,3 +109,16 @@ def test_the_rules_of_a_tier_s_imports_are_keyed_by_their_addresses_in_the_group
     assert "tiers.rendering.imports.types_only" in keys and "tiers.integration.imports.must" in keys
     assert "tiers; tiers.integration.imports.also" in keys
     assert not [key for key in keys if re.search(r"tiers\.[a-z]+\.(types_only|must_import|may_also_import)", key)]
+
+
+def test_the_tiers_rule_under_beside_says_why_a_test_beside_the_code_has_no_tier_before_the_mirrored_text():
+    near = replace(PROFILE, framework=replace(PROFILE.framework, beside=True))
+    first = expansion.book(near)["tiers"][0]
+    assert [(s.message, s.fix, [written(c) for c in s.when]) for s in first.sayings] == [
+        ("lies in no tier: its part is untested", "test the part with a tier, or move the test",
+         ["beside", "mirrors-a-part"]),
+        ("lies in no part", "test the part with a tier, or move the test", ["beside"]),
+        ("lies in no tier: no part's folder and no tier's `folder` is mirrored here",
+         "move it to the folder that mirrors its subject's path in the app, or into a tier's `folder`", [])]
+    assert [s.message for s in expansion.book(PROFILE)["tiers"][0].sayings] == [
+        "lies in no tier: no part's folder and no tier's `folder` is mirrored here"]

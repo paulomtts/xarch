@@ -1,0 +1,24 @@
+# A test-only framework that imitates Vitest-like tests: no profile names it and no reader reads it. It declares a test
+# in two forms, a function whose name starts with test (index 0, the form the hand-built tests of the rules use) and a
+# call of it or test, each or not, whose first argument is the test's title and whose second its body (index 1); it
+# binds expect without an import. It writes two forms of a table, a loop of the test's body over a list literal
+# (index 0) and a call that wraps the test (index 1), both with literal rows. The tests load it to show that the checks
+# read a test by its form and word a table by its form's slots and the language's writing, never by a framework's own
+# syntax.
+files: ["*.test.ts"]
+declared:
+  - function: "test*"
+  - call: ["vitest#it", "vitest#test", "vitest#it.each", "vitest#test.each"]
+    title: {position: 0}
+    body: {position: 1}
+globals: [expect]
+tables:
+  - loop: true
+    columns_from: bound
+    row: literal
+    id: {position: 0}
+  - call: ["vitest#it.each", "vitest#test.each"]
+    rows: {position: 0}
+    columns_from: fields
+    row: literal
+    id: {field: name}

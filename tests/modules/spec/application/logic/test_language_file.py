@@ -6,13 +6,23 @@ from pathlib import Path
 import pytest
 import yaml
 
+from tests.modules.spec.languages import BRACE
 from tests.modules.spec.languages import PYTHON as PYTHON_LANGUAGE
 from xarch.kernel.placement import Marks
 from xarch.modules.spec.application.logic.language_file import DOC, PARTIAL, first_language, language_of
 from xarch.modules.spec.domain.errors import InvalidArchitecture
 from xarch.modules.spec.domain.values import Language, StandardLists
-from xarch.profile_values.capabilities import EXACT, Supply
-from xarch.profile_values.language import BLOCK, LINE, CheckedLanguage, CommentForm, InterfaceMark, RecordMark
+from xarch.profile_values.capabilities import EXACT, FACTS, Supply
+from xarch.profile_values.language import (
+    BLOCK,
+    LINE,
+    CheckedLanguage,
+    CommentForm,
+    InterfaceMark,
+    RecordMark,
+    SpecWriting,
+    Writing,
+)
 
 NAME = r"[A-Za-z_]\w*"
 JOINS = {"name": NAME, "package": NAME, "member": "."}
@@ -33,7 +43,7 @@ LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
 KEYS_USED = ("branching, branching_expressions, cache, call, comments, directives, dynamic, encoding, extensions, "
              "immutable, importing, interface, member, name, namespace, nothing, package, package_files, private, "
-             "shebang, special, standard, supplies, title, unannotated")
+             "shebang, special, standard, supplies, title, unannotated, writing")
 """The keys of a data file, as the unknown-key text lists them."""
 COMMENTS = "comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}"
 EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
@@ -118,6 +128,12 @@ def test_a_token_that_is_not_what_its_key_takes_is_a_problem(given, problem):
     assert [p.removeprefix("presets/language/odd.yaml: ").split(":")[0] for p in caught.value.problems] == [
         problem.split(":")[0]]
     assert caught.value.problems[0].removeprefix("presets/language/odd.yaml: ").startswith(problem)
+
+
+def test_a_data_file_that_supplies_the_fact_of_tables_split_by_form_is_refused_as_supplying_an_unknown_fact():
+    assert refused(DOCUMENT | {"supplies": {"function.tables": "exact"}}) == [
+        f"supplies: 'function.tables' is not a fact a check reads: use {', '.join(sorted(FACTS))}"]
+    assert "function.tables.call" in sorted(FACTS)
 
 
 def test_a_special_name_that_is_no_regular_expression_says_why():
@@ -544,3 +560,66 @@ def test_python_supplies_public_exactly_right_after_comment_doc_and_keeps_its_pr
 def test_a_test_only_language_gives_no_private_prefix_its_reader_saying_which_names_are_public(path):
     document = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert "private" not in document and language_of(path.stem, document).checked.private == ""
+
+
+MAPPING = ("writing: must be a mapping {call, keyword, field, specs}: how a row of a table of cases is written, and "
+           "how a call that builds a mock names its spec")
+CALL = "writing.call: must be a line holding {callee}"
+KEYWORD = "writing.keyword: must be a line holding {callee}, {keyword} and {text}"
+FIELD = "writing.field: must be a line holding {field} and {text}"
+SPECS_MAPPING = ("writing.specs: must be a mapping {keyword, position, type_argument}: how a call that builds a mock "
+                 "names its spec")
+SPEC_KEYWORD = "writing.specs.keyword: must be a line holding {callee}, {keyword} and {value}"
+SPEC_PLACED = "writing.specs.{key}: must be a line holding {{callee}}, {{before}} and {{value}}"
+
+
+def test_python_writes_how_a_row_call_and_a_row_id_given_by_a_keyword_are_written_and_a_spec_by_keyword_or_position():
+    assert PYTHON_LANGUAGE.checked.writing == Writing(
+        call="{callee}(...)", keyword='{callee}(..., {keyword}="{text}")',
+        specs=SpecWriting(keyword="{callee}({keyword}={value})", position="{callee}({before}{value})"))
+
+
+def test_the_typescript_like_test_only_language_writes_a_spec_by_a_type_argument_alone():
+    assert BRACE.checked.writing.specs == SpecWriting(type_argument="{callee}<{before}{value}>()")
+
+
+def test_a_language_whose_file_writes_no_templates_loads_with_empty_ones():
+    assert language_of("pascal", DOCUMENT).checked.writing == Writing()
+
+
+def test_the_templates_a_data_file_writes_are_read_braces_and_all():
+    field = '{..., {field}: "{text}"}'
+    assert language_of("pascal", DOCUMENT | {"writing": {"field": field}}).checked.writing == Writing(field=field)
+
+
+@pytest.mark.parametrize("writing, expected", [
+    pytest.param("{callee}(...)", [MAPPING], id="a text is no mapping"),
+    pytest.param({"row": "x"}, ["writing: unknown key 'row': use call, keyword, field, specs"], id="an unknown key"),
+    pytest.param({"row": "x", "cell": "y"}, ["writing: unknown keys 'cell', 'row': use call, keyword, field, specs"],
+                 id="two unknown keys are said together"),
+    pytest.param({"call": "call()"}, [CALL], id="a call template without its callee"),
+    pytest.param({"call": "{callee}\n(...)"}, [CALL], id="a call template over two lines"),
+    pytest.param({"call": 3}, [CALL], id="a call template that is no text"),
+    pytest.param({"keyword": "{callee}(..., {keyword}=x)"}, [KEYWORD], id="a keyword template without its text"),
+    pytest.param({"field": "{text}"}, [FIELD], id="a field template without its field"),
+    pytest.param({"specs": "{callee}<{value}>()"}, [SPECS_MAPPING], id="specs that are no mapping"),
+    pytest.param({"specs": {"generic": "x"}},
+                 ["writing.specs: unknown key 'generic': use keyword, position, type_argument"],
+                 id="an unknown key of specs"),
+    pytest.param({"specs": {"keyword": "{callee}({value})"}}, [SPEC_KEYWORD], id="a keyword template without its keyword"),
+    pytest.param({"specs": {"position": "{callee}({value})"}}, [SPEC_PLACED.format(key="position")],
+                 id="a position template without the places before it"),
+    pytest.param({"specs": {"type_argument": "{callee}<{before}>()"}}, [SPEC_PLACED.format(key="type_argument")],
+                 id="a type argument template without its value"),
+    pytest.param({"specs": {"type_argument": "{callee}<\n{before}{value}>()"}}, [SPEC_PLACED.format(key="type_argument")],
+                 id="a spec template over two lines"),
+])
+def test_a_bad_writing_is_refused(writing, expected):
+    assert refused(DOCUMENT | {"writing": writing}) == expected
+
+
+def test_the_spec_templates_a_data_file_writes_are_read_each_under_its_form():
+    specs = {"keyword": "{callee}({keyword}: {value})", "position": "{callee}({before}{value})",
+             "type_argument": "{callee}<{before}{value}>()"}
+    assert language_of("pascal", DOCUMENT | {"writing": {"specs": specs}}).checked.writing == Writing(
+        specs=SpecWriting(**specs))

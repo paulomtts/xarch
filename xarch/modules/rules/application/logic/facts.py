@@ -23,7 +23,8 @@ turns its language's imports and names into such paths, and a fact into the app 
                         the app's
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
                         root and at where that sits (None when no part and no folder of the layout governs it), name
-                        the name it takes when that is no file; a test's relative imports are its own and none is one
+                        the name it takes when that is no file; a test's relative imports are its own and none is one,
+                        but a test beside the code reads them from its own package in the app
     import-into-tests   each import of a test file into the tests' own package, the target it reaches below the tests
                         root
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
@@ -92,12 +93,13 @@ _PUBLIC = frozenset({"public"})
 def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
              tests_root: str = "", rules: Iterable[Rule] | None = None, unread: Iterable[SourceFile] = ()) -> Facts:
     """The facts of the app's files, below the root package root, then of the files of the app that are not read
-    (unread), then of the test files, below the package tests_root: every kind of each file, or (rules given) the
-    kinds the rules whose scope holds the file read."""
+    (unread), then of the test files, below the package tests_root, a test beside the code below root: every kind of
+    each file, or (rules given) the kinds the rules whose scope holds the file read."""
     marks = profile.language.marks
     app, tests = [(f, *dotted(f.path, marks)) for f in app], [(f, *dotted(f.path, marks)) for f in tests]
     known = frozenset(steps for f, steps, _ in app if f.error is None)
     known_tests = frozenset(steps for f, steps, _ in tests if f.error is None)
+    near = frozenset(steps for f, steps, _ in tests if f.beside and f.error is None)
     cache: Placements = {}
     parsed = [(f, steps) for f, steps, _ in app if f.error is None]
     defined = Defined(root, {(root, *steps, c.name): _placed(profile, cache, steps) for f, steps in parsed
@@ -113,7 +115,7 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
     placed += [_tested(file, steps, package, profile) for file, steps, package in tests]
     bare = Facts((), root, tests_root, known, known_tests,
                  frozenset(r.steps for r in placed if r.in_tests and r.is_test and r.file.error is None),
-                 {r.steps: r.tier for r in placed if not r.in_tests and r.tier and r.file.error is None})
+                 {r.steps: r.tier for r in placed if not r.in_tests and r.tier and r.file.error is None}, near)
     rules = tuple(rules) if rules is not None else None
     read = tuple(replace(r, facts={kind: _facts(kind, r, profile, cache, defined, bare)
                                    for kind in (KINDS if rules is None else _read(r, rules, bare, profile))})
@@ -128,7 +130,7 @@ def _covered(read: Read, covered: dict[str, str]) -> Read:
 
 
 def _tested(file: SourceFile, steps: tuple[str, ...], package: bool, profile: Profile) -> Read:
-    where = tested(profile, file.path)
+    where = tested(profile, file.path, file.beside)
     return Read(file, steps, package, True, None, where.tier.name if where.tier is not None else "", where.instance,
                 where.own, where.parts, where.is_test, where.is_fake)
 
@@ -206,15 +208,32 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(_references(file, profile, cache, defined))
         case "import-into-app" if read.in_tests:
             return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target))
-                         for line, target in targets((i for i in file.imports if not i.relative), (), facts.known,
-                                                     root))
+                         for line, target in targets(file.imports if file.beside else
+                                                     (i for i in file.imports if not i.relative),
+                                                     package if file.beside else (), facts.known | facts.beside, root)
+                         if target not in facts.beside)
         case "import-into-app":
             return tuple(Fact("import-into-app", line, name=name, target=target, at=_placed(profile, cache, target))
                          for line, target, name in named_targets(file.imports, package, facts.known, root))
         case "import-into-tests":
-            return tuple(Fact("import-into-tests", line, target=target) for line, target in
-                         targets(file.imports, package, facts.known_tests, facts.tests_root)) if read.in_tests else ()
+            return tuple(Fact("import-into-tests", line, target=target)
+                         for line, target in _into_tests(read, package, facts)) if read.in_tests else ()
     raise ValueError(f"no kind of fact is named {kind!r}")
+
+
+def _into_tests(read: Read, package: tuple[str, ...], facts: Facts) -> list[tuple[int, tuple[str, ...]]]:
+    """What a test's imports reach of the test code: for a test below the tests root, what they reach below it, its
+    relative imports read from its own package; for a test beside the code, what its absolute imports reach below the
+    tests root (the fakes, which its tier may import only when it tests a part they stand in for, and any other test
+    code, which it may not import from outside its own folder); then, for any test, the tests beside the code they
+    reach, read below the app's root, a relative import read from its own package only for a test beside the code."""
+    imports = read.file.imports
+    beside = read.file.beside
+    own = list(targets(tuple(i for i in imports if not i.relative) if beside else imports, () if beside else package,
+                       facts.known_tests, facts.tests_root))
+    near = imports if beside else tuple(i for i in imports if not i.relative)
+    return [*own, *((line, target) for line, target in targets(near, package, facts.beside, facts.root)
+                    if target in facts.beside)]
 
 
 def _references(file: SourceFile, profile: Profile, cache: Placements, defined: Defined) -> Iterator[Fact]:

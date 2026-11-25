@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.spec.languages import PYTHON
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import PYTEST_TABLE, covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.language_file import PARTIAL
 from xarch.modules.spec.application.logic.profile_needs import refused, short
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
@@ -17,7 +17,7 @@ TOY = replace(PYTHON, name="toy", checked=replace(
     PYTHON.checked, title="Toy",
     supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
               Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"),
-              Supply("public", EXACT))))
+              Supply("public", EXACT), Supply("test.function", EXACT))))
 LANGUAGES = {"toy": TOY}
 FLAT = replace(PYTHON, name="flat", checked=replace(
     PYTHON.checked, title="Flat", package_files=(),
@@ -58,7 +58,7 @@ def services(**keys) -> dict:
 
 def tiered(**keys) -> dict:
     """layered() in toy, with one tier, unit, that tests every part, its keys the ones given."""
-    document = layered(language="toy", testing={"files": ["test_*.py"], "functions": "test_*"}, tiers={"unit": keys})
+    document = layered(language="toy", testing={"files": ["test_*.py"], "declared": [{"function": "test_*"}]}, tiers={"unit": keys})
     for spec in document["parts"].values():
         spec["tests"] = "unit"
     return document
@@ -126,14 +126,16 @@ def test_a_language_whose_data_file_says_nothing_of_its_reader_holds_no_key_to_i
                   languages={"toy": silent}).approximate == ()
 
 
-def test_python_supplies_every_fact_a_bundled_check_reads():
-    assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {fact: EXACT for fact in FACTS}
+def test_python_supplies_every_fact_a_bundled_check_reads_but_the_tables_and_the_tests_of_a_call_and_its_type_arguments():
+    assert {supply.fact: supply.grade for supply in PYTHON.checked.supplies} == {
+        fact: EXACT for fact in FACTS if fact not in ("function.tables.call", "test.call", "call.type_arguments")}
 
 
 def test_the_keys_a_profile_sets_are_found_in_every_scope_and_through_a_testing_preset_each_once():
     document, presets = everywhere()
     found = short(document, presets, PARTLY)
-    configured = [("testing.skips", "testing.skips"), ("testing.table", "testing.table"),
+    configured = [("testing.declared.0.function", "testing.declared[].function"),
+                  ("testing.skips", "testing.skips"), ("testing.tables.0.decorator", "testing.tables[].decorator"),
                   ("testing.mocks", "testing.mocks"), ("parts.api.imports.may", "parts.<part>.imports.may"),
                   ("parts.service.imports.may", "parts.<part>.imports.may"), ("parts.service.holds", "parts.<part>.holds"),
                   ("parts.service.holds.classes", "parts.<part>.holds.classes"),
@@ -277,7 +279,9 @@ def test_a_key_of_a_guard_written_with_no_value_configures_nothing():
 
 
 @pytest.mark.parametrize("testing", [pytest.param("nosuch", id="a name that is no preset"),
-                                     pytest.param(3, id="a number"), pytest.param(["pytest"], id="a list")])
+                                     pytest.param(3, id="a number"), pytest.param(["pytest"], id="a list"),
+                                     pytest.param({"preset": "nosuch"}, id="a map naming no preset"),
+                                     pytest.param({"preset": 3}, id="a map whose preset is no name")])
 def test_a_testing_that_names_no_preset_and_is_no_mapping_walks_nothing(testing):
     assert short(layered(language="toy", testing=testing), {"pytest": {"skips": ["x"]}}, TOY) == []
 
@@ -286,6 +290,16 @@ def test_a_testing_that_names_a_preset_is_walked_as_the_preset():
     found = short(layered(language="toy", testing="pytest"), {"pytest": {"skips": ["x"]}}, TOY)
     assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
                                                              ("testing.skips", "import.resolved")]
+
+
+def test_a_testing_map_that_names_a_preset_is_walked_as_the_preset():
+    found = short(layered(language="toy", testing={"preset": "pytest"}), {"pytest": {"skips": ["x"]}}, TOY)
+    assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
+                                                             ("testing.skips", "import.resolved")]
+
+
+def test_a_key_written_beside_a_preset_is_not_walked():
+    assert short(layered(language="toy", testing={"preset": "pytest", "skips": ["x"]}), {"pytest": {}}, TOY) == []
 
 
 def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():
@@ -538,3 +552,207 @@ def test_must_and_libraries_fall_short_at_their_new_addresses():
     found = {(item.address, item.fact) for item in short(document, {}, no_standard)}
     assert {("parts.store.imports.must", "import.standard"),
             ("parts.store.imports.libraries", "import.standard")} <= found
+
+
+def test_a_decorator_form_needs_the_tables_of_cases_a_mark_holds_at_its_index_and_testing_tables_needs_none():
+    document = layered(language="toy", testing={"files": ["test_*.py"], "declared": [{"function": "test_*"}], "tables": [PYTEST_TABLE]})
+    found = problems(document, languages=LANGUAGES)
+    assert refusal("testing.tables.0.decorator", "function.tables.decorator") in found
+    assert [problem for problem in found if problem.startswith("layered.yaml: testing.tables: its check reads")] == []
+
+
+def test_each_holder_of_a_table_form_needs_its_own_fact_and_the_keys_that_read_tables_need_no_table_fact():
+    needs = {key.address: key.needs for key in KEYS}
+    assert {address: needs[address] for address in (
+        "testing.tables", "testing.tables[].decorator", "testing.tables[].call", "testing.tables[].loop",
+        "testing.tables[].columns_from", "testing.tables[].rows", "testing.tables[].row", "testing.tables[].id")} == {
+        "testing.tables": (), "testing.tables[].decorator": ("function.tables.decorator",),
+        "testing.tables[].call": ("function.tables.call",), "testing.tables[].loop": ("function.tables.loop",),
+        "testing.tables[].columns_from": (), "testing.tables[].rows": (), "testing.tables[].row": (),
+        "testing.tables[].id": ()}
+    assert needs["tiers.<tier>.plain_tables"] == ("function.blocks", "function.expressions")
+    assert needs["guards.scenario-coverage"] == ("union", "function.blocks", "function.expressions", "function.asserts",
+                                                 "function.mentions")
+
+
+FILES = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
+CALL_FORM = {"call": ["checks.each"], "columns_from": {"position": 0}, "rows": {"position": 1}, "row": "checks.case",
+             "id": {"keyword": "id"}}
+"""A form whose rows a call that makes the test holds."""
+LOOP_FORM = {"loop": True, "columns_from": "bound", "row": "literal", "id": {"position": 0}}
+"""A form whose rows a loop of the test's body runs."""
+SCENARIO = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
+            "file": "test_{name:snake}.py"}
+UNTABLED = replace(PYTHON, checked=replace(PYTHON.checked, title="Untabled", supplies=tuple(
+    Supply(fact, EXACT) for fact in FACTS if not fact.startswith("function.tables."))))
+"""Python, its reader supplying every fact but the tables of cases of every form."""
+LOOP_MISSED = "a table built in a loop is not read"
+LOOSE = replace(PYTHON, checked=replace(PYTHON.checked, supplies=tuple(
+    Supply(supply.fact, PARTIAL, LOOP_MISSED) if supply.fact == "function.tables.decorator" else supply
+    for supply in PYTHON.checked.supplies)))
+"""Python, its reader supplying the tables a mark holds only partly."""
+
+
+def framed(*tables) -> dict:
+    """layered(), its framework writing the forms given."""
+    return layered(testing=FILES | {"tables": list(tables)})
+
+
+def unread(index: int, holder: str) -> str:
+    """The refusal of the holder of the entry at the index, under Python, which does not read its form."""
+    fact, address = f"function.tables.{holder}", f"testing.tables.{index}.{holder}"
+    return (f"layered.yaml: {address}: its check reads {fact} ({FACTS[fact]}), which the language python does not "
+            f"supply: drop {address}, or check the app with a language whose reader supplies {fact}")
+
+
+def test_a_call_form_under_python_is_refused_at_its_index_for_the_tables_of_cases_a_call_holds():
+    assert problems(framed(CALL_FORM)) == [
+        "layered.yaml: testing.tables.0.call: its check reads function.tables.call (the tables of cases a call that "
+        "makes or wraps a test function holds), which the language python does not supply: drop testing.tables.0.call, "
+        "or check the app with a language whose reader supplies function.tables.call"]
+
+
+def test_a_decorator_form_under_python_loads():
+    assert parsed(framed(PYTEST_TABLE)).approximate == ()
+
+
+def test_a_loop_form_under_python_loads():
+    assert parsed(framed(LOOP_FORM)).approximate == ()
+
+
+def test_a_loop_form_written_after_a_call_form_loads_and_the_call_form_is_still_refused_at_its_own_index():
+    assert problems(framed(CALL_FORM, LOOP_FORM)) == [unread(0, "call")]
+
+
+def test_a_call_form_written_after_the_decorator_form_is_refused_at_its_own_index_and_the_decorator_form_is_not():
+    found = problems(framed(PYTEST_TABLE, CALL_FORM))
+    assert found == [unread(1, "call")]
+    assert [problem for problem in found if problem.startswith("layered.yaml: testing.tables.0.")] == []
+
+
+def test_the_keys_that_read_tables_add_no_table_fact_of_their_own_beside_the_form_that_needs_it():
+    document = covered(guards={"scenario-coverage": SCENARIO})
+    document["tiers"]["unit"]["plain_tables"] = True
+    assert problems(document, languages={"python": UNTABLED}) == [unread(0, "decorator")]
+
+
+def test_a_form_whose_tables_the_language_supplies_partly_loads_and_is_approximate_at_its_index():
+    assert parsed(covered(), languages={"python": LOOSE}).approximate == (
+        Shortfall("testing.tables.0.decorator", "function.tables.decorator", LOOP_MISSED),)
+
+
+def test_an_entry_with_two_holders_is_refused_by_the_form_loader_and_for_the_holder_python_does_not_read():
+    assert sorted(problems(framed(PYTEST_TABLE | {"call": ["checks.each"]}))) == sorted([
+        unread(0, "call"), "layered.yaml: testing.tables.0: must have exactly one of decorator, call or loop"])
+
+
+def test_an_entry_that_is_no_mapping_still_counts_so_a_later_call_form_keeps_its_index():
+    assert sorted(problems(framed("pytest.mark.parametrize", CALL_FORM))) == sorted([
+        unread(1, "call"), "layered.yaml: testing.tables.0: must be a mapping with one of decorator, call or loop"])
+
+
+def test_a_call_form_written_in_a_testing_preset_is_refused_at_its_index():
+    assert problems(layered(testing="each"), presets={"each": FILES | {"tables": [CALL_FORM]}}) == [unread(0, "call")]
+
+
+@pytest.mark.parametrize("testing", [pytest.param(FILES | {"tables": []}, id="an empty list of forms"),
+                                     pytest.param(FILES, id="no tables")])
+def test_a_framework_that_writes_no_form_needs_no_table_fact(testing):
+    assert parsed(layered(testing=testing)).framework.tables == ()
+
+
+def test_a_holder_written_as_null_adds_no_table_fact_problem():
+    found = problems(framed(PYTEST_TABLE | {"call": None}))
+    assert found and [problem for problem in found if "function.tables" in problem] == []
+
+
+def test_each_form_that_declares_a_test_needs_its_own_fact_and_declared_globals_and_the_slots_need_none():
+    needs = {key.address: key.needs for key in KEYS}
+    assert {address: needs[address] for address in (
+        "testing.declared", "testing.declared[].function", "testing.declared[].call", "testing.declared[].title",
+        "testing.declared[].body", "testing.globals")} == {
+        "testing.declared": (), "testing.declared[].function": ("test.function",),
+        "testing.declared[].call": ("test.call",), "testing.declared[].title": (), "testing.declared[].body": (),
+        "testing.globals": ()}
+
+
+DECLARED_CALL = {"call": ["it"], "title": {"position": 0}, "body": {"position": 1}}
+"""A form that declares a test by a call of it, its title and its body the call's first two arguments."""
+CALL_REFUSED = ("layered.yaml: testing.declared.0.call: its check reads test.call (the tests a call with a title "
+                "declares), which the language python does not supply: drop testing.declared.0.call, or check the app "
+                "with a language whose reader supplies test.call")
+
+
+def test_a_call_form_that_declares_a_test_under_python_is_refused_at_its_index():
+    assert problems(layered(testing={"files": ["test_*.py"], "declared": [DECLARED_CALL]})) == [CALL_REFUSED]
+
+
+def test_a_call_form_in_a_testing_preset_is_refused_at_its_index():
+    presets = {"each": {"files": ["test_*.py"], "declared": [DECLARED_CALL]}}
+    assert problems(layered(testing="each"), presets=presets) == [CALL_REFUSED]
+
+
+def test_a_function_form_that_declares_a_test_under_python_loads():
+    assert parsed(layered(testing=FILES)).approximate == ()
+
+
+def test_beside_written_beside_a_preset_needs_nothing_and_the_preset_is_walked():
+    found = short(layered(language="toy", testing={"preset": "pytest", "beside": True}), {"pytest": {"skips": ["x"]}},
+                  TOY)
+    assert [(item.address, item.fact) for item in found] == [("testing.skips", "use"),
+                                                             ("testing.skips", "import.resolved")]
+
+
+CALLS_MISSED = "a table a call held in a name holds is not read"
+PARTLY_CALLED = replace(PYTHON, checked=replace(PYTHON.checked, supplies=(
+    *PYTHON.checked.supplies, Supply("function.tables.call", PARTIAL, CALLS_MISSED))))
+"""Python, its reader supplying the tables a call holds partly, and every other fact as Python's does."""
+
+
+def test_a_call_form_whose_tables_the_language_supplies_partly_is_still_checked_against_the_declared_calls():
+    assert problems(framed(CALL_FORM), languages={"python": PARTLY_CALLED}) == [
+        "layered.yaml: testing.tables.0.call: `checks.each` declares no test: list it under a `call` form of "
+        "`testing.declared`"]
+
+
+def test_a_call_form_whose_tables_the_language_supplies_partly_loads_once_its_callee_is_declared():
+    declared = [*FILES["declared"], {"call": ["checks.each"], "title": {"position": 0}, "body": {"position": 1}}]
+    document = layered(testing=FILES | {"declared": declared, "tables": [CALL_FORM]})
+    languages = {"python": replace(PARTLY_CALLED, checked=replace(PARTLY_CALLED.checked, supplies=(
+        *PARTLY_CALLED.checked.supplies, Supply("test.call", EXACT))))}
+    assert parsed(document, languages=languages).approximate == (
+        Shortfall("testing.tables.0.call", "function.tables.call", CALLS_MISSED),)
+
+
+TYPE_ARGUMENT_REFUSED = (
+    "layered.yaml: testing.mocks.specs.{index}.type_argument: its check reads call.type_arguments (the type arguments "
+    "a call is given), which the language python does not supply: drop testing.mocks.specs.{index}.type_argument, or "
+    "check the app with a language whose reader supplies call.type_arguments")
+
+
+def test_a_mock_spec_by_a_type_argument_needs_the_type_arguments_of_a_call_and_the_other_entries_need_nothing():
+    needs = {key.address: key.needs for key in KEYS}
+    assert {address: needs[address] for address in (
+        "testing.mocks.specs", "testing.mocks.specs[].keyword", "testing.mocks.specs[].position",
+        "testing.mocks.specs[].type_argument")} == {
+        "testing.mocks.specs": (), "testing.mocks.specs[].keyword": (), "testing.mocks.specs[].position": (),
+        "testing.mocks.specs[].type_argument": ("call.type_arguments",)}
+    assert FACTS["call.type_arguments"] == "the type arguments a call is given"
+
+
+def test_a_type_argument_entry_under_python_gets_the_needs_refusal_alone_at_its_index():
+    mocks = {"calls": ["unittest.mock.Mock"], "specs": [{"keyword": "spec"}, {"type_argument": 0}]}
+    assert problems(layered(testing=FILES | {"mocks": mocks})) == [TYPE_ARGUMENT_REFUSED.format(index=1)]
+
+
+def test_a_type_argument_entry_of_a_testing_preset_is_refused_at_the_same_index():
+    mocks = {"calls": ["unittest.mock.Mock"], "specs": [{"type_argument": 0}]}
+    assert problems(layered(testing="typed"), presets={"typed": FILES | {"mocks": mocks}}) == [
+        TYPE_ARGUMENT_REFUSED.format(index=0)]
+
+
+def test_a_type_argument_entry_under_python_with_a_bad_place_gets_the_needs_refusal_and_the_problem_of_its_place():
+    mocks = {"calls": ["unittest.mock.Mock"], "specs": [{"type_argument": -1}]}
+    assert problems(layered(testing=FILES | {"mocks": mocks})) == [
+        TYPE_ARGUMENT_REFUSED.format(index=0),
+        "layered.yaml: testing.mocks.specs.0.type_argument: must be a whole number, at least 0, such as 0"]

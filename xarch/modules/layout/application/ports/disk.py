@@ -23,3 +23,8 @@ class Disk(Protocol):
         """Every folder at any depth inside the repeating folder each of root that the disk shows (none it hides), as its
         path below it; [] if there is none."""
         ...
+
+    def files(self, root: Path) -> list[tuple[str, ...]]:
+        """Every file below root, at any depth, that the disk shows (none it hides, nor any in a folder it hides), as
+        its path below it, sorted; [] if root is no folder."""
+        ...

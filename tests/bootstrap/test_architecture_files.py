@@ -161,7 +161,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   "tests folder, the parts they stand in for, and how a fake's name starts",
                   'guards: must be a mapping of guard names to their parameters, such as {no-comments: {}}',
                   'missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, or '
-                  'testing: {files: [<pattern>, ...], functions: <pattern>}',
+                  'testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}',
                   'docs: must be a mapping of {entry, pages, naming, examples, example_notes}',
                   'files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}',
                   'excluded: must be a mapping of folders below the app to the reason each is not its source, such as '
@@ -223,7 +223,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'tiers.integ.docs.example: must be a path in an example project, such as src/billing/charge.py',
                   'tiers.integ.docs.helpers: must be a list of paths in an example project',
                   'missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, or '
-                  'testing: {files: [<pattern>, ...], functions: <pattern>}'],
+                  'testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}'],
                  id='tiers of the wrong shape'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\nfiles: {1: {from: 2}, x: [1], y: {z: 1}}\n',
                  ['files.1: must be a path of plain names below the project root',

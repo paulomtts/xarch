@@ -6,7 +6,7 @@ import pytest
 
 from tests.fakes.filesystem import FakeDisk
 from tests.fakes.layout_skeleton import FakeSkeleton
-from tests.modules.layout.builders import PYTHON_NAMING
+from tests.modules.layout.builders import BESIDE, PYTHON_NAMING
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
 from xarch.modules.layout.contract import CheckStructure
@@ -152,3 +152,39 @@ def test_a_folder_below_the_tests_of_each_repeating_folder_must_mirror_an_app_fo
         "tests/modules/gone: mirrors no folder of the app (app/modules/gone)",
         "tests/plugins/ghost: mirrors no folder of the app (app/plugins/ghost)",
         "tests/plugins/seo/other: mirrors no folder of the app (app/plugins/seo/other)"]
+
+
+NEAR = FakeSkeleton([("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), ("platform",), ("cli",),
+                     ("cli", "commands")],
+                    {("modules",): [(("contract",), True), (("domain",), True),
+                                    (("application", "controller.py"), False), (("application", "services"), True),
+                                    (("application", "logic"), True), (("application", "ports"), True),
+                                    (("adapters",), True)]}, naming=PYTHON_NAMING,
+                    beside=BESIDE)
+
+
+def run_beside(disk: FakeDisk) -> list[str]:
+    controller = LayoutController(StructureCheckService(disk, NEAR))
+    return [f"{v}: {v.fix}" for v in controller.check(CheckStructure(ROOT, "app", "cli", TESTS)).violations]
+
+
+def test_under_beside_a_test_below_the_tests_root_outside_its_kept_folders_is_reported():
+    tests = {TESTS / p for p in ["", "modules", "modules/docs", "modules/docs/application", "architecture", "fakes",
+                                 "modules/docs/__pycache__"]}
+    files = {TESTS / p for p in ["modules/docs/application/test_publish.py", "architecture/test_rules.py",
+                                 "fakes/repo.py", "fakes/test_fake.py", "conftest.py",
+                                 "modules/docs/__pycache__/test_publish.py"]}
+    assert run_beside(FakeDisk(TOP | MODULE | tests, {CONTROLLER} | files)) == [
+        "tests/modules/docs/application/test_publish.py: lies below the tests folder, but testing.beside keeps the "
+        "tests of a part beside its code: move it beside the code it tests"]
+
+
+def test_under_beside_a_folder_that_mirrors_nothing_is_not_reported():
+    tests = {TESTS / p for p in ["", "modules", "modules/ghost"]}
+    assert run_beside(FakeDisk(TOP | MODULE | tests, {CONTROLLER})) == []
+
+
+def test_under_beside_without_a_tests_root_nothing_below_it_is_read():
+    found = LayoutController(StructureCheckService(FakeDisk(TOP | MODULE, {CONTROLLER}), NEAR)).check(
+        CheckStructure(ROOT, "app", "cli")).violations
+    assert found == ()

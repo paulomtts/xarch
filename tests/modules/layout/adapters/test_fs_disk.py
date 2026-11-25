@@ -23,3 +23,14 @@ def test_the_disk_lists_the_instances_and_the_folders_of_a_repeating_folder(tmp_
     assert disk.instances(tmp_path, ("modules",)) == ["docs"]
     assert disk.below(tmp_path, ("modules",)) == [("docs",), ("docs", "domain")]
     assert (disk.instances(tmp_path, ("plugins",)), disk.below(tmp_path, ("plugins",))) == ([], [])
+
+
+def test_the_disk_lists_every_file_below_a_root_but_those_it_hides(tmp_path):
+    (tmp_path / "modules" / "docs").mkdir(parents=True)
+    (tmp_path / "modules" / "docs" / "test_a.py").write_text("")
+    (tmp_path / ".cache").mkdir()
+    (tmp_path / ".cache" / "test_b.py").write_text("")
+    (tmp_path / "conftest.py").write_text("")
+    disk = FsDisk(FileSystem())
+    assert disk.files(tmp_path) == [("conftest.py",), ("modules", "docs", "test_a.py")]
+    assert disk.files(tmp_path / "gone") == []

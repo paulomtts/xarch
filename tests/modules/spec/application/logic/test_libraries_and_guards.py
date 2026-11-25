@@ -8,9 +8,9 @@ from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.values import ClosedTree, NoComments, PackageOnly
-from xarch.profile_values.testing import CaseTable, ScenarioCoverage
+from xarch.profile_values.testing import ScenarioCoverage
 
-FILE = "test_{name}.py"
+FILE = "test_{name:snake}.py"
 SCENARIOS = {"results": "api", "tier": "integration", "suffix": "Result", "columns": ["given", "when", "then"],
              "file": FILE}
 FAKES = {"folder": "fakes", "for": ["store"]}
@@ -35,9 +35,7 @@ def test_guards_name_the_pre_built_checks_in_use_with_their_parameters_and_packa
     document["parts"]["api"]["package_only"] = True
     assert parsed(document).guards == (
         PackageOnly(("api",)), NoComments(),
-        ScenarioCoverage("api", "integration", "Outcome", ("state", "command", "outcome"),
-                         CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id",
-                                   ("argnames", "argvalues")), FILE))
+        ScenarioCoverage("api", "integration", "Outcome", ("state", "command", "outcome"), FILE))
     assert parsed(layered()).guards == ()
 
 

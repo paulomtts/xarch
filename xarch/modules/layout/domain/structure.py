@@ -32,3 +32,11 @@ class Naming:
     names: str = ""
     private: str = ""
 
+
+@dataclass(frozen=True)
+class Beside:
+    """Where the tests sit when every test of a part sits beside the code it tests (testing.beside): the patterns of a
+    test file's name, matched against the file name alone with `*` for any text, and the folders below the tests root
+    whose tests stay there (each tier's `folder`, and the fakes' folder)."""
+    files: tuple[str, ...]
+    kept: tuple[tuple[str, ...], ...]

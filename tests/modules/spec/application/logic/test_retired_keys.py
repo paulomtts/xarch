@@ -4,7 +4,7 @@ the address `profile explain` is typed with; every unknown key of a mapping, of 
 message for the others, which is unchanged. A table built for each test is set where the lookup reads it."""
 import pytest
 
-from tests.modules.spec.profiles import covered, layered, parsed, problems
+from tests.modules.spec.profiles import PRESETS, covered, layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic import key_lookup
 from xarch.modules.spec.application.logic.key_lookup import names_of, retired, retired_at, retired_value
@@ -40,7 +40,6 @@ from xarch.modules.spec.domain.profile_keys import (
     RULE_ID,
     SCENARIO_COVERAGE,
     SCOPES,
-    TABLE,
     TESTING,
     TIER,
     TIER_DOCS,
@@ -97,6 +96,13 @@ SWITCH_MOVED = "moved in 0.3.0: write uses: {apply_never: true}"
 BLOCK = "renamed in 0.3.0: write never"
 RULE = "renamed in 0.3.0: write never-use"
 IMPORT_RULE = "renamed in 0.3.0: write may-import"
+TABLE_MOVED = "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"
+FUNCTIONS_MOVED = 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'
+"""The hint of testing.functions, which testing.declared replaced in 0.3.0."""
+SPECS_MOVED = "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"
+OLD_TABLE = {"decorator": "pytest.mark.parametrize", "row": "pytest.param", "id": "id",
+             "keywords": ["argnames", "argvalues"]}
+"""testing.table as profiles wrote it before 0.3.0."""
 LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"
 SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
 CALLBACKS_MOVED = "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}"
@@ -157,6 +163,10 @@ HOLDS_CLASSES = "holds as one word was removed in 0.3.0: write holds: {classes: 
     pytest.param(TIER_IMPORTS, "types_only", "", id="types_only in a tier's imports, a key"),
     pytest.param(TIER_IMPORTS, "libraries", "", id="libraries in a tier's imports, only unknown"),
     pytest.param(PART_IMPORTS_MAY, "types_only", "", id="the mark, a key"),
+    pytest.param(TESTING, "table", TABLE_MOVED, id="the testing key table"),
+    pytest.param(MOCKS, "spec_keywords", SPECS_MOVED, id="the mocks key spec_keywords"),
+    pytest.param(MOCKS, "spec_position", SPECS_MOVED, id="the mocks key spec_position"),
+    pytest.param(MOCKS, "specs", "", id="the mocks key specs"),
 ])
 def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     assert retired(scope, name) == text
@@ -195,6 +205,10 @@ def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
     pytest.param("tiers.<tier>.may_also_import", "moved in 0.3.0: write imports: {also: [...]}",
                  id="tiers.<tier>.may_also_import"),
     pytest.param("tiers.imports.types_only", "", id="tiers.imports.types_only"),
+    pytest.param("testing.table", TABLE_MOVED, id="testing.table"),
+    pytest.param("testing.functions", FUNCTIONS_MOVED, id="testing.functions"),
+    pytest.param("testing.mocks.spec_keywords", SPECS_MOVED, id="testing.mocks.spec_keywords"),
+    pytest.param("testing.mocks.spec_position", SPECS_MOVED, id="testing.mocks.spec_position"),
 ])
 def test_the_shipped_table_answers_each_address_profile_explain_is_typed_with(address, text):
     assert retired_at(address) == text
@@ -393,7 +407,8 @@ def test_a_file_whose_only_unknown_keys_are_retired_gives_no_joined_problem(monk
     pytest.param(TIER, writing(covered(), "tiers", "unit"),
                  f"tiers.unit: unknown key 'banned': {RENAMED}; use {TIER_USE}", id="a tier"),
     pytest.param(TESTING, writing(covered(), "testing"),
-                 f"testing: unknown key 'banned': {RENAMED}; use files, functions, mocks, skips, table",
+                 f"testing: unknown key 'banned': {RENAMED}; use beside, declared, files, globals, mocks, preset, skips, "
+                 "tables",
                  id="testing, through framework_patterns"),
     pytest.param(FIXTURE, writing(covered(), "testing", "mocks", "fixtures", "mocker"),
                  f"testing.mocks.fixtures.mocker: unknown key 'banned': {RENAMED}; use autospec, calls",
@@ -417,8 +432,6 @@ def test_each_mapping_reads_the_entries_of_its_own_scope(monkeypatch, scope, doc
 @pytest.mark.parametrize("scope, document, problem", [
     pytest.param(MOCKS, writing(covered(), "testing", "mocks"),
                  "testing.mocks: unknown key 'banned'", id="testing.mocks"),
-    pytest.param(TABLE, writing(covered(), "testing", "table"),
-                 "testing.table: unknown key 'banned'", id="testing.table"),
     pytest.param(TIER_DOCS, writing(covered(tiers={"unit": {"proves": "a rule", "docs": {}},
                                                    "integration": {"proves": "a request"}}), "tiers", "unit", "docs"),
                  "tiers.unit.docs: unknown key 'banned'", id="a tier's docs"),
@@ -458,3 +471,39 @@ def test_the_examples_of_an_eval_have_no_scope_and_read_no_entry(monkeypatch):
     document["rule"]["examples"]["flagged2"] = {}
     assert problems(layered(evals=document)) == [
         "layered.yaml: evals.rule.examples: unknown key 'flagged2': use clean, flagged"]
+
+
+@pytest.mark.parametrize("testing, presets", [
+    pytest.param({"files": ["test_*.py"], "declared": [{"function": "test_*"}], "table": OLD_TABLE}, PRESETS, id="in an inline map"),
+    pytest.param("old", {"old": {"files": ["test_*.py"], "declared": [{"function": "test_*"}], "table": OLD_TABLE}},
+                 id="in a preset"),
+])
+def test_the_table_of_testing_is_refused_with_the_list_of_forms_that_replaces_it(testing, presets):
+    assert problems(layered(testing=testing), presets=presets) == [
+        f"layered.yaml: testing: unknown key 'table': {TABLE_MOVED}; use beside, declared, files, globals, mocks, preset, "
+        "skips, tables"]
+
+
+@pytest.mark.parametrize("testing, presets", [
+    pytest.param({"files": ["test_*.py"], "functions": "test_*", "declared": [{"function": "test_*"}]}, PRESETS,
+                 id="in an inline map"),
+    pytest.param("old", {"old": {"files": ["test_*.py"], "functions": "test_*", "declared": [{"function": "test_*"}]}},
+                 id="in a preset"),
+])
+def test_the_functions_of_testing_are_refused_with_the_forms_that_declare_a_test(testing, presets):
+    assert problems(layered(testing=testing), presets=presets) == [
+        "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
+        "use beside, declared, files, globals, mocks, preset, skips, tables"]
+
+
+def test_functions_written_in_place_of_declared_is_refused_with_its_hint_and_declared_is_missing():
+    assert problems(layered(testing={"files": ["test_*.py"], "functions": "test_*"})) == [
+        "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
+        "use beside, declared, files, globals, mocks, preset, skips, tables",
+        "layered.yaml: testing: missing `declared`"]
+
+
+def test_functions_beside_a_preset_is_refused_with_its_hint_alone():
+    assert problems(layered(testing={"preset": "pytest", "functions": "test_*"})) == [
+        "layered.yaml: testing: unknown key 'functions': moved in 0.3.0: write declared: [{function: \"<pattern>\"}]; "
+        "use beside, declared, files, globals, mocks, preset, skips, tables"]

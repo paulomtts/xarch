@@ -189,7 +189,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="a filter a link passes that applies to only some of the kinds of link"),
     pytest.param({"keep": c("sunny"), "mode": "fial", "sayings": say("{weather}")},
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
-                  "may-import-everything, below, relative, standard, reserved, "
+                  "may-import-everything, below, beside, relative, standard, reserved, "
                   "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, immutable, receiver, annotated-callable, unreadable, "
                   "directive, doc, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, "

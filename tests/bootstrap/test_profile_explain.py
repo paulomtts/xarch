@@ -7,8 +7,10 @@ from typer.testing import CliRunner
 
 from tests.bootstrap.project import bundled_profiles, retiring
 from xarch.bootstrap.app import app
-from xarch.bootstrap.wiring import build_controllers
+from xarch.bootstrap.wiring import build_controllers, load_architecture
 from xarch.modules.spec.domain.profile_keys import PART
+from xarch.profile_values.capabilities import FACTS
+from xarch.profile_values.testing import ScenarioCoverage
 
 runner = CliRunner()
 
@@ -349,3 +351,78 @@ def test_based_on_is_explained_as_a_bundled_name_or_a_profile_file_and_its_choic
     assert tuple(explained["choices"]) == bundled_profiles()
     text = runner.invoke(app, ["profile", "explain", "based_on"])
     assert text.exit_code == 0 and "the path of a profile file from this file's folder" in " ".join(text.output.split())
+
+
+def test_the_file_of_the_scenario_guard_is_explained_with_its_cases_and_its_example_loads(tmp_path):
+    key = json.loads(runner.invoke(app, ["profile", "explain", "guards.scenario-coverage.file", "--format", "json"]).output)
+    guard = json.loads(runner.invoke(app, ["profile", "explain", "guards.scenario-coverage", "--format", "json"]).output)
+    (tmp_path / "example.yaml").write_text("name: documents-app\n" + key["example"])
+    loaded = load_architecture(tmp_path / "example.yaml")
+    assert key["accepts"] == ("a name holding {name:<case>} once, <case> one of snake, kebab, camel, pascal, for the "
+                              "use case")
+    assert "(`{name:<case>}` is <Name> in that case: snake, kebab, camel or pascal)" in guard["accepts"]
+    assert [g.file for g in loaded.guards if isinstance(g, ScenarioCoverage)] == ["check_{name:snake}.py"]
+
+
+def test_the_table_of_testing_is_answered_from_the_table_of_retired_names():
+    found = runner.invoke(app, ["profile", "explain", "testing.table", "--format", "json"])
+    assert (found.exit_code, json.loads(found.output)["retired"]) == (
+        2, "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)")
+
+
+def test_the_functions_of_testing_are_answered_from_the_table_of_retired_names():
+    found = runner.invoke(app, ["profile", "explain", "testing.functions", "--format", "json"])
+    assert (found.exit_code, json.loads(found.output)["retired"]) == (
+        2, 'moved in 0.3.0: write declared: [{function: "<pattern>"}]')
+
+
+def test_the_preset_of_testing_is_explained_and_names_the_presets_xarch_ships():
+    result = runner.invoke(app, ["profile", "explain", "testing.preset"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "testing.preset"
+    assert "  what: the preset the framework is read from" in lines
+    assert "  one of: pytest" in lines
+    assert "    testing: {preset: pytest}" in lines
+
+
+def test_beside_of_testing_is_explained_with_an_example_that_writes_it():
+    result = runner.invoke(app, ["profile", "explain", "testing.beside"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "testing.beside"
+    assert "  what: whether every test of a part sits beside the code it tests" in lines
+    assert "      beside: true" in lines
+
+
+def test_a_holder_of_a_table_form_says_the_fact_of_its_form_and_whether_python_supplies_it():
+    call = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.call", "--format", "json"]).output)
+    assert call["needs"] == [{"fact": "function.tables.call", "meaning": FACTS["function.tables.call"], "grade": "absent",
+                              "note": None}]
+    text = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.call"]).output.split())
+    assert ("needs: function.tables.call: the facts of the source its check reads; Python supplies not "
+            "function.tables.call") in text
+    decorator = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.decorator"]).output.split())
+    assert ("needs: function.tables.decorator: the facts of the source its check reads, which Python supplies "
+            "exactly") in decorator
+
+
+def test_the_list_of_table_forms_needs_no_fact_of_its_own():
+    found = runner.invoke(app, ["profile", "explain", "testing.tables", "--format", "json"])
+    assert json.loads(found.output)["needs"] == []
+    text = runner.invoke(app, ["profile", "explain", "testing.tables"]).output
+    assert not any(line.startswith("  needs:") for line in text.splitlines())
+
+
+def test_the_loop_holder_of_a_table_form_says_python_supplies_its_fact_exactly():
+    loop = json.loads(runner.invoke(app, ["profile", "explain", "testing.tables.loop", "--format", "json"]).output)
+    assert loop["needs"] == [{"fact": "function.tables.loop", "meaning": FACTS["function.tables.loop"], "grade": "exact",
+                              "note": None}]
+    text = " ".join(runner.invoke(app, ["profile", "explain", "testing.tables.loop"]).output.split())
+    assert ("needs: function.tables.loop: the facts of the source its check reads, which Python supplies "
+            "exactly") in text
+
+
+def test_a_slot_of_a_form_that_declares_a_test_is_explained_by_the_key_without_an_index():
+    result = runner.invoke(app, ["profile", "explain", "testing.declared.call"])
+    assert result.exit_code == 0 and "the calls that declare a test" in result.output

@@ -9,7 +9,7 @@ from xarch.modules.spec.application.controller import SpecController
 from xarch.modules.spec.contract import CheckProfile, Loosened, Problem, ProfileChecked
 
 APP = Path("/p/app")
-PRESET = {"files": ["test_*.py"], "functions": "test_*"}
+PRESET = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 MINE = {"name": "mine", "testing": "kit", "parts": {
     "core": {"path": "core", "role": "rules", "uses": {"never": "pure"}},
     "store": {"path": "store", "role": "storage", "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
@@ -40,7 +40,7 @@ def test_a_profile_is_loaded_with_its_preset_read_from_the_files_port():
 
 def test_a_preset_the_files_port_does_not_hold_is_refused_listing_the_ones_it_does():
     assert problems(MINE | {"testing": "nope"}) == (
-        Problem("load", "mine.yaml: testing: no preset 'nope': use kit, or write the map {files, functions}"),)
+        Problem("load", "mine.yaml: testing: no preset 'nope': use kit, or write the map {files, declared}"),)
 
 
 def test_without_saying_so_a_profile_is_compared_with_the_bundled_one_of_highest_match():

@@ -46,7 +46,7 @@ class Profile:
     parts maps each part to its path pattern, and rules to what it may import. folders holds every folder of the
     layout as a pattern: those no part claims are structure, the package files that hold the tree together. imports_libraries
     is None when outside packages are not checked. repeats are the repeating folders of the layout, each its word and
-    the folder holding its instances. framework names the test files and functions; None: no file is a test.
+    the folder holding its instances. framework names the test files and declares the tests; None: no file is a test.
     package_only, scenarios, no_comments, stand_ins and closed_tree are the guards switched on (None or False: off).
     uses_never holds, by part, the dotted names and modules a part may not use, and the methods it may not call on
     anything, each as ("", "<name>()"). info says each part in words. excluded

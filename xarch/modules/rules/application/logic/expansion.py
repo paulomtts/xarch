@@ -9,7 +9,7 @@ from dataclasses import replace
 
 from xarch.kernel.logic.conditions import condition
 from xarch.kernel.placement import EVERYTHING
-from xarch.modules.rules.application.logic.tier_of import NO_TIER, NO_TIER_FIX
+from xarch.modules.rules.application.logic.tier_of import BESIDE_FIX, BESIDE_NO_PART, BESIDE_UNTESTED, NO_TIER, NO_TIER_FIX
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
 from xarch.profile_values.checks import ALL, APP, STRUCTURE, TESTS, Condition, Saying, Scope
@@ -164,7 +164,8 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
     tier's subject, for one placed by its tier's folder); and of the test code, the fakes only when its tier tests a
     part they stand in for, never another test file (once per line), and anything else only from its own folder. The
     rule of what a tier's file imports of the app is keyed by each tier's imports.also too, for a tier that sets
-    it."""
+    it. Under testing.beside a test beside the code that lies in no tier is told that its part is untested, or that it
+    lies in no part."""
     if not profile.tiers:
         return ()
     folder = "/".join(profile.fakes.folder) if profile.fakes is not None else ""
@@ -186,8 +187,11 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
     elsewhere = Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
                        "move what {target} holds into {own_folder}/, or drop the import")
     also = "".join(f"; tiers.{tier.name}.imports.also" for tier in profile.tiers if tier.imports_also)
+    near = ((Saying(BESIDE_UNTESTED, BESIDE_FIX, _all("beside", "mirrors-a-part")),
+             Saying(BESIDE_NO_PART, BESIDE_FIX, _all("beside")))
+            if profile.framework is not None and profile.framework.beside else ())
     return (Rule("tiers", Scope(TESTS, where=(_of("not tiered"), _of("test"), *not_fake)), ("file",), MAY_NOT,
-                 EXISTING, (Saying(NO_TIER, NO_TIER_FIX),), key="tiers"),
+                 EXISTING, (*near, Saying(NO_TIER, NO_TIER_FIX)), key="tiers"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                  (mirrored, by_folder), keep=_all("target-placed"), key=f"tiers{also}"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-tests",), MAY_ONLY, (Match("permitted"),),

@@ -10,6 +10,7 @@ from fnmatch import fnmatchcase
 from typing import Any
 
 from xarch.kernel.logic import names
+from xarch.kernel.logic.cases import CASED, CASES, filled
 from xarch.kernel.logic.placement import place_of
 from xarch.kernel.placement import EACH
 from xarch.kernel.violations import RULES
@@ -19,16 +20,42 @@ from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
-from xarch.modules.spec.domain.profile_keys import FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLE
+from xarch.modules.spec.domain.profile_keys import DECLARED, FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLES
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
+from xarch.profile_values.language import SPEC_FORMS
 from xarch.profile_values.placement import Target
-from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework
+from xarch.profile_values.testing import (
+    Fakes,
+    Fixture,
+    Framework,
+    Place,
+    RowId,
+    SpecEntry,
+    TableForm,
+    TestForm,
+)
 
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 """What a profile calls a part: letters, digits, `_` and `-`, not starting with a digit or `-`."""
 CALLED = "()"
 """How a method in a `never` list, called on anything, ends: `.absolute()`."""
+HOLDERS = ("decorator", "call", "loop")
+"""The keys of a table form that say what holds its rows, exactly one of them in each."""
+DECLARING = ("function", "call")
+"""The keys of a form that declares a test that say how it declares one, exactly one of them in each."""
+CALL_SLOTS = ("title", "body")
+"""The slots of a call form: where the test's title and its body are among the call's arguments."""
+PARAMETERS = "parameters"
+"""What columns_from says of a form whose column names are the test's own parameters."""
+BOUND = "bound"
+"""What columns_from says of a loop whose column names are the names it binds."""
+FIELDS = "fields"
+"""What columns_from says of a form whose column names are the fields of each row."""
+LITERAL = "literal"
+"""What `row` says of a form whose rows are literals, not calls."""
+PLACE = "must be {position: <n>, keyword: <name>}, at least one of them, of the holder's arguments"
+"""What the loader says of a place of a table form that is none."""
 
 
 def _outside(text: str, language: Language, namespace: str = "") -> tuple[str, ...] | None:
@@ -377,37 +404,19 @@ def part_names(value: Any, declared: set[str], where: str, problems: list[str]) 
     return found
 
 
-def case_table(value: Any, where: str, problems: list[str], language: Language) -> CaseTable | None:
-    if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{decorator, row, id}}, and optionally keywords: the dotted names "
-                        "of the table's decorator and of its row, the keyword of a row's id, and the keywords the "
-                        "decorator's two arguments may be given by")
-        return None
-    count = len(problems)
-    problems += unknown_keys(value, names_of(TABLE), where, TABLE)
-    problems += [f"{where}: missing `{key}`" for key in required_of(TABLE) if key not in value]
-    decorator = _outside_name_at(value["decorator"], f"{where}.decorator", problems, language) if "decorator" in value else None
-    row = _outside_name_at(value["row"], f"{where}.row", problems, language) if "row" in value else None
-    if "id" in value and not (isinstance(value["id"], str) and names.is_name(value["id"], language.names)):
-        problems.append(f"{where}.id: must be a keyword name")
-    keywords = value.get("keywords")
-    if "keywords" in value and not (isinstance(keywords, list) and len(keywords) == 2 and len(set(keywords)) == 2
-                                    and all(isinstance(k, str) and names.is_name(k, language.names) for k in keywords)):
-        problems.append(f"{where}.keywords: must be two keyword names, the decorator's names and its rows, "
-                        "such as [names, rows]")
-    if len(problems) != count or decorator is None or row is None:
-        return None
-    return CaseTable(decorator, row, value["id"], (keywords[0], keywords[1]) if keywords else None)
-
-
 def use_case_file(value: Any, framework: Framework | None, where: str, problems: list[str], language: Language,
                   files_key: str = "testing.files") -> str | None:
-    if not isinstance(value, str) or value.count(NAME) != 1:
-        problems.append(f"{where}: must hold `{NAME}` once, such as a_{NAME}{language.checked.extension}")
+    such = f"such as a_{CASED[0]}{language.checked.extension}"
+    if isinstance(value, str) and NAME in value:
+        problems.append(f"{where}: {value!r}: {NAME} with no case was removed in 0.3.0: write {CASED[0]} for what "
+                        f"{NAME} meant")
         return None
-    name = value.replace(NAME, "x")
+    if not isinstance(value, str) or sum(value.count(cased) for cased in CASED) != 1:
+        problems.append(f"{where}: must hold `{{name:<case>}}` once, <case> one of {', '.join(CASES)}, {such}")
+        return None
+    name = filled(value, "x")
     if not _file_name(language).fullmatch(name):
-        problems.append(f"{where}: must be a file name below the test folders, such as a_{NAME}{language.checked.extension}")
+        problems.append(f"{where}: must be a file name below the test folders, {such}")
         return None
     if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
         problems.append(f"{where}: {value!r} is not a name `{files_key}` recognises as a test file")
@@ -415,23 +424,202 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
     return value
 
 
-def _outside_name_at(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
-    """An outside name of at least two steps, <package><member><name>: the path an import binds."""
+def table_forms(value: Any, where: str, problems: list[str], language: Language) -> tuple[TableForm, ...] | None:
+    """The forms a table of cases is written in, each entry addressed `<where>.<i>`, i from 0; None when any entry
+    has a problem."""
+    if not isinstance(value, list):
+        problems.append(f"{where}: must be a list of table forms, each {{decorator | call | loop, columns_from, rows, "
+                        "row, id}")
+        return None
+    forms = [_table_form(entry, f"{where}.{index}", problems, language) for index, entry in enumerate(value)]
+    found = tuple(form for form in forms if form is not None)
+    return found if len(found) == len(forms) else None
+
+
+def _table_form(entry: Any, where: str, problems: list[str], language: Language) -> TableForm | None:
+    """One form: exactly one holder, its slots each in the shape the holder takes, and the language able to say its
+    row."""
+    if not isinstance(entry, Mapping):
+        problems.append(f"{where}: must be a mapping with one of decorator, call or loop")
+        return None
+    count = len(problems)
+    problems += unknown_keys(entry, names_of(TABLES), where, TABLES)
+    holders = [key for key in HOLDERS if key in entry]
+    if len(holders) != 1:
+        problems.append(f"{where}: must have exactly one of decorator, call or loop")
+    loop = holders == ["loop"]
+    needed = (*required_of(TABLES), *(("rows",) if holders in (["decorator"], ["call"]) else ()))
+    problems += [f"{where}: missing `{key}`" for key in needed if key not in entry]
+    decorator = (_outside_name_at(entry["decorator"], f"{where}.decorator", problems, language)
+                 if "decorator" in entry else ())
+    calls = outside_names(entry["call"], f"{where}.call", problems, language) if "call" in entry else ()
+    if "loop" in entry and entry["loop"] is not True:
+        problems.append(f"{where}.loop: must be true: the rows are a list a loop of the test's body runs")
+    if "rows" in entry and loop:
+        problems.append(f"{where}.rows: a loop runs the rows it iterates: drop rows")
+    rows = _place(entry["rows"], f"{where}.rows", problems, language) if "rows" in entry and not loop else None
+    row = _row_of(entry["row"], f"{where}.row", problems, language) if "row" in entry else None
+    columns = (_columns_from(entry["columns_from"], f"{where}.columns_from", loop, row, problems, language)
+               if "columns_from" in entry else None)
+    given = _row_id(entry["id"], f"{where}.id", row, problems, language) if "id" in entry else None
+    if len(problems) != count or decorator is None or calls is None or row is None or columns is None or given is None:
+        return None
+    problems += _unwritten(row, given, where, language)
+    if len(problems) != count:
+        return None
+    return TableForm(columns, rows, row, given, decorator, calls, loop)
+
+
+def _counted(value: Any) -> bool:
+    """Whether a value is a whole number from 0 (true and false are no numbers here)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _place(value: Any, where: str, problems: list[str], language: Language) -> Place | None:
+    """A place among the holder's arguments: {position, keyword}, at least one of them given, and each one given a
+    value of its own (null is none)."""
+    position = value.get("position") if isinstance(value, Mapping) else None
+    keyword = value.get("keyword") if isinstance(value, Mapping) else None
+    if not (isinstance(value, Mapping) and set(value) <= {"position", "keyword"} and value
+            and ("position" not in value or _counted(position))
+            and ("keyword" not in value or (isinstance(keyword, str) and names.is_name(keyword, language.names)))):
+        problems.append(f"{where}: {PLACE}")
+        return None
+    return Place(position, keyword or "")
+
+
+def _row_of(value: Any, where: str, problems: list[str], language: Language) -> tuple[str, ...] | None:
+    """How a row is written: the steps of the outside name a row calls, or none for a literal row."""
+    return () if value == LITERAL else _outside_name_at(value, where, problems, language)
+
+
+def _columns_from(value: Any, where: str, loop: bool, row: tuple[str, ...] | None, problems: list[str],
+                  language: Language) -> Place | str | None:
+    """Where the column names come from: a place of the holder's arguments, or one of PARAMETERS, BOUND and FIELDS,
+    each where its holder and its row allow it (row None: refused already, and not looked at)."""
+    if isinstance(value, Mapping) and loop:
+        problems.append(f"{where}: a loop has no arguments: write bound or fields")
+        return None
+    if isinstance(value, Mapping):
+        return _place(value, where, problems, language)
+    if value not in (PARAMETERS, BOUND, FIELDS):
+        problems.append(f"{where}: must be {{position, keyword}}, parameters, bound or fields")
+        return None
+    if value == BOUND and not loop:
+        problems.append(f"{where}: bound is the names a loop binds: write it with loop")
+        return None
+    if value == PARAMETERS and loop:
+        problems.append(f"{where}: a loop's columns are bound or fields")
+        return None
+    if value == FIELDS and row:
+        problems.append(f"{where}: fields needs row: literal")
+        return None
+    return str(value)
+
+
+def _row_id(value: Any, where: str, row: tuple[str, ...] | None, problems: list[str],
+            language: Language) -> RowId | None:
+    """What gives a row its id: exactly one of {keyword}, {field} and {position}, a keyword only of a row call and a
+    field only of a literal row (row None: refused already, and not looked at)."""
+    kind, item = next(iter(value.items())) if isinstance(value, Mapping) and len(value) == 1 else ("", None)
+    named = isinstance(item, str) and names.is_name(item, language.names)
+    if not ((kind in ("keyword", "field") and named) or (kind == "position" and _counted(item))):
+        problems.append(f"{where}: must be one of {{keyword: <name>}}, {{field: <name>}} or {{position: <n>}}")
+        return None
+    if kind == "keyword" and row == ():
+        problems.append(f"{where}: {{keyword}} names a keyword of a row call: write a dotted row")
+        return None
+    if kind == "field" and row:
+        problems.append(f"{where}: {{field}} names a field of a literal row: write row: literal")
+        return None
+    return RowId(**{kind: item})
+
+
+def _unwritten(row: tuple[str, ...], given: RowId, where: str, language: Language) -> list[str]:
+    """The problems of a form the language cannot say: a row call with no `writing.call`, and an id by a keyword or a
+    field with no template of its own; an id by position needs none."""
+    writing, title = language.checked.writing, language.checked.title
+    found: list[str] = []
+    if row and not writing.call:
+        found.append(f"{where}.row: the language {title} does not write `writing.call`, how a row call is named")
+    if given.keyword and not writing.keyword:
+        found.append(f"{where}.id: the language {title} does not write `writing.keyword`, how a row's id is given by "
+                     "a keyword")
+    if given.field and not writing.field:
+        found.append(f"{where}.id: the language {title} does not write `writing.field`, how a row's id is given by a "
+                     "field")
+    return found
+
+
+SPECS = ("must be a list of {keyword}, {position} or {type_argument}: the ways a call that builds a mock names its "
+         "spec, in order, such as [{keyword: spec}]")
+"""What the loader says of a value of `testing.mocks.specs` that is no list of entries, or an empty one."""
+_SPEC_SAID = {"keyword": "a keyword", "position": "a position", "type_argument": "a type argument"}
+"""How a problem says each way a call names its spec."""
+
+
+def spec_entries(value: Any, where: str, problems: list[str], language: Language) -> tuple[SpecEntry, ...] | None:
+    """The ways a call that builds a mock names its spec, at least one, in the order written, each entry addressed
+    `<where>.<i>`, i from 0, every entry counted, and each once; None when the list or any entry has a problem."""
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: {SPECS}")
+        return None
+    count = len(problems)
+    found: list[SpecEntry] = []
+    for index, entry in enumerate(value):
+        read = _spec_entry(entry, f"{where}.{index}", problems, language)
+        if read is not None and read in found:
+            problems.append(f"{where}.{index}: {{{read.form}: {read.keyword or read.place}}} is listed twice")
+        elif read is not None:
+            found.append(read)
+    return tuple(found) if len(problems) == count else None
+
+
+def _spec_entry(entry: Any, where: str, problems: list[str], language: Language) -> SpecEntry | None:
+    """One way a call names its spec: exactly one of {keyword: <name>}, {position: <n>} and {type_argument: <n>}."""
+    form, item = next(iter(entry.items())) if isinstance(entry, Mapping) and len(entry) == 1 else ("", None)
+    if form not in SPEC_FORMS:
+        problems.append(f"{where}: must be one of {{keyword: <name>}}, {{position: <n>}} or {{type_argument: <n>}}")
+        return None
+    if form == "keyword" and not (isinstance(item, str) and names.is_name(item, language.names)):
+        problems.append(f"{where}.keyword: {item!r} is not a keyword name")
+        return None
+    if form != "keyword" and not _counted(item):
+        problems.append(f"{where}.{form}: must be a whole number, at least 0, such as 0")
+        return None
+    return SpecEntry(**{form: item})
+
+
+def unwritten_specs(specs: tuple[SpecEntry, ...], where: str, unread: Collection[str], language: Language) -> list[str]:
+    """A problem for each entry of the list at where whose way of naming a spec the language does not write (its data
+    file's `writing.specs`), in the order of the list; none for an entry the needs of the profile refuse already
+    (unread)."""
+    writing, title = language.checked.writing, language.checked.title
+    return [f"{where}.{index}: the language {title} does not write `writing.specs.{entry.form}`, how a mock is given its "
+            f"spec by {_SPEC_SAID[entry.form]}" for index, entry in enumerate(specs)
+            if not writing.writes_spec(entry.form) and f"{where}.{index}.{entry.form}" not in unread]
+
+
+def _outside_name_at(value: Any, where: str, problems: list[str], language: Language,
+                     least: int = 2) -> tuple[str, ...] | None:
+    """An outside name of at least `least` steps: two by default, <package><member><name>, the path an import binds;
+    one, a name the framework binds without an import too."""
     steps = _outside(value, language) if isinstance(value, str) else None
-    if steps is None or len(steps) < 2:
+    if steps is None or len(steps) < least:
         problems.append(f"{where}: {value!r} is not an outside name such as {_such(language)}")
         return None
     return steps
 
 
-def outside_names(value: Any, where: str, problems: list[str], language: Language) -> tuple[tuple[str, ...], ...] | None:
-    """A non-empty list of outside names of at least two steps, each once."""
+def outside_names(value: Any, where: str, problems: list[str], language: Language,
+                  least: int = 2) -> tuple[tuple[str, ...], ...] | None:
+    """A non-empty list of outside names of at least `least` steps (see _outside_name_at), each once."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of outside names such as {_such(language)}")
         return None
     found: list[tuple[str, ...]] = []
     for item in value:
-        steps = _outside_name_at(item, where, problems, language)
+        steps = _outside_name_at(item, where, problems, language, least)
         if steps is not None and steps in found:
             problems.append(f"{where}: {item!r} is listed twice")
         elif steps is not None:
@@ -461,8 +649,8 @@ def fixtures(value: Any, where: str, problems: list[str], language: Language,
         before = len(problems)
         problems += unknown_keys(spec, {calls, "autospec"}, at, FIXTURE)
         problems += [f"{at}: missing `{calls}`"] if calls not in spec else []
-        mocks = identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]", language) if calls in spec else None
-        autospec = (identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]", language)
+        mocks = _identifiers(spec[calls], f"{at}.{calls}", problems, "method", "[build]", language) if calls in spec else None
+        autospec = (_identifiers(spec["autospec"], f"{at}.autospec", problems, "method", "[build]", language)
                     if "autospec" in spec else ())
         problems += [f"{at}.autospec: {method!r} is also listed in {calls}" for method in autospec or ()
                      if mocks and method in mocks]
@@ -471,9 +659,9 @@ def fixtures(value: Any, where: str, problems: list[str], language: Language,
     return tuple(found) if len(problems) == count else None
 
 
-def identifiers(value: Any, where: str, problems: list[str], noun: str, example: str,
-                language: Language) -> tuple[str, ...] | None:
-    """A non-empty list of names, each once, each a plain identifier: the keywords of a call, the methods of an object."""
+def _identifiers(value: Any, where: str, problems: list[str], noun: str, example: str,
+                 language: Language) -> tuple[str, ...] | None:
+    """A non-empty list of names, each once, each a plain identifier: the methods of an object."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of {noun} names such as {example}")
         return None
@@ -488,27 +676,74 @@ def identifiers(value: Any, where: str, problems: list[str], noun: str, example:
     return tuple(found)
 
 
+def _declared_forms(value: Any, where: str, problems: list[str], language: Language) -> tuple[TestForm, ...] | None:
+    """The forms a test is declared in, at least one, each entry addressed `<where>.<i>`, i from 0; None when any entry
+    has a problem."""
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a non-empty list of test forms, each {{function}} or {{call, title, body}}")
+        return None
+    forms = [_declared_form(entry, f"{where}.{index}", problems, language) for index, entry in enumerate(value)]
+    found = tuple(form for form in forms if form is not None)
+    return found if len(found) == len(forms) else None
+
+
+def _declared_form(entry: Any, where: str, problems: list[str], language: Language) -> TestForm | None:
+    """One form: exactly one of function and call, and only the keys of the scope."""
+    if not isinstance(entry, Mapping) or sum(key in entry for key in DECLARING) != 1:
+        problems.append(f"{where}: write one of function, call")
+        return None
+    count = len(problems)
+    problems += unknown_keys(entry, names_of(DECLARED), where, DECLARED)
+    if "function" in entry:
+        return _function_form(entry, where, problems, language, count)
+    return _call_form(entry, where, problems, language, count)
+
+
+def _function_form(entry: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+                   count: int) -> TestForm | None:
+    """A function form: a name pattern, `*` for any text, and no slot of a call form; count is how many problems
+    there were before the entry."""
+    problems += [f"{where}.{slot}: a function form takes no slot: drop {slot}" for slot in CALL_SLOTS if slot in entry]
+    pattern = entry["function"]
+    if not (isinstance(pattern, str) and names.is_name(pattern.replace("*", "x"), language.names)):
+        problems.append(f"{where}.function: must be a function name pattern: a name with `*` for any text")
+    return TestForm(function=pattern) if len(problems) == count else None
+
+
+def _call_form(entry: Mapping[Any, Any], where: str, problems: list[str], language: Language,
+               count: int) -> TestForm | None:
+    """A call form: at least one callee, each a name of one step or more, and the places of the test's title and its
+    body among the call's arguments; count is how many problems there were before the entry."""
+    problems += [f"{where}: missing `{slot}`" for slot in CALL_SLOTS if slot not in entry]
+    if entry["call"] == []:
+        problems.append(f"{where}.call: must list at least one callee")
+    calls = outside_names(entry["call"], f"{where}.call", problems, language, 1) if entry["call"] != [] else None
+    title = _place(entry["title"], f"{where}.title", problems, language) if "title" in entry else None
+    body = _place(entry["body"], f"{where}.body", problems, language) if "body" in entry else None
+    if len(problems) != count or calls is None or title is None or body is None:
+        return None
+    return TestForm(call=calls, title=title, body=body)
+
+
 def framework_patterns(value: Any, problems: list[str], where: str, known: Collection[str],
                        language: Language, scope: str = "") -> Framework | None:
-    """How the test framework names test files and functions, the map written at `where`; `known` are the keys the
-    map may hold, which the caller may widen with what it reads itself, and `scope` the scope whose retired names
-    the map's unknown keys are looked up in."""
+    """How the test framework names test files and declares its tests, the map written at `where`; `known` are the
+    keys the map may hold, which the caller may widen with what it reads itself, and `scope` the scope whose retired
+    names the map's unknown keys are looked up in."""
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{files, functions}}: the patterns of a test file's name and of a "
-                        "test function's")
+        problems.append(f"{where}: must be a mapping {{files, declared}}: the patterns of a test file's name and the "
+                        "forms that declare a test")
         return None
     count = len(problems)
     problems += unknown_keys(value, known, where, scope)
-    problems += [f"{where}: missing `{key}`" for key in ("files", "functions") if key not in value]
+    problems += [f"{where}: missing `{key}`" for key in ("files", "declared") if key not in value]
     files = _file_patterns(value["files"], problems, f"{where}.files", language) if "files" in value else None
     skips = outside_names(value["skips"], f"{where}.skips", problems, language) if "skips" in value else ()
-    functions = value.get("functions")
-    if "functions" in value and not (isinstance(functions, str)
-                                     and names.is_name(functions.replace("*", "x"), language.names)):
-        problems.append(f"{where}.functions: must be a function name pattern: a name with `*` for any text")
-    if len(problems) != count or files is None or skips is None:
+    declared = _declared_forms(value["declared"], f"{where}.declared", problems, language) if "declared" in value else None
+    bound = outside_names(value["globals"], f"{where}.globals", problems, language, 1) if "globals" in value else ()
+    if len(problems) != count or files is None or skips is None or declared is None or bound is None:
         return None
-    return Framework(files, functions, skips)
+    return Framework(files, declared, skips, globals=bound)
 
 
 def _file_patterns(value: Any, problems: list[str], where: str, language: Language) -> tuple[str, ...] | None:

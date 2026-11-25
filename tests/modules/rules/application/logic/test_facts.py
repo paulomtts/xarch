@@ -235,3 +235,62 @@ def test_a_class_a_function_and_a_name_an_import_takes_carry_public_exactly_when
         ("kept", False), ("_shown", True), ("m", False)]
     assert [(f.name, "public" in f.traits) for f in read.facts["imported-name"]] == [
         ("shown", True), ("hidden", False), (None, False)]
+
+
+def near(path: str, *imports, **fields):
+    """A test beside the code, at path below the app root, shown as app/<path>."""
+    return replace(source(path, *imports, **fields), beside=True)
+
+
+DOC_FILE = source("modules/docs/domain/doc.py")
+
+
+def test_a_test_beside_the_code_is_a_placed_test_and_no_file_of_the_app():
+    beside = near("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain", "doc"),
+                  functions=(Function(3, "test_doc"),))
+    built = facts_of([DOC_FILE], [beside], PROFILE, "app", "tests")
+    read = next(r for r in built.files if r.file is beside)
+    assert (read.in_tests, read.is_test, read.is_fake, read.tier, read.mirrors, read.place, read.instance, read.own) == (
+        True, True, False, "unit", ("domain",), None, "docs", ("modules", "docs"))
+    steps = ("modules", "docs", "domain", "test_doc")
+    assert steps not in built.known and steps in built.known_tests and steps in built.beside
+    assert steps in built.test_files and steps not in built.tested_by
+    assert [f.target for f in read.facts["import-into-app"]] == [("modules", "docs", "domain", "doc")]
+    assert [r.file for r in built.files if not r.in_tests] == [DOC_FILE]
+
+
+def test_a_test_beside_the_code_importing_another_reads_it_as_test_code():
+    other = near("modules/docs/domain/test_other.py", functions=(Function(1, "test_other"),))
+    first = near("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain.test_other", "test_other"),
+                 imp(2, "app.modules.docs.domain", "doc"))
+    built = facts_of([DOC_FILE], [first, other], PROFILE, "app", "tests")
+    read = next(r for r in built.files if r.file is first)
+    assert [f.target for f in read.facts["import-into-tests"]] == [("modules", "docs", "domain", "test_other")]
+    assert [f.target for f in read.facts["import-into-app"]] == [("modules", "docs", "domain", "doc")]
+
+
+def test_a_test_below_the_tests_root_importing_a_test_beside_the_code_reads_it_as_test_code():
+    other = near("modules/docs/domain/test_other.py", functions=(Function(1, "test_other"),))
+    mirrored = source("architecture/test_rules.py", imp(1, "app.modules.docs.domain", "test_other"), root="tests")
+    built = facts_of([DOC_FILE], [mirrored, other], PROFILE, "app", "tests")
+    read = next(r for r in built.files if r.file is mirrored)
+    assert [f.target for f in read.facts["import-into-tests"]] == [("modules", "docs", "domain", "test_other")]
+    assert read.facts["import-into-app"] == ()
+
+
+def test_a_test_beside_the_code_importing_the_fakes_below_the_tests_root_reads_them_as_test_code():
+    beside = near("modules/docs/domain/test_doc.py", imp(1, "tests.fakes.repo", "FakeRepo"),
+                  imp(2, "app.modules.docs.domain", "doc"))
+    built = facts_of([DOC_FILE], [beside], PROFILE, "app", "tests")
+    read = next(r for r in built.files if r.file is beside)
+    assert [f.target for f in read.facts["import-into-tests"]] == [("fakes", "repo")]
+    assert [f.target for f in read.facts["import-into-app"]] == [("modules", "docs", "domain", "doc")]
+
+
+def test_a_test_beside_the_code_reaches_the_app_by_a_relative_import_read_from_its_own_package():
+    beside = near("modules/docs/domain/test_doc.py", imp(1, "", "doc", up=0), imp(2, "", "test_other", up=0))
+    other = near("modules/docs/domain/test_other.py", functions=(Function(1, "test_other"),))
+    built = facts_of([DOC_FILE], [beside, other], PROFILE, "app", "tests")
+    read = next(r for r in built.files if r.file is beside)
+    assert [f.target for f in read.facts["import-into-app"]] == [("modules", "docs", "domain", "doc")]
+    assert [f.target for f in read.facts["import-into-tests"]] == [("modules", "docs", "domain", "test_other")]

@@ -11,7 +11,7 @@ from xarch.modules.layout.domain.structure import Requirement
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.scaffold.domain.values import FILE, FOLDER
 from xarch.profile_values.language import InterfaceMark, RecordMark
-from xarch.profile_values.testing import CaseTable
+from xarch.profile_values.testing import TableForm, TestForm
 
 
 class FakeSourceTree:
@@ -20,7 +20,8 @@ class FakeSourceTree:
     file, by its path; what a text that is in no file parses to, by the text; and the links, each path that is one with
     the path it points to, given in full. It records the standard modules each read and each parse is handed
     (handed), the prefix of private names each is handed (prefixes), the pattern of a special name each is handed
-    (specials), and the endings each listing is handed (listed), in call order; the imports it returns are those the
+    (specials), the forms that declare a test and the globals each read is handed (forms, bound), and the endings
+    each listing is handed (listed), in call order; the imports it returns are those the
     test built."""
 
     def __init__(self, root: Path, files: dict[str, list[Import] | SourceFile],
@@ -33,6 +34,8 @@ class FakeSourceTree:
         self.prefixes: list[str] = []
         self.specials: list[str] = []
         self.listed: list[tuple[str, ...]] = []
+        self.forms: list[tuple[TestForm, ...]] = []
+        self.bound: list[tuple[tuple[str, ...], ...]] = []
 
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if root not in self._trees]
@@ -41,12 +44,15 @@ class FakeSourceTree:
         self.listed.append(extensions)
         return [tuple(rel.split("/")) for rel in sorted(self._trees[root])]
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
+    def read(self, root: Path, paths: list[tuple[str, ...]], tables: tuple[TableForm, ...] = (),
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
-             standard: frozenset[str], private: str, special: str) -> list[SourceFile]:
+             standard: frozenset[str], private: str, special: str, declared: tuple[TestForm, ...] = (),
+             globals: tuple[tuple[str, ...], ...] = ()) -> list[SourceFile]:
         self.handed.append(standard)
         self.prefixes.append(private)
         self.specials.append(special)
+        self.forms.append(declared)
+        self.bound.append(globals)
         files = self._trees[root]
         return [_source(f"{root.name}/{'/'.join(path)}", path, files["/".join(path)]) for path in paths]
 
@@ -94,6 +100,9 @@ class FakeDisk:
     def below(self, root: Path, each: tuple[str, ...]) -> list[tuple[str, ...]]:
         base = root.joinpath(*each)
         return sorted(d.relative_to(base).parts for d in self._dirs if d != base and d.is_relative_to(base))
+
+    def files(self, root: Path) -> list[tuple[str, ...]]:
+        return sorted(f.relative_to(root).parts for f in self._files if f.is_relative_to(root))
 
 
 class FakeFiles:

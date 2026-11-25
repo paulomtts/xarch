@@ -9,9 +9,10 @@ PROFILE = """
 name: other
 testing:
   files: ["*_spec.py"]
-  functions: "it_*"
-  table: {decorator: cases.table, row: cases.row, id: name}
-  mocks: {calls: [doubles.Double], spec_keywords: [of]}
+  declared: [{function: "it_*"}]
+  tables: [{decorator: cases.table, columns_from: {position: 0}, rows: {position: 1}, row: cases.row,
+            id: {keyword: name}}]
+  mocks: {calls: [doubles.Double], specs: [{keyword: of}]}
 parts:
   contract:   {path: modules/<module>/contract, role: results, tests: integration}
   controller:
@@ -30,7 +31,7 @@ guards:
     tier: integration
     suffix: Result
     columns: [given, when, then]
-    file: "{name}_spec.py"
+    file: "{name:snake}_spec.py"
   stand-ins: {}
 """
 

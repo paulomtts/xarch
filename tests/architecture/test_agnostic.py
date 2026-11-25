@@ -11,7 +11,7 @@ as a string literal it is an architecture concept, while Python's own notion of 
 The test framework is scanned the same way, in the same literals. Its names are read from what the bundled profiles
 say for it: every dotted name of the guards (the table's decorator and row, the mocks, the autospec functions) and of
 `tests.skips` (the markers and calls that skip a test) split into its words, the keywords (the table's, the spec's), and
-the stems of the patterns of the test files and functions (`test_`, `_test`), found at the start of a name, never inside
+the stems of the patterns of the test files and of the declared functions (`test_`, `_test`), found at the start of a name, never inside
 a longer word (`latest_`). A few words of the
 dotted names are ordinary English that the messages use for their own concept, a mock, a spec, an id, a mark, a
 param, a test, a skip: they are EXEMPT, and the longer names around them (`unittest`, `Mock`, `spec_set`, `parametrize`)
@@ -27,7 +27,7 @@ from pathlib import Path
 
 import xarch
 from xarch.bootstrap.wiring import load_architecture
-from xarch.profile_values.testing import ScenarioCoverage, StandIns
+from xarch.profile_values.testing import Place, ScenarioCoverage, StandIns
 
 SRC = Path(xarch.__file__).parent
 BUNDLED = SRC / "architectures"
@@ -72,15 +72,19 @@ def framework_names() -> tuple[set[str], set[str]]:
     for profile in ("cli", "web"):
         architecture = load_architecture(profile)
         assert architecture.framework is not None
-        patterns = (*architecture.framework.files, architecture.framework.functions)
+        patterns = (*architecture.framework.files,
+                    *(form.function for form in architecture.framework.declared if form.function))
         stems |= {stem for pattern in patterns for stem in re.split(r"\*|\.py$", pattern) if stem}
         words |= {word for name in architecture.framework.skips for word in name}
         for guard in architecture.guards:
             dotted: tuple[tuple[str, ...], ...] = ()
             if isinstance(guard, ScenarioCoverage):
-                dotted = (guard.table.decorator, guard.table.row, tuple(guard.table.keywords or ()))
+                forms = architecture.framework.tables
+                dotted = (*(form.decorator for form in forms), *(form.row for form in forms),
+                          *(tuple(place.keyword for place in (form.columns_from, form.rows)
+                                  if isinstance(place, Place) and place.keyword) for form in forms))
             elif isinstance(guard, StandIns):
-                dotted = (*guard.mocks, *guard.autospec, guard.spec)
+                dotted = (*guard.mocks, *guard.autospec, tuple(spec.keyword for spec in guard.specs if spec.keyword))
             words |= {word for name in dotted for word in name}
     return words - EXEMPT, stems
 

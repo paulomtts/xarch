@@ -28,9 +28,10 @@ from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.testing import Framework
+from xarch.profile_values.testing import TestForm as DeclaredForm
 
 SKIPS = (("pytest", "mark", "skip"), ("pytest", "mark", "xfail"), ("pytest", "skip"))
-PROFILE = Profile(parts={}, rules={}, framework=Framework(("test_*.py",), "test_*", SKIPS), language=PYTHON)
+PROFILE = Profile(parts={}, rules={}, framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),), SKIPS), language=PYTHON)
 
 
 def file(name: str, *uses: Use) -> SourceFile:
@@ -109,7 +110,7 @@ def test_a_bundled_profile_with_nothing_found_passes_strict():
 
 def test_a_framework_that_lists_no_skips_counts_none():
     tests = [file("tests/test_a.py", Use(3, ("pytest", "mark", "skip"), 1))]
-    assert skipped(tests, Profile(parts={}, rules={}, framework=Framework(("test_*.py",), "test_*"))) == []
+    assert skipped(tests, Profile(parts={}, rules={}, framework=Framework(("test_*.py",), (DeclaredForm(function="test_*"),)))) == []
 
 
 def test_a_dynamic_import_is_what_the_language_of_the_profile_lists():

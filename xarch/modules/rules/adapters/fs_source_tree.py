@@ -102,6 +102,43 @@ another string's text is no mention.
 A file also lists each name a `from` import takes whose bound name (its alias, when it has one) nothing else in the
 file mentions as a name, in code or in an annotation (a string annotation read): a name that is only re-exported, such
 as one `__all__` lists as text, or not used at all.
+
+A test function holds the tables of cases its decorators hold, each read in the first of the framework's forms
+(`testing.tables`) whose decorator it is, and tagged with that form's index: its column names are the argument at
+the form's `columns_from` (by its position when the call has an argument there, else by its keyword), one
+comma-separated string or a list or tuple of strings; its rows the argument at its `rows`, a list or tuple literal or
+the name of one assigned once at the top of the file (any other form leaves the rows unread); and a row is written
+when it is a call of the form's `row`, its id the string literal the form's keyword gives. A decorator's form is read
+when its columns and rows are places, its row a call and its id a keyword; no statement of the body runs the rows of
+its table (runs 0).
+
+After those, a test function holds the table of the first `for` among its body's own statements, one not nested in
+another block, function or class (an `async for` is none), read in the first loop form of the list the reader reads
+and tagged with that form's index. That `for` holds a table when it binds plain names, one name or a tuple or list of
+names with none nested or starred, which are the column names in order; and when it runs over a list or tuple literal
+written in it, or over a bare name the file binds at its top level and the function does not bind. The table's line,
+and the line of the statement that runs its rows, are the `for`'s. Its rows are that literal's values, or those of
+the literal the name is assigned once at the top of the file (any other value, or a starred one among them, leaves
+the rows unread). A loop form is read when its columns are `bound` and either its row is a call of a dotted name and
+its id a keyword, each row read as a decorator's is, or its row is a literal and its id a position: a tuple or list
+with no starred value is written, its cells the names heading its values and its id the string literal at that
+position; any other value is not written, and has no id and no cells. A `for` that binds other names or runs over
+anything else holds no table, and no later `for` is tried.
+
+Any other form reads no table, and the next form of the list is still tried.
+
+A file read for tests holds a test for each of its functions, a method too, whose name matches the pattern of a
+function form of the framework's `testing.declared`, as fnmatch matches a name: it is a test of the first such form,
+tagged with that form's index, untitled, its name the function's and its body that very function, in the order of the
+functions. A call form declares no test this reader reads: Python's reader does not supply `test.call`. A file read
+with no form holds no test. A call holds no type arguments this reader reads: Python's reader does not supply
+`call.type_arguments`, and every call's types are empty.
+
+A bare name no scope binds whose name is the first step of one of the framework's globals (`testing.globals`) is read,
+in a call, an argument and a use, as itself, ahead of a builtin: `it.skip()` calls ("it", "skip"), which is also its
+use, bound none of its steps; a global is never read as ("builtins", <name>). A name the file binds, by an import, a
+definition or an assignment in any scope around the reading, keeps its own binding. A file that holds a star import
+reads no global, as it reads no builtin, since the star import might bind the name.
 """
 from __future__ import annotations
 
@@ -114,6 +151,7 @@ import re
 import tokenize
 from collections.abc import Iterable
 from dataclasses import dataclass
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 from xarch.kernel.logic.names import is_private_name
@@ -134,13 +172,14 @@ from xarch.modules.rules.domain.parsed import (
     SoleCall,
     SourceFile,
     Table,
+    Test,
     Union,
     Use,
 )
 from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
 from xarch.platform.filesystem import FileSystem
 from xarch.profile_values.language import InterfaceMark, RecordMark
-from xarch.profile_values.testing import CaseTable
+from xarch.profile_values.testing import Place, TableForm, TestForm
 
 
 class FsSourceTree:
@@ -153,9 +192,10 @@ class FsSourceTree:
     def paths(self, root: Path, extensions: tuple[str, ...]) -> list[tuple[str, ...]]:
         return sorted({f.relative_to(root).parts for extension in extensions for f in self._fs.files(root, f"*{extension}")})
 
-    def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
+    def read(self, root: Path, paths: list[tuple[str, ...]], tables: tuple[TableForm, ...] = (),
              immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
-             standard: frozenset[str], private: str, special: str) -> list[SourceFile]:
+             standard: frozenset[str], private: str, special: str, declared: tuple[TestForm, ...] = (),
+             globals: tuple[tuple[str, ...], ...] = ()) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
         found: list[SourceFile] = []
@@ -172,8 +212,8 @@ class FsSourceTree:
                 found.append(SourceFile(name, path, (), error=Unparsable(
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
-            found.append(_parsed(name, path, text, table, immutable, interface, standard, private, special,
-                                 _Where((root.name, *path[:-1]), root, self._fs)))
+            found.append(_parsed(name, path, text, tables, immutable, interface, standard, private, special,
+                                 _Where((root.name, *path[:-1]), root, self._fs), declared, globals))
         return found
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
@@ -183,7 +223,7 @@ class FsSourceTree:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
     def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
-        return _parsed("", (), text, None, (), (), standard, private, special)
+        return _parsed("", (), text, (), (), (), standard, private, special)
 
     def resolved(self, folder: Path, path: Path) -> Path:
         return self._fs.real(folder / path)
@@ -222,9 +262,10 @@ class _Relative(tuple):
     none of them from the top (see the module's docstring)."""
 
 
-def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None, marks: tuple[RecordMark, ...],
+def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm, ...], marks: tuple[RecordMark, ...],
             interface: tuple[InterfaceMark, ...], standard: frozenset[str], private: str, special: str,
-            where: _Where | None = None) -> SourceFile:
+            where: _Where | None = None, declared: tuple[TestForm, ...] = (),
+            bound: tuple[tuple[str, ...], ...] = ()) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -232,16 +273,30 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
         return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
     except (tokenize.TokenError, IndentationError) as e:
         return SourceFile(name, path, (), error=Unparsable(0, str(e)))
-    calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset(), where)
+    star = _star_import(tree)
+    calls = _Calls(_BUILTINS if not star else frozenset(), where,
+                   frozenset(steps[0] for steps in bound) if not star else frozenset())
     calls.visit(tree)
-    functions = _functions(tree, form, private, where)
+    functions = _functions(tree, forms, private, where)
     return SourceFile(name, path, tuple(_imports(tree, standard, private, where)), comments, functions,
                       tuple(_unions(tree)), calls=tuple(calls.found),
                       classes=tuple(_classes(tree, private, special, functions, marks, interface, where)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree, private)),
-                      unmentioned=_unmentioned(tree), pieces=_pieces(tree))
+                      unmentioned=_unmentioned(tree), pieces=_pieces(tree), tests=_tests(functions, declared))
+
+
+def _tests(functions: tuple[Function, ...], declared: tuple[TestForm, ...]) -> tuple[Test, ...]:
+    """Each function whose name matches the pattern of a function form, a test of the first such form, untitled, its
+    body the function itself, in the order of the functions; a call form declares none this reader reads."""
+    found: list[Test] = []
+    for function in functions:
+        form = next((index for index, held in enumerate(declared)
+                     if held.function and fnmatchcase(function.name, held.function)), None)
+        if form is not None:
+            found.append(Test(function.line, function.name, form, False, function))
+    return tuple(found)
 
 
 def _pieces(tree: ast.Module) -> tuple[Piece, ...]:
@@ -342,29 +397,30 @@ _CHOICES = {ast.IfExp: "if"}
 """Each expression that chooses between values, by the keyword that writes the choice (`a if c else b`)."""
 
 
-def _functions(tree: ast.Module, form: CaseTable | None, private: str,
+def _functions(tree: ast.Module, forms: tuple[TableForm, ...], private: str,
                where: _Where | None = None) -> tuple[Function, ...]:
     scope = [_scope(tree, where)]
     lists = _lists(tree)
     found: list[Function] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            found.append(_function(node, scope, lists, form, private))
+            found.append(_function(node, scope, lists, forms, private))
         elif isinstance(node, ast.ClassDef):
-            found += [_function(n, scope, lists, form, private, node.name) for n in node.body
+            found += [_function(n, scope, lists, forms, private, node.name) for n in node.body
                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     return tuple(found)
 
 
 def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
-              form: CaseTable | None, private: str, owner: str = "") -> Function:
+              forms: tuple[TableForm, ...], private: str, owner: str = "") -> Function:
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
     blocks = tuple(sorted((n.lineno, _BLOCKS[type(n)]) for n in inside if type(n) in _BLOCKS))
     choices = tuple(sorted((n.lineno, _CHOICES[type(n)]) for n in inside if type(n) in _CHOICES))
-    tables = tuple(table for d in node.decorator_list if form is not None
-                   and (table := _table(d, scope, lists, form)) is not None)
+    tables = tuple(table for d in node.decorator_list if (table := _table(d, scope, lists, forms)) is not None)
+    loop = _loop(node, scope, lists, forms)
+    tables += (loop,) if loop is not None else ()
     asserts = any(isinstance(n, ast.Assert) for n in inside)
     statements, inert, shape = _shape(node)
     returns = _named(node.returns) if node.returns is not None else frozenset()
@@ -608,22 +664,103 @@ def _lists(tree: ast.Module) -> dict[str, ast.expr]:
             if len(values) == 1 and isinstance(values[0], (ast.List, ast.Tuple))}
 
 
-def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr], form: CaseTable) -> Table | None:
-    if not isinstance(decorator, ast.Call) or _ref(decorator.func, scope) != form.decorator:
+def _table(decorator: ast.expr, scope: list[Scope], lists: dict[str, ast.expr],
+           forms: tuple[TableForm, ...]) -> Table | None:
+    """The table a decorator holds, read in the first form the reader reads whose decorator it is and tagged with
+    that form's index; None when no form is, or its column names cannot be read."""
+    if not isinstance(decorator, ast.Call):
         return None
-    given = {k.arg: k.value for k in decorator.keywords if k.arg}
-    by_keyword = form.keywords or (None, None)
-    names = decorator.args[0] if decorator.args else given.get(by_keyword[0])
-    values = decorator.args[1] if len(decorator.args) > 1 else given.get(by_keyword[1])
-    columns = _columns(names)
+    called = _ref(decorator.func, scope)
+    index = next((i for i, form in enumerate(forms) if _reads(form) and form.decorator == called), None)
+    if index is None:
+        return None
+    form = forms[index]
+    columns = _columns(_argument(decorator, form.columns_from))
     if columns is None:
         return None
+    values = _argument(decorator, form.rows)
     if isinstance(values, ast.Name):
         values = lists.get(values.id)
     rows = None
     if isinstance(values, (ast.List, ast.Tuple)) and not any(isinstance(v, ast.Starred) for v in values.elts):
         rows = tuple(_row(v, scope, form) for v in values.elts)
-    return Table(decorator.lineno, columns, rows)
+    return Table(decorator.lineno, columns, rows, form=index, runs=0)
+
+
+def _reads(form: TableForm) -> bool:
+    """Whether the reader reads tables in the form: held by a decorator, the column names and the rows each at a
+    place among its arguments, a row a call of a dotted name and its id a keyword of that call."""
+    return (bool(form.decorator) and isinstance(form.columns_from, Place) and form.rows is not None and bool(form.row)
+            and bool(form.id.keyword))
+
+
+def _loop(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
+          forms: tuple[TableForm, ...]) -> Table | None:
+    """The table the first `for` of the function's own body holds, read in the first loop form the reader reads and
+    tagged with that form's index, its line and the line that runs its rows that of the `for`; None when no such form
+    is in the list, the body holds no `for` of its own, or that `for` binds no plain names or runs over no list of the
+    file's."""
+    index = next((i for i, form in enumerate(forms) if _reads_loop(form)), None)
+    statement = next((s for s in node.body if isinstance(s, ast.For)), None)
+    if index is None or statement is None:
+        return None
+    columns = _loop_columns(statement.target)
+    values: ast.expr | None = statement.iter
+    own = _scope(node)
+    if columns is None:
+        return None
+    if isinstance(values, ast.Name):
+        if values.id in own or values.id not in scope[0]:
+            return None
+        values, chain = lists.get(values.id), scope
+    elif isinstance(values, (ast.List, ast.Tuple)):
+        chain = [own, *scope]
+    else:
+        return None
+    form = forms[index]
+    rows = None
+    if isinstance(values, (ast.List, ast.Tuple)) and not any(isinstance(v, ast.Starred) for v in values.elts):
+        rows = tuple(_row(v, chain, form) if form.row else _literal(v, form.id.position) for v in values.elts)
+    return Table(statement.lineno, columns, rows, form=index, runs=statement.lineno)
+
+
+def _reads_loop(form: TableForm) -> bool:
+    """Whether the reader reads tables in the form: a loop of the test's body, its column names the names the loop
+    binds, a row either a call of a dotted name with its id a keyword of that call, or a literal with its id at a
+    position."""
+    return (form.loop and form.columns_from == "bound"
+            and ((bool(form.row) and bool(form.id.keyword)) or (not form.row and form.id.position is not None)))
+
+
+def _loop_columns(target: ast.expr) -> tuple[str, ...] | None:
+    """The names a loop binds, in order: one name, or a tuple or list of names with none nested or starred; None for
+    any other target."""
+    if isinstance(target, ast.Name):
+        return (target.id,)
+    if isinstance(target, (ast.Tuple, ast.List)) and target.elts and all(isinstance(e, ast.Name) for e in target.elts):
+        return tuple(e.id for e in target.elts if isinstance(e, ast.Name))
+    return None
+
+
+def _literal(node: ast.expr, position: int | None) -> Row:
+    """A literal row: a tuple or list with no starred value is written, its cells the names heading its values and
+    its id the string literal at position; any other value is not written, and has no id and no cells."""
+    if not isinstance(node, (ast.Tuple, ast.List)) or any(isinstance(e, ast.Starred) for e in node.elts):
+        return Row(node.lineno, False, None, ())
+    at = node.elts[position] if position is not None and position < len(node.elts) else None
+    given = at.value if isinstance(at, ast.Constant) and isinstance(at.value, str) else None
+    return Row(node.lineno, True, given, tuple(_head(e) for e in node.elts))
+
+
+def _argument(call: ast.Call, place: Place | str | None) -> ast.expr | None:
+    """The argument of the call at a place: the positional one at its position when the call has that many, else the
+    one its keyword gives; None when neither is written, or when place is no place."""
+    if not isinstance(place, Place):
+        return None
+    if place.position is not None and place.position < len(call.args):
+        return call.args[place.position]
+    given = {k.arg: k.value for k in call.keywords if k.arg}
+    return given.get(place.keyword) if place.keyword else None
 
 
 def _columns(node: ast.expr | None) -> tuple[str, ...] | None:
@@ -635,10 +772,10 @@ def _columns(node: ast.expr | None) -> tuple[str, ...] | None:
     return None
 
 
-def _row(node: ast.expr, scope: list[Scope], form: CaseTable) -> Row:
+def _row(node: ast.expr, scope: list[Scope], form: TableForm) -> Row:
     if not isinstance(node, ast.Call) or _ref(node.func, scope) != form.row:
         return Row(node.lineno, False, None, tuple(_head(e) for e in node.elts) if isinstance(node, ast.Tuple) else ())
-    ids = [k.value for k in node.keywords if k.arg == form.id]
+    ids = [k.value for k in node.keywords if k.arg == form.id.keyword]
     given = ids[0].value if ids and isinstance(ids[0], ast.Constant) and isinstance(ids[0].value, str) else None
     return Row(node.lineno, True, given, tuple(_head(a) for a in node.args if not isinstance(a, ast.Starred)))
 
@@ -753,13 +890,15 @@ def _own(body: list[ast.AST]):
             stack.extend(reversed(list(ast.iter_child_nodes(node))))
 
 
-def _ref(node: ast.AST, chain: list[Scope]) -> Ref:
-    return _reached(node, chain, frozenset())[0]
+def _ref(node: ast.AST, chain: list[Scope], bare: frozenset[str] = frozenset()) -> Ref:
+    return _reached(node, chain, frozenset(), bare)[0]
 
 
-def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[Ref, int]:
+def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str],
+             bare: frozenset[str] = frozenset()) -> tuple[Ref, int]:
     """The path a name or a chain of attributes on one reaches, and how many of its steps the import binding it names
-    from the top (none for a relative import); a name no scope binds that is in names is a builtin."""
+    from the top (none for a relative import); a name no scope binds that is in bare is a global of the framework,
+    read as its own bare name, and else one that is in names is a builtin."""
     attrs: list[str] = []
     while isinstance(node, ast.Attribute):
         attrs.insert(0, node.attr)
@@ -767,6 +906,8 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[
     if not isinstance(node, ast.Name):
         return None, 0
     scope = next((scope for scope in chain if node.id in scope), None)
+    if scope is None and node.id in bare:
+        return (node.id, *attrs), 0
     if scope is None:
         return (("builtins", node.id, *attrs), 0) if node.id in names else (None, 0)
     base = scope[node.id]
@@ -776,13 +917,16 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[
 
 
 class _Calls(ast.NodeVisitor):
-    """Collects every call whose callee is a Ref, reading each name in the scope it is read in."""
+    """Collects every call whose callee is a Ref, reading each name in the scope it is read in, a framework's global by
+    its bare name."""
 
-    def __init__(self, builtins: frozenset[str] = frozenset(), where: _Where | None = None) -> None:
+    def __init__(self, builtins: frozenset[str] = frozenset(), where: _Where | None = None,
+                 bare: frozenset[str] = frozenset()) -> None:
         self._where = where
         self.found: list[Call] = []
         self.uses: list[Use] = []
         self._builtins = builtins
+        self._bare = bare
         self._chain: list[Scope] = []
         self._parameters: list[frozenset[str]] = []
         self._classes: list[bool] = []
@@ -852,12 +996,13 @@ class _Calls(ast.NodeVisitor):
                 function, receiver, callables = self._owners[index]
                 self.callbacks.append(Callback(node.lineno, function, node.func.id, node.func.id == receiver,
                                                node.func.id in callables))
-        func = _ref(node.func, self._chain)
+        func = _ref(node.func, self._chain, self._bare)
         if func is None and isinstance(node.func, ast.Attribute):
             self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
         if func is not None or self._is_parameter_method(node.func):
-            args = tuple(_ref(a, self._chain) for a in node.args if not isinstance(a, ast.Starred))
-            keywords = tuple((k.arg, _ref(k.value, self._chain)) for k in node.keywords if k.arg is not None)
+            args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
+            keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
+                             if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
                 self.found.append(Call(node.lineno, func, args, keywords, unpacked))
@@ -916,7 +1061,7 @@ class _Calls(ast.NodeVisitor):
             self.visit(base)
 
     def _use(self, node: ast.expr) -> None:
-        name, bound = _reached(node, self._chain, self._builtins)
+        name, bound = _reached(node, self._chain, self._builtins, self._bare)
         if name is not None:
             self.uses.append(Use(node.lineno, name, bound))
 
