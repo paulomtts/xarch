@@ -158,6 +158,21 @@ class Rule:
         found += _sayings(self, said, side)
         return found
 
+    def naming(self, slot: str, names: tuple[str, ...]) -> list[str]:
+        """What is wrong with naming a finding of the rule by the variables names, each problem at slot: a variable
+        that does not exist, or that prints nothing for a kind of fact the rule says (see accepted)."""
+        side = {APP: APP_SIDE, TESTS: TESTS_SIDE}.get(self.scope.files, "")
+        said = [_KINDS[name] for name in self.said_kinds if name in _KINDS]
+        guards = {c.name for c in self.keep if not c.negated}
+        problems: list[str] = []
+        for name in names:
+            variable = _VARIABLES.get(name)
+            if variable is None:
+                problems.append(f"{slot}: no variable is named {name!r}{_nearest_variable(name)}")
+            else:
+                problems += _variable(slot, variable, self, said, side, guards)
+        return problems
+
     @property
     def conditions(self) -> tuple[Condition, ...]:
         """Every filter the rule is written with, in every slot that takes one."""

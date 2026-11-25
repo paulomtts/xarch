@@ -848,6 +848,16 @@ def line(value: Any) -> bool:
     return text(value) and "\n" not in value
 
 
+def below_app(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
+    """A path below the app as written (tests/<path> for one below the tests root), its steps; None, said, when it is
+    no path of steps."""
+    steps = tuple(value.strip("/").split("/")) if text(value) else ()
+    if not steps or any(step in ("", ".", "..") for step in steps):
+        problems.append(f"{where}: {value!r}: must be a path below the app, such as documents/store")
+        return None
+    return steps
+
+
 def string(value: Any) -> str:
     return value if isinstance(value, str) else ""
 

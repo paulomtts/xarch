@@ -176,14 +176,14 @@ def accepted(written: Mapping[Any, Any], owner: Part, parts: Mapping[str, Part],
         problems += ck.unknown_keys(entry, ACCEPTED, at)
         problems += [f"{at}: missing `{key}`" for key in ACCEPTED if key not in entry]
         file, target, why = (entry.get(key) for key in ACCEPTED)
-        steps = _path(file, f"{at}.file", problems) if "file" in entry else None
+        steps = ck.below_app(file, f"{at}.file", problems) if "file" in entry else None
         if steps is not None:
             lies = place_of(patterns, steps, marks).part
             if lies != owner.name:
                 problems.append(f"{at}.file: {file!r} lies in {f'part {lies}' if lies else 'no part'}, not in "
                                 f"{owner.name}: list it under the part it lies in")
         path, _, name = target.rpartition(":") if isinstance(target, str) and ":" in target else (target, "", "")
-        aimed = _path(path, f"{at}.import", problems) if "import" in entry else None
+        aimed = ck.below_app(path, f"{at}.import", problems) if "import" in entry else None
         if "import" in entry and isinstance(target, str) and ":" in target and not name.strip():
             problems.append(f"{at}.import: {target!r}: write a name after `:`, or drop the `:`")
         if "why" in entry and not ck.line(why):
@@ -191,15 +191,6 @@ def accepted(written: Mapping[Any, Any], owner: Part, parts: Mapping[str, Part],
         if len(problems) == count and steps is not None and aimed is not None:
             found.append(AcceptedImport(steps, aimed, name, why, target))
     return tuple(found)
-
-
-def _path(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:
-    """A path below the app as written, its steps; None, said, when it is no path of steps."""
-    steps = tuple(value.strip("/").split("/")) if ck.text(value) else ()
-    if not steps or any(step in ("", ".", "..") for step in steps):
-        problems.append(f"{where}: {value!r}: must be a path below the app, such as documents/store")
-        return None
-    return steps
 
 
 def _marked(entry: Mapping[Any, Any], where: str, problems: list[str]) -> Any:

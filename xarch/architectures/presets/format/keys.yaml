@@ -285,8 +285,9 @@ keys:
     accepts: >-
       a map {<id>: <check>}: an id of your own (lowercase words joined by `-`, none of a check xarch has), and a check
       written in the words of the engine: what it reads (`read`), where (`in`), what it keeps, what must or may not hold
-      of it, what excuses it, and its `message` and `fix`; with `examples`, code it must find something in and code it
-      must find nothing in, which `profile check` runs. `xarch profile explain checks` says how a check is written and
+      of it, what excuses it, the findings it accepts one by one (`accepted`, each a file and, if need be, the values
+      of its variables, with why; one that accepts nothing is a finding), and its `message` and `fix`; with
+      `examples`, code it must find something in and code it must find nothing in, which `profile check` runs. `xarch profile explain checks` says how a check is written and
       every word it is written in; `xarch profile explain <key> --rule` shows the rules a key expands to, written as
       checks. A check that reads nothing in the project is listed under `enforcement`, and fails `check --strict`
     example: |

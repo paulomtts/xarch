@@ -11,6 +11,7 @@ from xarch.profile_values.checks import (
     ANY,
     APP,
     TESTS,
+    AcceptedFinding,
     Condition,
     Quantified,
     Saying,
@@ -38,6 +39,35 @@ def test_a_check_comes_back_with_each_slot_as_the_rules_read_it_and_the_defaults
         ("call",), Scope(APP, ANY, "", ()), Quantified("may_not", (WrittenTarget("path", ("builtins.print",)),)),
         (Saying("{where} prints", "log it"),), (), (), "fail", (("src/billing/api/x.py", "print(1)\n"),),
         (("src/billing/api/y.py", "pass\n"),))}
+
+
+def test_the_findings_a_check_accepts_come_back_by_file_and_by_the_variables_each_entry_names():
+    entries = [{"file": "src/billing/api/x.py", "path": "builtins.print", "why": "the cli prints"},
+               {"file": "tests/x/test_y.py/", "why": "kept"}]
+    found, problems = read({"no-print": {**SMALL, "accepted": entries}})
+    assert problems == []
+    assert found["no-print"].accepted == (
+        AcceptedFinding(("src", "billing", "api", "x.py"), (("path", "builtins.print"),), "the cli prints"),
+        AcceptedFinding(("tests", "x", "test_y.py"), (), "kept"))
+
+
+@pytest.mark.parametrize("accepted, problem", [
+    pytest.param([], "checks.x.accepted: must be a list of {file, why}, each naming the finding by the values of "
+                     "variables of the check if need be, such as [{file: <path>, name: <its name>, why: <the reason>}]",
+                 id="an empty list"),
+    pytest.param(["x.py"], "checks.x.accepted.0: must be a map {file, why}, with variables of the check if need be",
+                 id="no map"),
+    pytest.param([{"file": "../x.py", "why": "w"}], "checks.x.accepted.0.file: '../x.py': must be a path below the app, "
+                                                    "such as documents/store", id="no path below the app"),
+    pytest.param([{"file": "x.py", "why": "two\nlines"}],
+                 "checks.x.accepted.0.why: must be one line of text: why the check accepts the finding", id="no line"),
+    pytest.param([{"file": "x.py", "why": "w", "name": ["a"]}],
+                 "checks.x.accepted.0.name: must be the value the finding prints for the variable, as text",
+                 id="a variable that is no text"),
+])
+def test_an_accepted_entry_written_wrong_is_said_at_its_address(accepted, problem):
+    found, problems = read({"x": {**SMALL, "accepted": accepted}})
+    assert (found, problems) == ({}, [problem])
 
 
 def test_a_reach_to_targets_keeps_its_targets_as_written_and_its_filters_as_conditions():
@@ -74,10 +104,10 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
     pytest.param({"names": SMALL}, ["checks.names: names is the id of a check xarch has: give your check an id of its "
                                     "own, such as my-names"], id="the id of a check xarch has"),
     pytest.param({"x": "call"}, ["checks.x: must be a map of slots: read, in, keep, may_not, may_only, must_reach, "
-                                 "must_be_reached, except, mode, message, fix, once_per, per_line, cases, examples"],
+                                 "must_be_reached, except, accepted, mode, message, fix, once_per, per_line, cases, examples"],
                  id="a check that is no map"),
     pytest.param({"x": {**SMALL, "colour": "red"}}, ["checks.x: unknown key `colour`: use read, in, keep, may_not, "
-                                                     "may_only, must_reach, must_be_reached, except, mode, message, fix, "
+                                                     "may_only, must_reach, must_be_reached, except, accepted, mode, message, fix, "
                                                      "once_per, per_line, cases, examples"], id="a slot of no check"),
     pytest.param({"x": {"may_not": "exist"}}, ["checks.x: missing `read`", "checks.x: missing `message`",
                                                "checks.x: missing `fix`", "checks.x: missing `examples`"],

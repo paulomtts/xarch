@@ -83,6 +83,7 @@ RULED_OUT = {
         "modules/rules/application/logic/cycles.py",
         "modules/rules/application/logic/duplicates.py",
         "modules/rules/application/logic/elsewhere.py",
+        "modules/rules/application/logic/excusing.py",
         "modules/rules/application/logic/enforcement.py",
         "modules/rules/application/logic/engine.py",
         "modules/rules/application/logic/expandable.py",

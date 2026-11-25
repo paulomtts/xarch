@@ -32,6 +32,7 @@ from xarch.modules.rules.domain.published import (
     AcceptedEdge,
     At,
     Drift,
+    Excused,
     KeyFacts,
     KnownName,
     Loosened,
@@ -44,7 +45,8 @@ from xarch.modules.rules.domain.published import (
     Weak,
 )
 
-__all__ = ["At", "Weak", "Piece", "AcceptedEdge", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS", "GUARDS_OFF", "UNGOVERNED",
+__all__ = ["At", "Weak", "Piece", "AcceptedEdge", "Excused", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS",
+           "GUARDS_OFF", "UNGOVERNED",
            "INIT_FILES", "SKIPPED", "DYNAMIC", "UNRESOLVED", "Unresolved",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "UnresolvedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
@@ -112,7 +114,8 @@ class EnforcementView:
     check reads a fact the language supplies only partly, each in words; the checks the profile writes itself,
     each with how many facts it read in the project; the public names only the tests use that the profile
     accepts; the pairs of classes no-twins accepts as translations; the imports of the files read that the
-    reader could not follow, each in words; and the imports the parts accept by imports.accepted."""
+    reader could not follow, each in words; the imports the parts accept by imports.accepted; and the findings the
+    profile's other entries accept (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted)."""
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -128,6 +131,7 @@ class EnforcementView:
     translated: tuple[Translation, ...] = ()
     unresolved: tuple[UnresolvedView, ...] = ()
     accepted: tuple[AcceptedEdge, ...] = ()
+    excused: tuple[Excused, ...] = ()
 
 
 @dataclass(frozen=True)

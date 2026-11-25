@@ -87,6 +87,19 @@ class AcceptedEdge:
 
 
 @dataclass(frozen=True)
+class Excused:
+    """A finding an entry of the profile accepts (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted), which
+    is then not reported: the rule that found it, its file, as shown, and line (0: the file as a whole), the key of
+    the entry, the finding's message, and why."""
+    rule: str
+    file: str
+    line: int
+    key: str
+    message: str
+    why: str
+
+
+@dataclass(frozen=True)
 class Translation:
     """A pair of classes no-twins does not report because a function of a part guards.no-twins.translated lists
     translates one into the other: the file of the function, as shown, its line and its name (`<class>.<name>` for a

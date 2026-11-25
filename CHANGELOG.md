@@ -7,6 +7,13 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- A check of the profile's own may accept findings one by one under `checks.<id>.accepted: [{file, why}, ...]`,
+  each entry a file (below the app, `tests/<path>` below the tests root) and, if need be, the values the finding
+  prints for some of the check's variables (`name: InvoiceClock`); with none, every finding of the check in the file.
+  A finding accepted is not reported, every `check` names it under `accepted:` (JSON `enforcement.accepted_findings`
+  when there is one), and an entry that accepts nothing is a finding of the check, so the list can only shrink. An
+  entry naming a finding by its `line`, or by a variable the check does not have, is refused; each entry the compared
+  profile's check does not hold is listed as looser (`checks.accepted`).
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

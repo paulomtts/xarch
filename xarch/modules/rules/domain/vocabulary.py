@@ -460,6 +460,8 @@ SLOTS: tuple[Slot, ...] = (
          "{from: <files, as `in` writes them>, through: <kind> or [...], through_only: [<filter>, ...], then_through: <kind> "
          "or [...], by_another_file: true}", "kinds"),
     Slot("except", "the filters of which any one excuses a finding", "[<filter>, ...]", "filters"),
+    Slot("accepted", "findings accepted one by one",
+         "[{file, <variable>: <value>, why}]", "variables"),
     Slot("mode", "what a finding is", "fail (it fails the check), or list (it is listed as weak in the enforcement "
                                       "section and fails only `check --strict`); fail when left out"),
     Slot("message", "what was found, said of each finding", "a sentence with {<variable>}s", "variables"),

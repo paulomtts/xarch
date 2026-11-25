@@ -109,6 +109,8 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd
                                   "(guards.no-twins.translated)", 2) for item in state.translated]
     lines += [_line("accepted", f"{item.file}:{item.line}: imports {item.written}, which parts.{item.part}.imports."
                                 f"accepted accepts: {item.why}", 2) for item in state.accepted]
+    lines += [_line("accepted", f"{item.file}{f':{item.line}' if item.line else ''}: {item.message}, which {item.key} "
+                                f"accepts: {item.why}", 2) for item in state.excused]
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -182,6 +184,9 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
            if state.checks else {}),
         **({"accepted": [{"file": item.file, "line": item.line, "part": item.part, "import": item.written,
                           "why": item.why} for item in state.accepted]} if state.accepted else {}),
+        **({"accepted_findings": [{"rule": item.rule, "file": item.file, "line": item.line, "key": item.key,
+                                   "message": item.message, "why": item.why} for item in state.excused]}
+           if state.excused else {}),
     }
 
 

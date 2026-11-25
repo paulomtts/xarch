@@ -14,6 +14,7 @@ from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_o
 from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.published import Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
+from xarch.profile_values.checks import AcceptedFinding, Quantified, Saying, Scope, WrittenCheck
 
 
 def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
@@ -202,6 +203,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (faking("unit"), faking()),
         (parsed(given(layered(), "api", optional=True)), parsed(layered())),
         (accepting(ENTRY), parsed(layered())),
+        (checking(AcceptedFinding(("src", "x.py"), (), "w")), parsed(layered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -837,3 +839,21 @@ def test_each_import_a_part_accepts_that_the_compared_profile_does_not_is_looser
         Loosened("imports.accepted", "store", "src/docs/store/repo.py: src/docs/service/",
                  "store accepts src/docs/store/repo.py importing src/docs/service/ (parts.store.imports.accepted)"),)
     assert loosened(accepting(ENTRY), accepting(ENTRY, other)) == ()
+
+
+def checking(*entries: AcceptedFinding) -> Architecture:
+    """layered(), writing a check of its own that accepts the entries given."""
+    check = WrittenCheck(("call",), Scope(), Quantified("may_not"), (Saying("m", "f"),), accepted=entries)
+    return replace(parsed(layered()), checks={"no-print": check})
+
+
+def test_each_finding_a_check_accepts_that_the_compared_profile_does_not_is_looser():
+    named, whole = (AcceptedFinding(("src", "x.py"), (("name", "Clock"),), "w"),
+                    AcceptedFinding(("tests", "test_y.py"), (), "w"))
+    assert loosened(checking(named, whole), checking(whole)) == (
+        Loosened("checks.accepted", "", "no-print: src/x.py with name Clock",
+                 "the check no-print accepts the findings of src/x.py with name Clock (checks.no-print.accepted)"),)
+    assert loosened(checking(whole), parsed(layered())) == (
+        Loosened("checks.accepted", "", "no-print: tests/test_y.py",
+                 "the check no-print accepts the findings of tests/test_y.py (checks.no-print.accepted)"),)
+    assert loosened(checking(whole), checking(named, whole)) == ()

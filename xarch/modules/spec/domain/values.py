@@ -37,8 +37,8 @@ FORMAT_KEYS = f"{FORMAT}/keys.yaml"
 FILE_TYPES = f"{FORMAT}/file_types.yaml"
 """The data file of the kinds of file the docs quote besides the language of the app (see file_types)."""
 
-SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
-         "fix", "once_per", "per_line", "cases", "examples")
+SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "accepted", "mode",
+         "message", "fix", "once_per", "per_line", "cases", "examples")
 """Every slot of a check a profile writes under `checks`, in the order a check is written: spec reads them, and writes
 a check with them."""
 SCOPE_SLOTS = ("files", "part", "tier", "where")
@@ -48,6 +48,10 @@ REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
 """The slots of a quantifier of reach, in the order they are written."""
 CASE_SLOTS = ("when", "message", "fix", "once_per", "per_line")
 """The slots of a case."""
+ACCEPTED_SLOTS = ("file", "why")
+"""The keys of an entry of a check's `accepted` besides the variables it names the finding by: the file, and why."""
+LINE_VARIABLE = "line"
+"""The variable an entry of a check's `accepted` may not name a finding by: a line moves with every edit above it."""
 EXAMPLE_SLOTS = ("flagged", "clean")
 """The slots of a check's examples: the code it must find something in, then the code it must find nothing in."""
 STRUCTURE_WORD = "structure"

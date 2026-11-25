@@ -51,11 +51,20 @@ Reached = dict[tuple[str, ...] | str, set[int]]
 whose links reached it, by their place in the run."""
 
 
+Said = tuple[Violation | Weak, Found]
+"""A finding as said, with the fact it was said of (the first, for one said once for several)."""
+
+
 def run(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Violation | Weak]:
+    return [item for item, _ in said_of(rules, facts, profile)]
+
+
+def said_of(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Said]:
+    """What run finds, each finding with the fact it was said of."""
     rules = tuple(rules)
     reached = {index: _reach(rule, facts, profile) for index, rule in enumerate(rules)
                if rule.quantifier in (MUST_REACH, MUST_BE_REACHED)}
-    found: list[Violation | Weak] = []
+    found: list[Said] = []
     for position, read in enumerate(facts.files):
         for index, rule in enumerate(rules):
             if in_scope(rule.scope, read, facts, profile):
@@ -161,12 +170,12 @@ def _key(read: Read, fact: Fact) -> tuple[str, ...] | str:
 
 
 def _unreached(rule: Rule, read: Read, position: int, reached: Reached, facts: Facts,
-               profile: Profile) -> list[Violation | Weak]:
+               profile: Profile) -> list[Said]:
     keep = _questions(rule.keep) if rule.quantifier == MUST_BE_REACHED else ()
     exempt = _questions(rule.exempt)
     subjects = read.facts.get("file", ()) if rule.quantifier == MUST_REACH else [
         f for kind in rule.facts for f in read.facts.get(kind, ())]
-    found: list[Violation | Weak] = []
+    found: list[Said] = []
     for fact in subjects:
         candidate = Found(rule, read, fact)
         by = reached.get(_key(read, fact))
@@ -174,7 +183,7 @@ def _unreached(rule: Rule, read: Read, position: int, reached: Reached, facts: F
             continue
         if exempt and _any(exempt, candidate, facts, profile):
             continue
-        found.append(_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile))
+        found.append((_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile), candidate))
     return found
 
 
@@ -214,8 +223,8 @@ def _joined(text: str, values: list[list[str]]) -> str:
     return text
 
 
-def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violation | Weak]:
-    found: list[Violation | Weak] = []
+def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Said]:
+    found: list[Said] = []
     listed: dict[tuple, tuple[int, list[list[str]]]] = {}
     seen: set[tuple[int, tuple[str, ...]]] = set()
     keep, exempt = _questions(rule.keep), _questions(rule.exempt)
@@ -242,14 +251,14 @@ def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violat
                 at = (fact.line, index, texts)
                 if at not in listed:
                     listed[at] = (len(found), [[] for _ in values])
-                    found.append(_said(rule, saying, candidate, facts, profile))
+                    found.append((_said(rule, saying, candidate, facts, profile), candidate))
                 place, gathered = listed[at]
                 for into, one in zip(gathered, values):
                     into.append(one)
-                first = found[place]
-                found[place] = replace(first, message=_joined(texts[0], gathered), fix=_joined(texts[1], gathered))
+                first, of = found[place]
+                found[place] = (replace(first, message=_joined(texts[0], gathered), fix=_joined(texts[1], gathered)), of)
                 continue
-            found.append(_said(rule, saying, candidate, facts, profile))
+            found.append((_said(rule, saying, candidate, facts, profile), candidate))
     return found
 
 
