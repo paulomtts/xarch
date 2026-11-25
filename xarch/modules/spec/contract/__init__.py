@@ -34,7 +34,7 @@ from xarch.profile_values.capabilities import Shortfall, Supply
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
-from xarch.profile_values.placement import Repeat, Target
+from xarch.profile_values.placement import AcceptedImport, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
@@ -105,7 +105,8 @@ class PartView:
     repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
     tier tests it; the names it may not use; what each of its files must import one of; the kinds its files may
     define at the top level, each with its settings (holds; empty: every kind); the targets it may use as types only;
-    and for a part there to be shared, the fewest users each of its public names must have."""
+    for a part there to be shared, the fewest users each of its public names must have; and the imports its
+    imports.may does not allow that it accepts, each with why."""
     name: str
     pattern: tuple[str, ...]
     imports_may: tuple[Target, ...]
@@ -118,6 +119,7 @@ class PartView:
     holds: tuple[Held, ...] = ()
     imports_types_only: tuple[Target, ...] = ()
     shared: int | None = None
+    imports_accepted: tuple[AcceptedImport, ...] = ()
 
 
 @dataclass(frozen=True)

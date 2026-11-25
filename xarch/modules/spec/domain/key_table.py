@@ -93,6 +93,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PART_IMPORTS, "may", rules=("may-import",), opens=PART_IMPORTS_MAY),
     Key(PART_IMPORTS, "must", rules=("must-import",)),
     Key(PART_IMPORTS, "libraries", rules=("libraries",)),
+    Key(PART_IMPORTS, "accepted", rules=("may-import",)),
 
     Key(PART_IMPORTS_MAY, "types_only", rules=("types-only",)),
 
@@ -242,6 +243,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "fakes": ("class", "class.interface"),
     "fakes.tiers": _IMPORTS,
     "parts.<part>.imports.may": _IMPORTS,
+    "parts.<part>.imports.accepted": _IMPORTS,
     "parts.<part>.imports.must": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
     "parts.<part>.imports.may.types_only": _TYPES_ONLY,
     "parts.<part>.holds": ("class", "class.exception", "class.record", "function", "function.top_level", "public"),

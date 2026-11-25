@@ -25,3 +25,15 @@ class Target:
     scope: InstanceScope = "none"
     sub: tuple[str, ...] = ()
     names: str = ""
+
+
+@dataclass(frozen=True)
+class AcceptedImport:
+    """An import a part accepts although its `imports.may` does not allow it (`imports.accepted`): the file importing,
+    and the file or folder it imports, each by its path below the app as written; the name it takes from there, "" for
+    any; why it is accepted; and the entry as written (`<path>` or `<path>:<name>`)."""
+    file: tuple[str, ...]
+    target: tuple[str, ...]
+    name: str
+    why: str
+    written: str

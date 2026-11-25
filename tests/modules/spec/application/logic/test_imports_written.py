@@ -5,7 +5,7 @@ import pytest
 
 from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.kernel.placement import EVERYTHING
-from xarch.profile_values.placement import Target
+from xarch.profile_values.placement import AcceptedImport, Target
 
 NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
                    ":<pattern>")
@@ -44,20 +44,20 @@ def test_a_part_with_no_imports_imports_only_itself_and_no_outside_package():
 
 
 @pytest.mark.parametrize("imports, problem", [
-    pytest.param({}, "parts.store.imports: says nothing: write may, must or libraries, or drop it", id="empty"),
-    pytest.param(["shared"], "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
+    pytest.param({}, "parts.store.imports: says nothing: write may, must, libraries or accepted, or drop it", id="empty"),
+    pytest.param(["shared"], "parts.store.imports: must be a map of may, must, libraries and accepted, such as {may: [parts.<part>]}",
                  id="a list"),
-    pytest.param(True, "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
+    pytest.param(True, "parts.store.imports: must be a map of may, must, libraries and accepted, such as {may: [parts.<part>]}",
                  id="true"),
-    pytest.param("shared", "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
+    pytest.param("shared", "parts.store.imports: must be a map of may, must, libraries and accepted, such as {may: [parts.<part>]}",
                  id="a string"),
-    pytest.param(None, "parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}",
+    pytest.param(None, "parts.store.imports: must be a map of may, must, libraries and accepted, such as {may: [parts.<part>]}",
                  id="null"),
     pytest.param({"never": "pure"}, "parts.store.imports: unknown key 'never': a key of uses, beside imports: write "
-                 "uses: {never: <list>}; use libraries, may, must", id="never"),
+                 "uses: {never: <list>}; use accepted, libraries, may, must", id="never"),
     pytest.param({"types_only": ["shared"]}, "parts.store.imports: unknown key 'types_only': write it as the mode of "
-                 "its entry in imports.may, such as [{parts.ports: types_only}]; use libraries, may, must", id="types_only"),
-    pytest.param({"also": ["shared"]}, "parts.store.imports: unknown key 'also': use libraries, may, must", id="also"),
+                 "its entry in imports.may, such as [{parts.ports: types_only}]; use accepted, libraries, may, must", id="types_only"),
+    pytest.param({"also": ["shared"]}, "parts.store.imports: unknown key 'also': use accepted, libraries, may, must", id="also"),
 ])
 def test_the_group_is_refused_when_written_wrong(imports, problem):
     assert problems(with_imports("store", imports)) == [f"layered.yaml: {problem}"]
@@ -170,4 +170,46 @@ def test_a_never_list_beside_imports_written_as_no_map_names_no_package_and_says
     document["never"] = {"pure": ["time.time"]}
     part_of(document, "service")["uses"] = {"never": "pure"}
     assert problems(document) == [
-        "layered.yaml: parts.store.imports: must be a map of may, must and libraries, such as {may: [parts.<part>]}"]
+        "layered.yaml: parts.store.imports: must be a map of may, must, libraries and accepted, such as {may: [parts.<part>]}"]
+
+
+WHY = "the store reads the api's settings until they move"
+ACCEPTED = {"file": "src/docs/store/repo.py", "import": "src/docs/api/settings.py:LIMIT", "why": WHY}
+
+
+def test_accepted_reads_each_entry_as_the_file_what_it_imports_and_why():
+    document = with_imports("store", {"may": ["parts.shared"],
+                                      "accepted": [ACCEPTED, {**ACCEPTED, "import": "src/docs/api/"}]})
+    assert parsed(document).parts["store"].imports_accepted == (
+        AcceptedImport(("src", "docs", "store", "repo.py"), ("src", "docs", "api", "settings.py"), "LIMIT", WHY,
+                       "src/docs/api/settings.py:LIMIT"),
+        AcceptedImport(("src", "docs", "store", "repo.py"), ("src", "docs", "api"), "", WHY, "src/docs/api/"))
+
+
+AT = "layered.yaml: parts.store.imports.accepted"
+
+
+@pytest.mark.parametrize("accepted, found", [
+    pytest.param([], [f"{AT}: must be a list of {{file, import, why}}, such as [{{file: <file of the part>, import: "
+                      "<file or folder below the app>, why: <the reason>}]"], id="an empty list"),
+    pytest.param(["src/docs/store/repo.py"], [f"{AT}.0: must be a map {{file, import, why}}"], id="no map"),
+    pytest.param([{**ACCEPTED, "why": ""}], [f"{AT}.0.why: must be one line of text: why the part may import it"],
+                 id="no reason"),
+    pytest.param([{key: value for key, value in ACCEPTED.items() if key != "why"}], [f"{AT}.0: missing `why`"],
+                 id="the reason left out"),
+    pytest.param([{**ACCEPTED, "file": "src/docs/api/routes.py"}],
+                 [f"{AT}.0.file: 'src/docs/api/routes.py' lies in part api, not in store: list it under the part it "
+                  "lies in"], id="a file of another part"),
+    pytest.param([{**ACCEPTED, "file": "notes/x.py"}],
+                 [f"{AT}.0.file: 'notes/x.py' lies in no part, not in store: list it under the part it lies in"],
+                 id="a file of no part"),
+    pytest.param([{**ACCEPTED, "import": "src/./api.py"}],
+                 [f"{AT}.0.import: 'src/./api.py': must be a path below the app, such as documents/store"],
+                 id="a step that is no name"),
+    pytest.param([{**ACCEPTED, "import": "src/docs/api/settings.py:"}],
+                 [f"{AT}.0.import: 'src/docs/api/settings.py:': write a name after `:`, or drop the `:`"],
+                 id="a colon with no name"),
+    pytest.param([{**ACCEPTED, "line": 3}], [f"{AT}.0: unknown key 'line': use file, import, why"], id="an unknown key"),
+])
+def test_an_entry_of_accepted_is_refused_with_why(accepted, found):
+    assert problems(with_imports("store", {"may": ["parts.shared"], "accepted": accepted})) == found

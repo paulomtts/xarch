@@ -18,6 +18,13 @@ All notable changes to this project are written here. The format follows
   is not there, in the app or in any instance of its repeating folder (a file only some instances hold), `new` and
   `init` do not make it, and where it is there its code is checked as any part's and what the layout puts in it is
   required. A part newly optional is listed as looser.
+- `parts.<part>.imports.accepted: [{file, import, why}, ...]` names imports the part's `imports.may` does not allow
+  that it accepts one by one, each with a reason (`import` a file or folder below the app, optionally `:<name>`):
+  `may-import` does not report them, every `check` names them in its enforcement section (`accepted:`, and
+  `enforcement.accepted` in JSON when there is one), and an entry that accepts nothing any more (its file gone, the
+  import gone, or `imports.may` now allowing it) is a `may-import` violation, so the list can only shrink. An entry
+  needs a reason and a file of its part. Each entry the compared profile does not hold is listed as looser. The new
+  filter `target-accepted` says the same in a check of one's own.
 
 ### Fixed
 

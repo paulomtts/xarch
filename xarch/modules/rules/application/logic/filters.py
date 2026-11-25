@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.placement import EVERYTHING
-from xarch.modules.rules.application.logic.places import narrowed
+from xarch.modules.rules.application.logic.places import accepting, narrowed
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import Facts, Found, Read
 from xarch.profile_values.checks import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Scope
@@ -164,6 +164,11 @@ def _names_restricted(found: Found, facts: Facts, profile: Profile, value: str) 
     return bool(narrowed(found.read.place, found.fact.at, profile))
 
 
+def _target_accepted(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    part = found.read.place.part if found.read.place is not None else None
+    return accepting(profile, part, found.read.file.path, found.fact.target, found.fact.name) is not None
+
+
 def _of_kind(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return found.fact.kind == value
 
@@ -212,7 +217,7 @@ _FACT: dict[str, Asked] = {
     "names-restricted": _names_restricted, "of-kind": _of_kind, "target-placed": _target_placed,
     "target-inside-part": _target_inside_part, "target-in-own-part": _target_in_own_part,
     "target-in-own-tier": _target_in_own_tier, "target-test": _target_test, "target-below": _target_below,
-    "target-allows-under": _target_allows_under}
+    "target-allows-under": _target_allows_under, "target-accepted": _target_accepted}
 """Each filter about the fact or what it reaches by its name, the question it asks."""
 
 NAMES = (*_FILE, *_FACT)

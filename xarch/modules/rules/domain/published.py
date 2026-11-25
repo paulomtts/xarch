@@ -76,6 +76,17 @@ class KnownName:
 
 
 @dataclass(frozen=True)
+class AcceptedEdge:
+    """An import of a part that its imports.may does not allow and its imports.accepted accepts: the file importing,
+    as shown, the line, the part, the import as the entry writes it, and why."""
+    file: str
+    line: int
+    part: str
+    written: str
+    why: str
+
+
+@dataclass(frozen=True)
 class Translation:
     """A pair of classes no-twins does not report because a function of a part guards.no-twins.translated lists
     translates one into the other: the file of the function, as shown, its line and its name (`<class>.<name>` for a

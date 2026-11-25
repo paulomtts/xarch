@@ -320,6 +320,9 @@ FILTERS: tuple[Filter, ...] = (
            ("reaches",), value=FOLDER),
     Filter("target-allows-under", "the part what the fact reaches lies in allows the file's part under that key "
                                 "(built_by)", TARGET, ("place",), side=APP_SIDE, value=KEY),
+    Filter("target-accepted", "the file's part accepts the import of what the fact reaches, by an entry of its "
+                              "`imports.accepted` naming the file, what it imports and why", TARGET, ("reaches",),
+           side=APP_SIDE),
 )
 """Every filter, about the file first, then about the fact, then about what it reaches."""
 

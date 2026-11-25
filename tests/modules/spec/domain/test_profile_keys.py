@@ -151,7 +151,7 @@ def test_imports_opens_a_scope_of_may_must_and_libraries_and_may_opens_the_scope
     imports = next(key for key in KEYS if key.scope == PART and key.name == "imports")
     may = next(key for key in KEYS if key.scope == PART_IMPORTS and key.name == "may")
     assert imports.opens == PART_IMPORTS and imports.rules == ("may-import", "must-import", "libraries")
-    assert names(PART_IMPORTS) == ["may", "must", "libraries"]
+    assert names(PART_IMPORTS) == ["may", "must", "libraries", "accepted"]
     assert may.opens == PART_IMPORTS_MAY and names(PART_IMPORTS_MAY) == ["types_only"]
     assert SCOPES[PART_IMPORTS] == "parts.<part>.imports" and SCOPES[PART_IMPORTS_MAY] == "parts.<part>.imports.may"
     assert not {"may_import", "must_import", "libraries", "types_only"} & set(names(PART))

@@ -216,6 +216,9 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems,
                                                       repeats=built.repeats),
                            imports_types_only=read[part][1]) for part, item in parts.items()}
+    parts = {part: replace(item, imports_accepted=iw.accepted(imports[part], item, built.parts,
+                                                              language.checked.marks, problems))
+             for part, item in parts.items()}
     parts = {part: _substance(specs[part], item, declared, problems, words) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
     layers = (ck.layer_chains(document["layers"], parts, declared, rules, problems, words=words) if "layers" in document

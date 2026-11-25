@@ -13,7 +13,7 @@ from xarch.kernel.logic.placement import module_steps, named_beside, place_of, r
 from xarch.kernel.placement import EACH, Marks, Place
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.excluded import Excluded
-from xarch.profile_values.placement import Repeat, Target
+from xarch.profile_values.placement import AcceptedImport, Repeat, Target
 
 
 def place(profile: Profile, path: tuple[str, ...], files: Collection[tuple[str, ...]] = frozenset()) -> Place | None:
@@ -96,3 +96,14 @@ def narrowed(src: Place | None, at: Place | None, profile: Profile) -> tuple[str
         return ()
     return tuple(dict.fromkeys(t.names for t in targets_of(profile, src.part)
                                if t.names and reaches(replace(t, names=""), src, at)))
+
+
+def accepting(profile: Profile, part: str | None, path: tuple[str, ...], target: tuple[str, ...],
+              name: str | None) -> AcceptedImport | None:
+    """The entry of the part's imports.accepted that accepts the import of target (as the language names it, below
+    the root) by the file at path (below the app, as written), taking name from it (None: the whole of it), if any: an
+    entry of that file naming that target, and that name or none."""
+    marks = profile.language.marks
+    return next((entry for entry in profile.imports_accepted.get(part or "", ())
+                 if entry.file == path and module_steps(entry.target, marks) == target
+                 and (not entry.name or entry.name == name)), None)

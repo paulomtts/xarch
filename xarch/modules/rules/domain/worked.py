@@ -36,5 +36,13 @@ WORKED: tuple[OwnCheck, ...] = (
              (("documents/types/title%extension%", "%import app.documents.rules trim%\n"),),
              (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),
               ("documents/rules%extension%", "%import app.documents.types.title Title%\n"))),
+    OwnCheck(Rule("types-stay-types-unless-accepted", Scope(APP, "documents", where=(Condition("below", "documents/types"),)),
+                  ("import-into-app",), MAY_NOT, (Match("part", words=("documents",)),),
+                  (Saying("{file} holds the types of documents, yet imports {target} at line {line}",
+                          "{type_only_fix}"),),
+                  keep=(Condition("target-placed"), Condition("target-below", "documents/types", negated=True)),
+                  exempt=(Condition("target-accepted"),), key="checks.types-stay-types-unless-accepted"),
+             (("documents/types/title%extension%", "%import app.documents.rules trim%\n"),),
+             (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),)),
 )
 """The worked checks, the first the example of how a check is written."""

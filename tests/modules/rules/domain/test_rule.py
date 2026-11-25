@@ -195,7 +195,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "directive, doc, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, "
                   "target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
-                  "target-allows-under",
+                  "target-allows-under, target-accepted",
                   "mode: is 'fial': write fail (a finding fails the check) or list (it is listed as weak and fails only "
                   "`check --strict`)",
                   "message: {weather} is no variable: did you mean where or tier or path?"],

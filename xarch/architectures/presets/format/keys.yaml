@@ -335,8 +335,9 @@ keys:
   parts.<part>.imports:
     meaning: what the part may and must import, and its outside packages
     accepts: >-
-      a map {may, must, libraries}, at least one of them, in any order: `may` the targets the part may import besides
-      itself, `must` those each of its files imports one of, `libraries` the outside packages it may import. Without
+      a map {may, must, libraries, accepted}, at least one of them, in any order: `may` the targets the part may import
+      besides itself, `must` those each of its files imports one of, `libraries` the outside packages it may import,
+      `accepted` the imports `may` does not allow that the part accepts one by one, each with a reason. Without
       `imports`, or without `may`, the part imports only itself; without `libraries`, no outside package. `never`
       belongs to `uses`, beside `imports`
     example: |
@@ -391,6 +392,26 @@ keys:
       <<part>>
           imports:
             libraries: [yaml]
+  parts.<part>.imports.accepted:
+    meaning: the imports the part accepts that its `may` does not allow
+    accepts: >-
+      a list of {file, import, why}: `file` a file of the part, by its path below the app; `import` the file or folder
+      below the app it imports, optionally followed by `:<name>`, only that name taken from it; `why` one line, the
+      reason. Such an import is no `may-import` finding: every `xarch check` names it in its enforcement section, with
+      its reason, instead. An entry whose file is gone, which the file no longer imports, or which `may` now allows, is
+      itself a `may-import` finding, so the list can only shrink. `profile check` lists each entry the profile compared
+      with does not hold as looser
+    example: |
+      parts:
+        core/:
+          role: the rules of the documents
+        documents/:
+          role: the documents
+          imports:
+            accepted:
+              - file: documents/legacy%extension%
+                import: core/old%extension%
+                why: the legacy export reads the old rules until it is retired
   parts.<part>.holds:
     meaning: what the files of the part define at the top level
     accepts: >-
