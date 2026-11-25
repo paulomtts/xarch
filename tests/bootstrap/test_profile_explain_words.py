@@ -35,9 +35,9 @@ def test_a_category_lists_its_words_and_a_word_is_explained_with_an_example_from
     assert category.exit_code == 0 and "  public " in category.output
     word = explain("filters.public")
     assert word.exit_code == 0, word.output
-    assert word.output.splitlines()[:4] == [
-        "filters.public", "  what: the name the fact carries is public in the language: it does not start as a private "
-                          "name", "    does", "  about: the fact"]
+    assert word.output.splitlines()[:3] == [
+        "filters.public", "  what: the name the fact carries is public: the language's reader says it is for other "
+                          "files to use", "  about: the fact"]
     assert "example: the rule parts.services.names of cli expands to" in word.output
 
 
@@ -62,7 +62,7 @@ def test_json_gives_each_of_them_as_one_document():
     checks = json.loads(explain("checks", "--format", "json").output)
     assert checks["ok"] is True and checks["slots"][0]["name"] == "read" and checks["example"]["profile"] is None
     word = json.loads(explain("kinds.call", "--format", "json").output)
-    assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call"])
+    assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call", "import.resolved"])
     assert {"name": "place", "meaning": "where what it leads to sits: a part, or a folder of the layout",
             "when": "target-placed"} in word["fields"]
     rule = json.loads(explain("parts.names", "--rule", "--profile", "cli", "--format", "json").output)

@@ -3,6 +3,7 @@ outside rules just as rules holds it, so there is nothing to reshape. Everything
 contract's own.
 
     At    a place in a file, as the enforcement section names a skip or a dynamic import; the command line shows it
+    Unresolved an import the reader could not follow, as the enforcement section lists it; the command line shows it
     Weak  a check met to the letter only, which the enforcement section lists and the command line shows
     KnownName a public name only the tests use that the profile accepts, which the enforcement section names and the
           command line shows
@@ -26,12 +27,13 @@ from dataclasses import dataclass
 
 CHECKS = "checks"
 """The address `profile explain` explains how a check is written at, and the first step of a slot's (checks.keep)."""
-GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, WEAK, APPROXIMATE, VACUOUS, UNPLACED = (
-    "guards_off", "ungoverned", "init_files", "skipped", "dynamic", "weak", "approximate", "vacuous", "litmus")
+GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, UNRESOLVED, WEAK, APPROXIMATE, VACUOUS, UNPLACED = (
+    "guards_off", "ungoverned", "init_files", "skipped", "dynamic", "unresolved", "weak", "approximate", "vacuous",
+    "litmus")
 """The keys of the sections of the enforcement a finding `--strict` fails on is under: a guard left off, an
-ungoverned file, an init file, a skip, a dynamic import, a weak finding, an approximate key, a check of the
-profile's own that reads nothing, and a part redefined without its litmus."""
-SECTIONS = (GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, WEAK, APPROXIMATE, VACUOUS, UNPLACED)
+ungoverned file, an init file, a skip, a dynamic import, an import the reader could not follow, a weak finding, an
+approximate key, a check of the profile's own that reads nothing, and a part redefined without its litmus."""
+SECTIONS = (GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, UNRESOLVED, WEAK, APPROXIMATE, VACUOUS, UNPLACED)
 """Every key of a section of the enforcement, in the order the sections are shown."""
 
 
@@ -40,6 +42,16 @@ class At:
     """A place in a file: how the file is shown and the line."""
     file: str
     line: int
+
+
+@dataclass(frozen=True)
+class Unresolved:
+    """An import of a file read that names a place of the app (relative, or by an alias the project maps) the reader
+    found no file or folder for: how the file is shown, the import's first line, and the module as the source writes
+    it."""
+    file: str
+    line: int
+    written: str
 
 
 @dataclass(frozen=True)

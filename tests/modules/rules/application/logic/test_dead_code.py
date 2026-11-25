@@ -3,14 +3,14 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import dead_code as violations
 from tests.modules.rules.application.logic.checks import only_by_tests, untested
-from tests.modules.rules.builders import imp, in_tests, profile, source
+from tests.modules.rules.builders import BRACE, imp, in_tests, profile, source
 from xarch.modules.rules.domain.parsed import Class, Function, Method
 from xarch.modules.rules.domain.published import Weak
 
 PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"
-REPO = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "int"),))
-NOTIFIER = Class(8, "Notifier", (PROTOCOL,), (Method(9, "send", "None"),))
+REPO = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "int"),), interface=True)
+NOTIFIER = Class(8, "Notifier", (PROTOCOL,), (Method(9, "send", "None"),), interface=True)
 ON = profile(dead_code=True)
 PORTS = source(PORT_FILE, classes=(REPO, NOTIFIER), named=frozenset({"Repo", "Notifier", "Protocol"}))
 SERVICE = "modules/docs/application/services/doc.py"
@@ -197,3 +197,14 @@ def test_a_name_another_file_names_is_not_listed_but_a_package_file_s_re_export_
 
 def test_nothing_is_listed_unless_the_guard_asks_for_it():
     assert listed_only(DEFINED, checked=profile(dead_code=True)) == []
+
+
+@pytest.mark.parametrize("cls, expected", [
+    pytest.param(Class(3, "Rule", public=False), [], id="a class the reader says is not public is not read"),
+    pytest.param(Class(3, "_Rule"), ["app/modules/docs/application/logic/rule.ts:3: _Rule"],
+                 id="one it says is public is, whatever its spelling"),
+])
+def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_names_only_the_tests_use(cls, expected):
+    braced = profile(dead_code=True, tests_only=True, language=BRACE)
+    file = source("modules/docs/application/logic/rule.ts", classes=(cls,), language=BRACE)
+    assert listed_only(file, checked=braced) == expected

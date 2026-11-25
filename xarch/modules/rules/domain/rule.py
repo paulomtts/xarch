@@ -124,14 +124,15 @@ class Rule:
 
     @property
     def needs(self) -> tuple[str, ...]:
-        """The facts of the source (FACTS of capabilities) the rule reads: those of its kinds of fact, and those of the
-        fields its words read, in order."""
+        """The facts of the source (FACTS of capabilities) the rule reads: those of its kinds of fact, those of the
+        fields its words read, and those a filter written as is (not negated) needs, in order."""
         kinds = [_KINDS[name] for name in (*self.facts, *self.links, *self.spread, *self.said_kinds) if name in _KINDS]
         words = [*(_FILTERS.get(c.name) for c in self.conditions), *(_TARGETS.get(m.kind) for m in self.targets),
                  *(_VARIABLES.get(name) for name in self.variables)]
         found = [need for kind in kinds for need in kind.needs]
         found += [need for kind in kinds for word in words if word is not None for name in word.reads
                   if kind.carries(name) for need in kind.field_needs.get(name, ())]
+        found += [need for c in self.conditions if not c.negated and c.name in _FILTERS for need in _FILTERS[c.name].facts]
         return tuple(dict.fromkeys(found))
 
     def problems(self) -> list[str]:

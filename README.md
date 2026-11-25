@@ -116,7 +116,7 @@ name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
 parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, uses: {never}, tests | untested,
                     package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
-never:    {<list>: [<dotted name> | .<method>(), ...]}        layers: {<chain>: [<part>, ...]}
+never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, types_only, folder, may_import, may_also_import,
                     must_import, docs}}
 fakes:    {folder*, for*, prefix}
@@ -130,17 +130,33 @@ evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, r
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
 ```
 
+An entry of a `never` list that is the name of another list includes that list's names in its place, such as
+`published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
+profile names, since an entry of that name would name the list.
+
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
-<name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the ending of a source file, the file
-that stands for a folder, what marks an interface, the namespace of the builtins, the callables that import by a
-computed name, the folder of compiled files, and where the standard library's names are known from (`interpreter`);
-and the tokens of its code the checks and the docs need: what a name may be, how a private name starts, what a special
-name starts and ends with, the special method calling an instance runs, the annotation of no value, the comment marker
-and the comments its tools read, the shebang, the encoding declaration, the keywords of the statements that branch and
-of the expressions that choose between values (`branching_expressions`), and what makes a class
-an immutable record (`immutable`: a base, or a decorator called with its keywords, such as
-`dataclasses.dataclass(frozen=True)`).
+<name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the endings of a source file
+(`extensions`, a list; the first is the one messages print), the files that stand for a folder (`package_files`, a
+list, optional for a language where no file does), what marks an interface (`interface`, a list of marks, each a base,
+`{base: typing.Protocol}`, or a keyword a declaration carries, `{keyword: interface}`), the namespace of the builtins,
+the callables that import by a computed name, the folder of compiled files, and where the standard library's top-level modules, the reserved words
+and the builtins are known from (`standard`: `interpreter`, the Python running xarch, or three lists, `modules`,
+`reserved` and `builtins`, each item checked with the file's `package` or `name`);
+and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
+as one step (`package`) and the text that joins a package to a name in it in the profile's lists (`member`, `.` for
+Python), so that an outside name is written `<package><member><name>`, how a private name starts (`private`, by which
+the Python reader decides whether a name is public, the fact `public` a reader supplies, and by which scaffold and
+layout refuse and skip a private name), the pattern of a special name (`special`, a regular expression the whole name
+matches), the special method calling an instance runs, the annotations of no value (`nothing`, a list: `[None]` for
+Python) and, optionally, that a method with no return annotation gives none (`unannotated: nothing`), the forms a
+comment is written in (`comments`, a list of `line`, `block` and `doc` forms, `[{line: "#"}]` for Python, a doc
+comment being one `no-comments` keeps) and the comments its tools read after the marker of any form, the shebang, the
+encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
+(`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
+`{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
+"True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
+reader supplies, which `holds` and the filter `record` read.
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
@@ -153,7 +169,9 @@ The data file also says what its reader supplies, under `supplies`: each fact of
 fields its words read, as `xarch profile explain kinds.<kind>` shows). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
-supplies every fact exactly.
+supplies every fact exactly. One fact is never written under `supplies`: `file.package`, that a file stands for the
+folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `must_import`,
+`guards.dead-code.untested`) are refused under a language that has none.
 
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
 
@@ -276,7 +294,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
 | `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.must_import`, `tiers.must_import` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier | `guards.scenario-coverage`, `tiers.plain_tables` |
-| `no-comments` | a `#` comment in the app or its tests | `guards.no-comments` |
+| `no-comments` | a comment of the language in the app or its tests (`#` for Python), but a doc comment and those its tools read | `guards.no-comments` |
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
 | `closed-tree` | a Python file of the app that lies in no part | `guards.closed-tree` |
 | `no-duplicates` | two functions or methods of the app with the same code | `guards.no-duplicates` |
@@ -288,7 +306,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |
 | `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
 | `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |
-| `private-imports` | an import of a name starting with `_` from another file of the app or its tests | `guards.private-imports` |
+| `private-imports` | an import of a name another file of the app or its tests keeps private (for Python, one starting with `_`) | `guards.private-imports` |
 | `shared` | a public name of a part declared shared that fewer users use than it says (a user: an instance of a repeating folder, or a part outside them; tests not read) | `parts.shared` |
 
 A key left out means its check is off. For what a key means, accepts and exactly checks, run
@@ -340,6 +358,7 @@ and rule ids may be added, but an existing one keeps its name and meaning.
     "init_files": [],
     "skipped": {"count": 0, "at": []},
     "dynamic": {"count": 0, "at": []},
+    "unresolved": [],
     "weak": [],
     "approximate": [],
     "strict_failures": []
@@ -369,12 +388,13 @@ how many facts it read in the project.
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
   `no-twins` accepts as a translation (`guards.no-twins.translated`): the function that names both, where it is, the
   class its file builds and the other; `init_files` items `{"file", "state"}`, `state` `missing` or
-  `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `weak` items `{"rule", "file", "line",
-  "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items `{"key", "fact", "note"}`;
-  `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`, `init_files`,
-  `skipped`, `dynamic`, `weak`, `approximate`, `vacuous` (a check of the profile's own that read nothing), `litmus` (a
-  part redefined without the litmus its compared profile gives it). `strict_failures` is filled whether or not `--strict` was given: it
-  is what `--strict` fails on.
+  `changed`; `skipped.at` and `dynamic.at` items `{"file", "line"}`; `unresolved` items `{"file", "line", "written"}`,
+  each import the reader could not follow, at its first line, with the module as the source writes it; `weak` items
+  `{"rule", "file", "line", "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items
+  `{"key", "fact", "note"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`,
+  `init_files`, `skipped`, `dynamic`, `unresolved`, `weak`, `approximate`, `vacuous` (a check of the profile's own
+  that read nothing), `litmus` (a part redefined without the litmus its compared profile gives it). `strict_failures`
+  is filled whether or not `--strict` was given: it is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`
   that is neither `text` nor `json`) is typer's usage message on stderr.
@@ -396,6 +416,7 @@ enforcement
   init files:  tests/architecture/test_rules.py is changed
   skipped:     1 skip (tests/modules/docs/domain/test_x.py:4)
   dynamic:     1 dynamic import (app/kernel/dyn.py:3)
+  unresolved:  app/modules/docs/domain/services.py:3: import ".ordr" names no file of the app
   weak:        tests/fakes/repo.py:1: FakeRepo does not define save, which Repo declares (app/...)
   weak:        app/modules/docs/application/services/doc.py:9: DocService.get only passes its arguments on to self.repo.get
       fix: have the caller use self.repo.get, or keep it as a deliberate plain forward: it stays listed and fails only `check --strict`
@@ -433,6 +454,9 @@ enforcement
 - `dynamic`: each use, in the files read, of a callable the language's data file lists as importing by a computed name
   (for Python, `importlib.import_module`, `importlib.__import__` and the builtin `__import__`), so it needs no entry in
   the profile; the import rules cannot see what it imports.
+- `unresolved`: each import, in the files read, that names a place of the app (relative, or by an alias the project
+  maps) the reader found no file or folder for, at its first line, with the module as written, one line each; the
+  import rules cannot see what it names.
 - `weak`, met to the letter only, never a violation: a fake `<prefix><Port>` that defines in its own body (methods,
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
   row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.
@@ -445,9 +469,9 @@ enforcement
 Without `--strict` the section never changes the exit code. `--strict` fails (exit 1) on every finding listed in
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
-every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each weak finding;
-each approximate key; each part redefined without its litmus. The text
-lists them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
+every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
+unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
+them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
 project opts in by running `xarch check --strict` in CI or a pre-commit hook.
 
 ## xarch where: ask before you write

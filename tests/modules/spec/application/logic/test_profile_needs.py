@@ -15,8 +15,15 @@ from xarch.profile_values.capabilities import EXACT, FACTS, Shortfall, Supply
 TOY = replace(PYTHON, name="toy", checked=replace(
     PYTHON.checked, title="Toy",
     supplies=(Supply("file", EXACT), Supply("import", EXACT), Supply("import.relative", EXACT),
-              Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"))))
+              Supply("import.standard", EXACT), Supply("class", PARTIAL, "a class defined in a branch is not read"),
+              Supply("public", EXACT))))
 LANGUAGES = {"toy": TOY}
+FLAT = replace(PYTHON, name="flat", checked=replace(
+    PYTHON.checked, title="Flat", package_files=(),
+    supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "file.package")))
+"""A language whose reader supplies every fact but file.package: it has no package file."""
+FLATS = {"flat": FLAT}
+FAKES = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
 
 
 def services(**keys) -> dict:
@@ -102,12 +109,14 @@ def test_a_part_s_never_list_under_uses_needs_the_facts_its_check_reads():
     document = services(uses={"never": "pure"})
     document["never"] = {"pure": ["socket"]}
     assert problems(document, languages=LANGUAGES) == [refusal("parts.service.uses.never", "use"),
-                                                       refusal("parts.service.uses.never", "method_call")]
+                                                       refusal("parts.service.uses.never", "method_call"),
+                                                       refusal("parts.service.uses.never", "import.resolved")]
 
 
 def test_a_tier_that_applies_the_never_lists_needs_the_facts_their_check_reads():
     assert problems(tiered(uses={"apply_never": True}), languages=LANGUAGES) == [
-        refusal("tiers.unit.uses.apply_never", "use"), refusal("tiers.unit.uses.apply_never", "method_call")]
+        refusal("tiers.unit.uses.apply_never", "use"), refusal("tiers.unit.uses.apply_never", "method_call"),
+        refusal("tiers.unit.uses.apply_never", "import.resolved")]
 
 
 def test_apply_never_false_configures_nothing():
@@ -118,3 +127,140 @@ def test_apply_never_false_configures_nothing():
 def test_a_uses_that_is_no_mapping_configures_nothing_in_any_language(uses):
     document = services(uses=uses)
     assert short(document, {}, TOY) == []
+
+
+def test_a_key_whose_check_reads_names_through_imports_needs_them_followed_however_written():
+    """Toy is given calls, so the one fact built_by still lacks is that its imports are followed."""
+    calling = replace(TOY, checked=replace(TOY.checked, supplies=(*TOY.checked.supplies, Supply("call", EXACT))))
+    assert problems(services(built_by=["api"]), languages={"toy": calling}) == [
+        refusal("parts.service.built_by", "import.resolved")]
+
+
+def test_whether_a_class_is_an_interface_is_a_fact_the_marks_of_the_data_file_say():
+    assert FACTS["class.interface"] == "whether a class is an interface, by the marks of the language's data file"
+
+
+@pytest.mark.parametrize("address", ["guards.stand-ins", "guards.dead-code", "fakes"])
+def test_a_key_that_reads_ports_needs_the_reader_to_mark_interfaces(address):
+    assert "class.interface" in {key.address: key.needs for key in KEYS}[address]
+
+
+def test_fakes_are_refused_in_a_language_whose_reader_marks_no_interface():
+    document = services()
+    document["fakes"] = {"folder": "fakes", "for": ["store"], "prefix": "Fake"}
+    assert refusal("fakes", "class.interface") in problems(document, languages=LANGUAGES)
+
+
+def flat(**keys) -> dict:
+    document = layered(language="flat")
+    document["parts"]["service"] |= keys
+    return document
+
+
+def unsupplied(address: str) -> str:
+    return (f"layered.yaml: {address}: its check reads file.package (a file stands for the folder that holds it), "
+            f"which the language flat does not supply: drop {address}, or check the app with a language whose reader "
+            "supplies file.package")
+
+
+@pytest.mark.parametrize("keys, address", [
+    pytest.param({"package_only": True}, "parts.service.package_only", id="package_only"),
+    pytest.param({"must_import": ["store"]}, "parts.service.must_import", id="a part's must_import"),
+])
+def test_a_key_that_reads_the_package_file_as_written_is_refused_under_a_language_with_none(keys, address):
+    assert problems(flat(**keys), languages=FLATS) == [unsupplied(address)]
+
+
+def test_dead_code_untested_is_refused_under_a_language_with_no_package_file():
+    document = covered(guards={"dead-code": {"untested": True}}, fakes=FAKES, language="flat")
+    assert problems(document, languages=FLATS) == [unsupplied("guards.dead-code.untested")]
+
+
+def test_the_keys_that_read_the_package_file_negated_load_under_a_language_with_none():
+    assert parsed(flat(holds="functions", immutable=True), languages=FLATS).approximate == ()
+    assert parsed(covered(guards={"dead-code": {}}, fakes=FAKES, language="flat"), languages=FLATS).approximate == ()
+    assert parsed(flat(), languages=FLATS).approximate == ()
+
+
+def test_file_package_is_a_fact_after_class_interface_and_only_the_keys_that_read_it_as_written_need_it():
+    facts = list(FACTS)
+    assert facts[facts.index("class.interface") + 1] == "file.package"
+    assert FACTS["file.package"] == "a file stands for the folder that holds it"
+    needing = sorted(key.address for key in KEYS if "file.package" in key.needs)
+    assert needing == ["guards.dead-code.untested", "parts.<part>.must_import", "parts.<part>.package_only"]
+
+
+def test_comment_doc_is_a_fact_after_file_package_and_comment_says_the_marker_it_opens_with():
+    facts = list(FACTS)
+    assert facts[facts.index("file.package") + 1] == "comment.doc"
+    assert FACTS["comment.doc"] == "whether a comment is a doc comment"
+    assert FACTS["comment"] == ("each comment, its text, its line and where on it it starts and ends, and the marker it "
+                                "opens with, which review cuts before it sends a text")
+
+
+def test_no_comments_is_refused_under_a_language_that_does_not_say_which_comments_are_doc_comments():
+    commenting = replace(TOY, checked=replace(TOY.checked, supplies=(*TOY.checked.supplies, Supply("comment", EXACT))))
+    document = layered(language="toy", guards={"no-comments": {}})
+    assert problems(document, languages={"toy": commenting}) == [refusal("guards.no-comments", "comment.doc")]
+    both = replace(TOY, checked=replace(TOY.checked, supplies=(*commenting.checked.supplies,
+                                                                Supply("comment.doc", EXACT))))
+    assert parsed(document, languages={"toy": both}).approximate == ()
+    assert sorted(key.address for key in KEYS if "comment.doc" in key.needs) == ["guards.no-comments"]
+
+
+def test_public_is_a_fact_after_comment_doc():
+    facts = list(FACTS)
+    assert facts[facts.index("comment.doc") + 1] == "public"
+    assert FACTS["public"] == ("whether a name a file defines, or takes by an import, is for other files to use, as the "
+                               "language decides it")
+
+
+def test_class_record_is_a_fact_after_public():
+    facts = list(FACTS)
+    assert facts[facts.index("public") + 1] == "class.record"
+    assert FACTS["class.record"] == "whether a class is a record, as the language writes one"
+
+
+def test_private_imports_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
+    unsaid = replace(TOY, checked=replace(TOY.checked, supplies=tuple(
+        supply for supply in TOY.checked.supplies if supply.fact != "public")))
+    document = layered(language="toy", guards={"private-imports": {}})
+    assert problems(document, languages={"toy": unsaid}) == [refusal("guards.private-imports", "public")]
+    assert parsed(document, languages=LANGUAGES).approximate == ()
+
+
+UNSAID = replace(PYTHON, name="unsaid", checked=replace(
+    PYTHON.checked, title="Unsaid", supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "public")))
+"""A language whose reader supplies every fact but public: it does not say which names are for other files to use."""
+
+
+def test_a_shared_part_is_refused_under_a_language_whose_reader_does_not_say_which_names_are_public():
+    document = layered(language="unsaid")
+    document["parts"]["service"] |= {"shared": 2}
+    assert problems(document, languages={"unsaid": UNSAID}) == [
+        "layered.yaml: parts.service.shared: its check reads public (whether a name a file defines, or takes by an "
+        "import, is for other files to use, as the language decides it), which the language unsaid does not supply: "
+        "drop parts.service.shared, or check the app with a language whose reader supplies public"]
+    said = replace(UNSAID, checked=replace(UNSAID.checked, supplies=PYTHON.checked.supplies))
+    assert parsed(document, languages={"unsaid": said}).approximate == ()
+    assert sorted(key.address for key in KEYS if "public" in key.needs) == [
+        "guards.dead-code.known", "guards.dead-code.tests_only", "guards.no-twins", "guards.no-twins.min_renamed",
+        "guards.no-twins.translated", "guards.private-imports", "parts.<part>.holds", "parts.<part>.names",
+        "parts.<part>.shared"]
+
+
+UNRECORDED = replace(PYTHON, name="unrecorded", checked=replace(
+    PYTHON.checked, title="Unrecorded", supplies=tuple(Supply(fact, EXACT) for fact in FACTS if fact != "class.record")))
+"""A language whose reader supplies every fact but class.record: it does not say which classes are records."""
+
+
+def test_a_part_that_holds_is_refused_under_a_language_whose_reader_does_not_say_which_classes_are_records():
+    document = layered(language="unrecorded")
+    document["parts"]["service"] |= {"holds": "functions"}
+    assert problems(document, languages={"unrecorded": UNRECORDED}) == [
+        "layered.yaml: parts.service.holds: its check reads class.record (whether a class is a record, as the language "
+        "writes one), which the language unrecorded does not supply: drop parts.service.holds, or check the app with a "
+        "language whose reader supplies class.record"]
+    said = replace(UNRECORDED, checked=replace(UNRECORDED.checked, supplies=PYTHON.checked.supplies))
+    assert parsed(document, languages={"unrecorded": said}).approximate == ()
+    assert sorted(key.address for key in KEYS if "class.record" in key.needs) == ["parts.<part>.holds"]

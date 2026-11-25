@@ -3,6 +3,7 @@ types_only, no_callbacks, names, built_by), a name pattern on a target of may_im
 guards private-imports and dead-code's untested."""
 import pytest
 
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import DeadCode, PrivateImports
 from xarch.profile_values.placement import Target
@@ -158,3 +159,11 @@ NOT = "is not <file below the app>:<name>, such as documents/rules.py:clean"
 ])
 def test_a_bad_parameter_of_the_guards_is_refused(guards, expected):
     assert problems(covered(guards=guards, fakes=FAKES)) == [f"layered.yaml: {expected}"]
+
+
+def test_dead_code_may_accept_a_public_name_of_a_file_of_any_ending_of_the_language():
+    known = ["shared/text.tsx:clean", "shared/run.mts:main"]
+    document = covered(guards={"dead-code": {"tests_only": True, "known": known}}, fakes=FAKES, language="brace",
+                       testing={"files": ["*.test.ts"], "functions": "test*"})
+    assert parsed(document, languages={"python": PYTHON, "brace": BRACE}).guards == (
+        DeadCode(False, True, ("shared/text.tsx:clean", "shared/run.mts:main")),)

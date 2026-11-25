@@ -122,10 +122,6 @@ def _on_own_object(found: Found, facts: Facts, profile: Profile, value: str) -> 
     return "on-own-object" in found.fact.traits
 
 
-def _public(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
-    return found.fact.name is not None and profile.language.is_public(found.fact.name)
-
-
 def _special(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return found.fact.name is not None and profile.language.is_special(found.fact.name)
 
@@ -144,14 +140,15 @@ def _returns_an_attribute(found: Found, facts: Facts, profile: Profile, value: s
 
 def _directive(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     language, comment = profile.language, found.fact
-    marker = re.escape(language.comment)
+    marker = comment.name or ""
+    after = comment.text[len(marker):] if marker and comment.text.startswith(marker) else None
     words = "|".join(r"\s*".join(re.escape(part) for part in word.split(" ")) for word in language.directives)
-    if words and re.match(rf"{marker}\s*({words})", comment.text):
+    if after is not None and words and re.match(rf"\s*({words})", after):
         return True
     if comment.line == 1 and language.shebang and comment.text.startswith(language.shebang):
         return True
-    return comment.line <= 2 and bool(language.encoding) and bool(
-        re.match(rf"^[ \t\f]*{marker}.*?{language.encoding}", comment.text))
+    return after is not None and comment.line <= 2 and bool(language.encoding) and bool(
+        re.match(rf".*?{language.encoding}", after))
 
 
 def _reported_at_import(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
@@ -202,10 +199,10 @@ def _target_allows_under(found: Found, facts: Facts, profile: Profile, value: st
 _FACT: dict[str, Asked] = {
     "relative": _relative, "standard": _standard, "reserved": _reserved,
     "listed-by-another-part": _listed_by_another_part, "app-package": _app_package, "own-code": _own_code,
-    "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "public": _public, "special": _special, "named": _named,
+    "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "special": _special, "named": _named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
-                                       "unreadable")},
+                                       "unreadable", "doc", "public")},
     "returns-an-attribute": _returns_an_attribute, "directive": _directive, "reported-at-import": _reported_at_import,
     "names-restricted": _names_restricted, "of-kind": _of_kind, "target-placed": _target_placed,
     "target-inside-part": _target_inside_part, "target-in-own-part": _target_in_own_part,

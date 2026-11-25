@@ -9,7 +9,7 @@ from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.language import CheckedLanguage
 
-PASCAL = replace(Language(), name="pascal", checked=CheckedLanguage("Pascal", ".pas", "unit.pas"),
+PASCAL = replace(Language(), name="pascal", checked=CheckedLanguage("Pascal", (".pas",), ("unit.pas",), package=r"\w+", member="."),
                  namespace="system", standard_names=frozenset({"strutils"}), builtin_names=frozenset({"writeln"}))
 BOTH = {"pascal": PASCAL, "python": PYTHON}
 

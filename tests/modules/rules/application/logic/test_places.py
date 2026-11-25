@@ -136,7 +136,7 @@ def test_allowed_across_repeating_folders(src, dst, expected):
     assert allowed(TWO, src, dst) == expected
 
 
-MARKS = Marks(".src", "pkg.src")
+MARKS = Marks((".src",), ("pkg.src",))
 
 
 @pytest.mark.parametrize("path, answer", [

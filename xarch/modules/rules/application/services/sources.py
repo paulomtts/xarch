@@ -40,7 +40,7 @@ class SourcesService:
     def _files(self, profile: Profile, where: Resolved) -> list[Resolved]:
         if not where.exists or self._tree.absent([where.path]):
             return [where]
-        return walked(profile, where, self._tree.paths(where.path, profile.language.extension))
+        return walked(profile, where, self._tree.paths(where.path, profile.language.extensions))
 
     def _read(self, profile: Profile, found: Resolved, app: Path) -> SourceRead:
         place = sited(profile, found)
@@ -49,7 +49,8 @@ class SourcesService:
         target = linked(profile, found, self._tree.resolved(app, found.path), app)
         if target is None:
             return SourceRead(found.shown, LINKED_OUT)
-        read = self._tree.read(app, [found.steps])[0]
+        read = self._tree.read(app, [found.steps], standard=profile.language.standard_modules,
+                               private=profile.language.private, special=profile.language.special)[0]
         unreadable = read.error is not None and read.error.unreadable
         text = "" if unreadable else self._tree.text(found.path) or ""
         return SourceRead(found.shown, place.lies, place.part, text, read.imports, read.error, read.pieces,

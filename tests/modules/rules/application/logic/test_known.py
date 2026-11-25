@@ -4,7 +4,7 @@ listed itself."""
 import pytest
 
 from tests.modules.rules.application.logic.checks import accepting
-from tests.modules.rules.builders import in_tests, profile, source
+from tests.modules.rules.builders import BRACE, in_tests, profile, source
 from xarch.kernel.source import Import
 from xarch.modules.rules.domain.outcomes import Accepting
 from xarch.modules.rules.domain.parsed import Class, Constant, Function
@@ -92,3 +92,20 @@ def test_an_entry_holds_only_when_a_test_names_it_in_its_code(tests, then):
 
 def test_with_the_tests_only_check_off_nothing_is_listed_or_accepted():
     assert accepting([DEFINED], profile(dead_code=True, tests_only_known=(f"{LOGIC}:Rule",)), "app") == Accepting((), ())
+
+
+BRACED = "modules/docs/application/logic/rule.ts"
+
+
+@pytest.mark.parametrize("public, then", [
+    pytest.param(False, Accepting((absent(BRACED, "Rule"),), ()),
+                 id="an entry naming a class the reader says is not public names none"),
+    pytest.param(True, Accepting((), (KnownName(f"app/{BRACED}", 3, "Rule"),)),
+                 id="one naming a class it says is public is accepted"),
+])
+def test_under_a_language_with_no_private_prefix_an_entry_is_held_to_what_the_reader_says_is_public(public, then):
+    defined = source(BRACED, classes=(Class(3, "Rule", public=public),), language=BRACE)
+    tested = in_tests("modules/docs/application/logic/test_rule.ts",
+                      functions=(Function(3, "test_rule", named=frozenset({"Rule"})),), language=BRACE)
+    checked = profile(dead_code=True, tests_only=True, tests_only_known=(f"{BRACED}:Rule",), language=BRACE)
+    assert accepting([defined], checked, "app", [tested]) == then

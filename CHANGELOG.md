@@ -5,8 +5,83 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The fact `class.record`, whether a class is a record, as the language writes one, which `parts.<part>.holds` and a
+  check of your own whose filter is `record` need, in place of `class.methods` and `function.returns`; a language
+  that does not supply it is refused them with the needs text. The reader says it of each class (`Class.record`),
+  handed the language's `special`, and the checks no longer work it out. Python supplies it, computed as before: a
+  class whose methods are all special that a top-level function of its file names in its return annotation.
+- The fact `public`, whether a name a file defines, or takes by an import, is for other files to use, as the language
+  decides it, which `parts.<part>.holds`, `parts.<part>.names`, `parts.<part>.shared`, `guards.private-imports`,
+  `guards.dead-code.tests_only`, `guards.dead-code.known` and `guards.no-twins` (with `min_renamed` and `translated`)
+  need; a language that does not supply it is refused those keys with the needs text. The reader says it of each
+  class, function, constant and name an import takes (`Class.public`, `Function.public`, `Constant.public`, and
+  `Import.withheld`, the names an import takes that are not public), handed the language's `private` to decide it.
+  Python supplies it, computed from `private` as before.
+- The fact `comment.doc`, whether a comment is a doc comment, which `guards.no-comments` needs beside `comment`. The
+  reader says of each comment the marker it opens with and whether it is a doc comment (`Comment.marker` and
+  `Comment.doc`), and a check of your own reads the doc ones with the filter `doc`. Python supplies it: no Python
+  comment is a doc comment.
+- The fact `file.package`, that a file stands for the folder holding it, which a language supplies exactly when its
+  data file gives `package_files` and which is never written under `supplies` (`supplies: file.package follows
+  package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `must_import` and
+  `guards.dead-code.untested` need it, and so does a check of your own whose filter `package-file` (or
+  `target-inside-part`) is written as is; `not package-file` needs nothing. Python supplies it.
+- A list of `never` may include another: an entry that is exactly the name of another list of the block puts that
+  list's names in its place, in order, however deep, the list written above or below, as in
+  `published: [pure, typing.Any]`. The bundled profiles and xarch's own now write `published` that way, with no
+  part's names changed. Refused at the list: one that includes itself (`includes itself`, or `includes itself,
+  through never.<list>: drop one of the two`), one that reaches a list twice (`includes never.<list> twice`), one
+  that reaches a name twice (`'<name>' is listed in never.<list>, which never.<list> includes: drop it here`), and
+  one named like a package of the standard library or one the profile names (`a list may not take the name of a
+  package ...: rename it`). A part naming a list of lists is told `a list may include others`.
+
 ### Changed
 
+- A language's data file writes what makes a class an immutable record as marks, each a map of one of four forms,
+  as interface marks are: `{base: <outside name>}`, `{decorator: <outside name>, keywords: {<name>: <value>}}`
+  (keywords left out: the decorator however it is written), `{fields: <word>}` or `{type: <outside name>}`. Python
+  writes `[{base: typing.NamedTuple}, {decorator: dataclasses.dataclass, keywords: {frozen: "True"}}]`, and its reader
+  reads the first two forms. The string form is no longer read. Refused, once for the key: `immutable: each mark is
+  {base}, {decorator, keywords}, {fields} or {type}`. No finding of a Python app changes.
+- The filter `public` reads the fact `public`, never how a name is spelled, and applies to `class`, `function` and
+  `imported-name` only: written on another kind in a check of your own, `profile check` refuses it (`public does not
+  apply to <kind>`). `CheckedLanguage.is_public` is gone. Under a language that gives no `private`, the docs line of
+  `private-imports` says "a name another file of them keeps private". No finding of a Python app changes.
+- A language's data file says how its comments are written as a list of forms: `comment` became `comments`, each
+  form `{line: <marker>}`, `{block: [<open>, <close>]}` or `{doc: [<open>, <close>]}` (a doc form's closing may be
+  `""`, the end of its line; `[{line: "#"}]` for Python); left out, the language has none. `%comment%` is the first
+  line form's marker, else the first block form's opening. A directive and an encoding declaration are matched after
+  the marker of the comment, whatever its form, and `no-comments` keeps doc comments. The old key is an unknown key.
+  Refused: `comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}` and
+  `comments: needs one form at least`. No finding of a Python app changes.
+- A language's data file says the endings of a source file as a list and its package files as an optional list:
+  `extension` and `package_file` became `extensions` (`[.py]` for Python, the first the one messages print) and
+  `package_files` (`[__init__.py]`), each package file ending in one of the extensions; a language may have none.
+  Every check decides what a source file is by all its endings, and `testing.files` takes a pattern of any of them.
+  The old keys are unknown keys. Refused: `extensions: must be a non-empty list of endings, each starting with a
+  dot`, `package_files: must be a list of file names, each ending in one of extensions`, and
+  `package_files: '<item>' ends in none of extensions`. No finding of a Python app changes.
+- A language's data file says its standard library as data, or where it is known from: `standard` is `interpreter`
+  (the Python running xarch, as before) or a map of three lists, `{modules: [...], reserved: [...], builtins: [...]}`,
+  the top-level modules of its standard library, its reserved words and its builtins, each module checked with the
+  file's `package` pattern and each other item with its `name` pattern. The reader is handed the standard modules
+  from the language instead of asking the interpreter itself, so the set a profile is checked with and the set an
+  import is marked by are one. Refused: `standard: must be interpreter, or a map of modules, reserved and builtins,
+  each a list of names`, `standard.modules: '<item>' is not a package name the language allows`, and
+  `standard.reserved: '<item>' is not a name the language allows` (`standard.builtins` the same). No finding of a
+  Python app changes.
+- The language's data file says as data what makes a class a port: `interface` is a list of marks, each
+  `{base: <outside name>}`, a name among a class's bases (`{base: typing.Protocol}`), or `{keyword: <word>}`, a keyword
+  a declaration carries; `nothing` is the list of return annotations that give no value (`nothing: [None]`); `special`
+  is a regular expression a special name matches in full (`'(?=__)\w*(?<=__)'` for Python); and a file may say
+  `unannotated: nothing`, that a method with no return annotation gives no value. The reader marks a class an
+  interface, and the stand-ins, the dead-code ports, the `interface` filter and no-twins read that mark instead of
+  comparing bases. The keys that read ports (`fakes`, `guards.stand-ins`, `guards.dead-code`) need the new fact
+  `class.interface`, which Python supplies `exact`. Refused: `interface: each mark is {base: <outside name>} or
+  {keyword: <word>}` (the old list of names among them), `nothing: must be a list of return annotations`,
+  `special: must be a regular expression`, and `unannotated: must be nothing`. No finding of a Python app changes.
 - The two archived corpora's profiles (`7cc6111`, `df537ca`) are plain yaml files beside their archives in
   `tests/bootstrap/corpora/`, so a change of format edits them as files; the recorded findings are unchanged.
 
@@ -34,6 +109,31 @@ All notable changes to this project are written here. The format follows
 
 - Internal names follow the 0.3.0 key names: the fields and functions that read `uses.never` and `uses.apply_never`
   say `uses_never`, `apply_never` and `never_lists` in place of `forbidden`; no output changes.
+
+- The Python reader follows relative imports to the place they name: `from .order import Order` in
+  `app/domain/services.py` binds `app.domain.order.Order`, as `from app.domain.order import Order` does, so
+  `uses.never`, `built_by`, `types_only`, `shared`, the mocks, `stand-ins` and the twins' translation read names
+  imported relatively as they read absolute ones; a name of the app that a `uses.never` list names is found at its use,
+  since a relative import's line does not name it in full. An import it cannot follow (one that climbs above the root,
+  or names no file or folder below it) is marked unresolved and binds nothing. Python has no alias map, so the reader
+  reads no config for aliases. The keys that read those names need the new fact `import.resolved`, which Python
+  supplies `exact`; a language that does not supply it is refused on them with the existing message. A project with no
+  relative import sees no change.
+- A new enforcement section, `unresolved`, lists each import the reader could not follow by file and line with the
+  module as written, in text (`unresolved:  app/domain/services.py:3: import ".ordr" names no file of the app`) and
+  under the JSON key `unresolved` (`{"file", "line", "written"}`), and `--strict` fails on each, as on a dynamic
+  import (`strict_failures` key `unresolved`). A project with no such import sees only the empty JSON key
+  `"unresolved": []`.
+
+- A language's data file gives `package`, what an import names from outside the app as one step, and `member`, the
+  text that joins a package to a name in it (`.` for Python), beside `name`: the three are given together or not at
+  all. The outside names a profile writes (`libraries`, `reserved`, the `never` lists, `testing.skips`,
+  `testing.mocks.calls` and `autospec`, `testing.table.decorator` and `row`, a check's `path` target) and the data
+  file's `interface`, `dynamic` and `immutable` are read by them; no Python profile entry changes. The refusals say
+  so: `'<entry>' is not a package name the language Python allows` under `libraries` and `reserved`;
+  `'<value>' is not an outside name such as <package>.<name>` under the testing names; and under a `never` list
+  `'<entry>' is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()` and
+  `'<entry>' is neither an outside name nor a method: write <entry>() for a method called on anything`.
 
 ## [0.2.0] - 2026-11-18
 

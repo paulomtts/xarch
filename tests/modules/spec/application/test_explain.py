@@ -93,7 +93,7 @@ SHAPE = (
     Shown('guards.no-twins', 1, 'no two classes in different parts with the same fields', False, True),
     Shown('guards.dead-code', 1, 'no Protocol nothing names, no fake no test uses', False, True),
     Shown('guards.pass-through', 1, 'a method that only forwards is listed', False, True),
-    Shown('guards.private-imports', 1, 'no name starting with `_` is imported from another file', False, True),
+    Shown('guards.private-imports', 1, 'no name another file keeps private is imported from it', False, True),
     Shown('excluded', 0, 'folders below the app that are not its source', False, True),
     Shown('hints', 0, 'your own advice for a rule', False, False),
     Shown('checks', 0, 'checks of your own, beside the keys', False, True),
@@ -126,7 +126,7 @@ may send and of how it reads what it asks are left to the explanation of `review
                  UnknownKey("parts.may_imports", ("parts.may_import", "parts.must_import", "tiers.may_import")),
                  id="a key the format does not have is refused with the nearest keys"),
     pytest.param(BROKEN, Explain(), ProfileRefused("presets/language/python.yaml: must be a mapping of keys, such as title, "
-                                                   "extension and package_file"),
+                                                   "extensions and package_files"),
                  id="the format is refused with why when the data file of a language does not load"),
     pytest.param(UNTOLD, Explain("based_on"), ProfileRefused("presets/format/keys.yaml: missing `keys`\n"
                                                              "presets/format/keys.yaml: missing `slots`\n"
@@ -170,14 +170,16 @@ def test_a_key_that_configures_a_check_names_the_facts_it_reads_as_the_default_l
 
 
 def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
-    toy = {"title": "Toy", "extension": ".toy", "package_file": "pkg.toy", "namespace": "core",
+    toy = {"title": "Toy", "extensions": [".toy"], "package_files": ["pkg.toy"], "namespace": "core",
            "standard": "interpreter", "supplies": {"class": {"partial": "nested classes are not read"}}}
     spec, _ = spec_controller(**BUNDLED, languages={"toy": toy})
     found = spec.explain(Explain("parts.names"))
     assert (found.needs, found.graded) == (
-        (Need("class", FACTS["class"], Supply("class", "partial", "nested classes are not read")),), True)
+        (Need("class", FACTS["class"], Supply("class", "partial", "nested classes are not read")),
+         Need("public", FACTS["public"])), True)
     assert (found.short, found.holder, found.name) == (
-        (Shortfall("parts.names", "class", "nested classes are not read"),), "part", "names")
+        (Shortfall("parts.names", "class", "nested classes are not read"), Shortfall("parts.names", "public", None)),
+        "part", "names")
     assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)
 
 
@@ -208,7 +210,7 @@ def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():
 def test_the_lists_a_part_never_uses_are_the_top_level_never_and_the_key_never_of_its_uses():
     block, group, held = (explained(address) for address in ("never", "parts.uses", "parts.<part>.uses.never"))
     assert (block.key, block.meaning) == ("never", "named lists of names a part never uses")
-    assert "`uses: {never: <list>}`" in block.accepts and block.example.endswith("    uses: {never: pure}\n")
+    assert "`uses: {never: <list>}`" in block.accepts and block.example.endswith("    uses: {never: published}\n")
     assert (group.key, group.where, [shown.key for shown in group.keys]) == (
         "parts.uses", "parts.<part>", ["parts.uses.never"])
     assert (held.key, held.where, held.meaning) == (

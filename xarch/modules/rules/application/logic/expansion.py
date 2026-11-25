@@ -204,13 +204,13 @@ def _no_callbacks(profile: Profile) -> tuple[Rule, ...]:
 
 
 def _no_comments(profile: Profile) -> tuple[Rule, ...]:
-    """No line comment, in the app or its tests, but those the language's tools read: its directives, a shebang on
-    line 1, an encoding declaration on line 1 or 2."""
+    """No comment, in the app or its tests, but doc comments and those the language's tools read: its directives, a
+    shebang on line 1, an encoding declaration on line 1 or 2."""
     if not profile.no_comments:
         return ()
     return (Rule("no-comments", Scope(ALL), ("comment",), MAY_NOT, EXISTING,
                  (Saying("a comment (no-comments)", "say it in a docstring or a name, and delete the comment"),),
-                 exempt=_all("directive"), key="guards.no-comments"),)
+                 exempt=_all("directive", "doc"), key="guards.no-comments"),)
 
 
 def _closed_tree(profile: Profile) -> tuple[Rule, ...]:

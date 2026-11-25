@@ -1,5 +1,8 @@
 """What `xarch profile explain` reads from the table of keys: the overview's keys, the key at an address a person types,
 an example with the names xarch ships, and the nearest keys to an address that does not exist."""
+from dataclasses import replace
+
+from tests.modules.spec.languages import BRACE, PERCENT, PYTHON
 from xarch.modules.spec.application.logic.explain import (
     cleaned,
     example_of,
@@ -7,6 +10,7 @@ from xarch.modules.spec.application.logic.explain import (
     key_at,
     nearest,
     overview_keys,
+    words,
 )
 from xarch.modules.spec.application.logic.key_lookup import plain
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
@@ -52,3 +56,12 @@ def test_the_nearest_keys_read_like_what_was_typed_else_are_the_keys_of_the_deep
     assert nearest("parts.may_imports")[0] == "parts.may_import" and nearest("pats")[0] == "parts"
     assert all(key.startswith("parts.") for key in nearest("parts.colour"))
     assert "name" in nearest("zzzzzz")
+
+
+def test_the_words_of_a_language_say_its_first_comment_marker_and_each_directive_after_it():
+    assert (words(PYTHON)["comment"], words(PYTHON)["directives"]) == ("#", "`# type: ignore`, `# noqa`, `# pragma:`")
+    assert (words(BRACE)["comment"], words(BRACE)["directives"]) == (
+        "//", "`// @ts-expect-error`, `// eslint-disable`")
+    assert (words(PERCENT)["comment"], words(PERCENT)["directives"]) == ("//", "")
+    bare = replace(PERCENT, checked=replace(PERCENT.checked, comments=()))
+    assert words(bare)["comment"] == ""

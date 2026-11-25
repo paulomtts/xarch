@@ -1,8 +1,11 @@
 """FsSourceTree on real files: the calls and classes a file holds, each name read through the import that binds it."""
+import sys
 from dataclasses import replace
+from importlib import resources
 from pathlib import Path
 
 import pytest
+import yaml
 
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
@@ -24,15 +27,26 @@ from xarch.modules.rules.domain.parsed import (
     Use,
 )
 from xarch.platform.filesystem import FileSystem
-from xarch.profile_values.language import RecordMark
+from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 PYTEST = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
+STANDARD = frozenset(sys.stdlib_module_names)
+"""The modules spec hands the reader for the language the tests' sources are written in: the interpreter's standard
+library."""
+PRIVATE = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                         .read_text(encoding="utf-8"))["private"]
+"""How the language the tests' sources are written in starts a private name, as its data file says it."""
+SPECIAL = yaml.safe_load(resources.files("xarch").joinpath("architectures", "presets", "language", "python.yaml")
+                         .read_text(encoding="utf-8"))["special"]
+"""The pattern of a special name of the language the tests' sources are written in, as its data file says it."""
+HANDED = {"private": PRIVATE, "special": SPECIAL}
+"""What the reader is handed of the language's tokens, as `check` hands it."""
 
 
 def parsed(tmp_path: Path, text: str, table: CaseTable | None = PYTEST) -> SourceFile:
     (tmp_path / "x.py").write_text(text)
-    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table)[0]
+    return FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], table, standard=STANDARD, **HANDED)[0]
 
 
 def line_of(text: str, marker: str) -> int:
@@ -76,8 +90,138 @@ def test_a_name_imported_and_rebound_at_module_level_is_not_read_through_the_imp
     assert parsed(tmp_path, text).calls == ()
 
 
-def test_relative_imports_bind_nothing(tmp_path):
-    assert parsed(tmp_path, "from .helpers import build\nbuild()\n").calls == ()
+ORDER = "app/domain/order.py"
+SERVICES = "app/domain/services.py"
+
+
+def read_at(tmp_path: Path, files: dict[str, str], path: str) -> SourceFile:
+    """The file at path, its first step the root it is read below, once every file given is written below tmp_path."""
+    for rel, body in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(body)
+    root, *steps = path.split("/")
+    return FsSourceTree(FileSystem()).read(tmp_path / root, [tuple(steps)], standard=STANDARD, **HANDED)[0]
+
+
+def test_a_relative_import_of_a_name_binds_the_place_it_names(tmp_path):
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: "from .order import Order\n\nOrder()\n"}, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+    assert found.imports == (Import(1, ("order",), ("Order",), relative=True, up=0, written=".order"),)
+
+
+def test_a_module_imported_relatively_is_the_place_its_names_are_read_on(tmp_path):
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: "from . import order\n\norder.Order()\n"}, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+    assert found.imports == (Import(1, (), ("order",), relative=True, up=0, written="."),)
+
+
+def test_a_relative_import_with_more_dots_climbs_a_folder_for_each(tmp_path):
+    text = "from ..kernel.errors import Failed\nfrom .. import kernel\n\nFailed\nkernel\n"
+    found = read_at(tmp_path, {"app/kernel/errors.py": "class Failed(Exception): ...\n", SERVICES: text}, SERVICES)
+    assert found.uses == (Use(4, ("app", "kernel", "errors", "Failed"), 0), Use(5, ("app", "kernel"), 0))
+    assert [(i.up, i.unresolved) for i in found.imports] == [(1, False), (1, False)]
+
+
+def test_a_package_file_imports_relatively_from_its_own_folder(tmp_path):
+    init = "app/domain/__init__.py"
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", init: "from .order import Order\n\nOrder()\n"}, init)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+
+
+def test_an_alias_of_a_relative_import_keeps_the_place_it_names(tmp_path):
+    text = "from .order import Order as O\nfrom . import order as o\n\nO()\no.Order()\n"
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: text}, SERVICES)
+    assert found.calls == (Call(4, ("app", "domain", "order", "Order")), Call(5, ("app", "domain", "order", "Order")))
+
+
+def test_a_relative_import_of_a_folder_is_followed_to_it(tmp_path):
+    files = {"app/domain/order/__init__.py": "class Order: ...\n", SERVICES: "from .order import Order\n\nOrder()\n"}
+    found = read_at(tmp_path, files, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")),)
+    assert found.imports[0].unresolved is False
+
+
+def test_a_relative_import_of_nothing_below_the_root_binds_nothing_and_is_unresolved(tmp_path):
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: "from .ordr import Order\n\nOrder()\n"}, SERVICES)
+    assert (found.calls, found.uses) == ((), ())
+    assert found.imports == (Import(1, ("ordr",), ("Order",), relative=True, up=0, written=".ordr", unresolved=True),)
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param("from .. import x\n\nx()\n", id="one folder above a file at the root"),
+    pytest.param("from ... import x\n\nx()\n", id="two folders above it"),
+    pytest.param("from ..up import x\n\nx()\n", id="a module of a folder above it"),
+])
+def test_a_relative_import_that_climbs_above_the_root_binds_nothing_and_is_unresolved(tmp_path, text):
+    found = read_at(tmp_path, {"app/a.py": text}, "app/a.py")
+    assert (found.calls, [i.unresolved for i in found.imports]) == ((), [True])
+
+
+def test_a_file_at_the_root_imports_relatively_from_the_root_s_own_folder(tmp_path):
+    found = read_at(tmp_path, {"app/a.py": "from . import b\n\nb()\n"}, "app/a.py")
+    assert (found.calls, [i.unresolved for i in found.imports]) == ((Call(3, ("app", "b")),), [False])
+
+
+def test_a_name_imported_relatively_reaches_every_reading_at_its_place_bound_none_of_its_steps(tmp_path):
+    text = ("from unittest.mock import Mock\nfrom .base import Base\nfrom .ports import Repo\n\n\nclass Store(Base): ...\n\n\n"
+            "def build(repo: Repo):\n    return Mock(spec=Repo)\n")
+    files = {"app/domain/base.py": "class Base: ...\n", "app/domain/ports.py": "class Repo: ...\n", SERVICES: text}
+    found = read_at(tmp_path, files, SERVICES)
+    assert found.classes[0].bases == (("app", "domain", "base", "Base"),)
+    assert found.calls == (Call(10, ("unittest", "mock", "Mock"), (), (("spec", ("app", "domain", "ports", "Repo")),)),)
+    assert Use(9, ("app", "domain", "ports", "Repo"), 0) in found.uses
+
+
+def test_a_relative_import_in_a_function_or_a_class_body_is_followed_there(tmp_path):
+    text = ("def make():\n    from .order import Order\n    return Order()\n\n\n"
+            "class Shop:\n    from .order import Order\n    built = Order()\n")
+    found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: text}, SERVICES)
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order")), Call(8, ("app", "domain", "order", "Order")))
+
+
+def test_an_absolute_import_is_resolved_and_read_as_before(tmp_path):
+    found = read_at(tmp_path, {SERVICES: "from app.domain.order import Order\nimport os\n\nOrder()\nos.getcwd()\n"}, SERVICES)
+    assert [i.unresolved for i in found.imports] == [False, False]
+    assert found.calls == (Call(4, ("app", "domain", "order", "Order")), Call(5, ("os", "getcwd")))
+    assert found.uses == (Use(4, ("app", "domain", "order", "Order"), 4), Use(5, ("os", "getcwd"), 1))
+
+
+def test_a_relative_import_of_a_file_beside_binds_its_name(tmp_path):
+    files = {"app/domain/helpers.py": "def build(): ...\n", "app/domain/x.py": "from .helpers import build\nbuild()\n"}
+    assert read_at(tmp_path, files, "app/domain/x.py").calls == (Call(2, ("app", "domain", "helpers", "build")),)
+
+
+def test_a_text_read_with_no_file_follows_no_relative_import():
+    found = FsSourceTree(FileSystem()).parsed("from .order import Order\nimport os\n\nOrder()\nos.getcwd()\n", STANDARD, **HANDED)
+    assert found.calls == (Call(5, ("os", "getcwd")),)
+    assert [i.unresolved for i in found.imports] == [True, False]
+
+
+def test_a_test_file_s_relative_import_binds_a_place_of_the_tests(tmp_path):
+    files = {"tests/fakes/repo.py": "class FakeRepo: ...\n",
+             "tests/modules/test_x.py": "from ..fakes.repo import FakeRepo\n\nFakeRepo()\n"}
+    found = read_at(tmp_path, files, "tests/modules/test_x.py")
+    assert found.calls == (Call(3, ("tests", "fakes", "repo", "FakeRepo")),)
+
+
+def test_a_relative_star_import_is_resolved_as_any_other_relative_import(tmp_path):
+    found = read_at(tmp_path, {ORDER: "", SERVICES: "from .order import *\nfrom .ordr import *\n"}, SERVICES)
+    assert [i.unresolved for i in found.imports] == [False, True]
+
+
+def denied(self: FileSystem, path: Path) -> bool:
+    raise PermissionError(13, "Permission denied", str(path))
+
+
+def test_a_place_the_file_system_cannot_look_up_is_missing(tmp_path, monkeypatch):
+    files = {ORDER: "class Order: ...\n", SERVICES: "from .order import Order\n\nOrder()\n"}
+    for rel, body in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(body)
+    monkeypatch.setattr(FileSystem, "is_dir", denied)
+    monkeypatch.setattr(FileSystem, "is_file", denied)
+    found = FsSourceTree(FileSystem()).read(tmp_path / "app", [("domain", "services.py")], standard=STANDARD, **HANDED)[0]
+    assert (found.calls, [i.unresolved for i in found.imports]) == ((), [True])
 
 
 def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_annotations(tmp_path):
@@ -93,7 +237,15 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
         Class(10, "Typed", (("typing", "Protocol"), None), ()))
 
 
-MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "dataclass"), (("frozen", "True"),)))
+MARKS = (RecordMark(base=("typing", "NamedTuple")),
+         RecordMark(decorator=("dataclasses", "dataclass"), keywords=(("frozen", "True"),)))
+"""The marks of an immutable record the language's data file writes, as its loader reads them."""
+
+
+def immutable_of(tmp_path: Path, text: str, marks: tuple[RecordMark, ...]) -> bool:
+    (tmp_path / "a.py").write_text(text)
+    return FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=marks, standard=STANDARD,
+                                           **HANDED)[0].classes[0].immutable
 
 
 @pytest.mark.parametrize("text, immutable", [
@@ -101,24 +253,85 @@ MARKS = (RecordMark(("typing", "NamedTuple")), RecordMark(("dataclasses", "datac
                  id="a decorator a mark names, called with its keyword among others"),
     pytest.param("import dataclasses\n@dataclasses.dataclass(frozen=True)\nclass A:\n    x: int\n", True,
                  id="the decorator read through the import that binds it"),
+    pytest.param("import dataclasses\n@dataclasses.dataclass(frozen=True, slots=True)\nclass A:\n    x: int\n", True,
+                 id="through the module, with another keyword"),
     pytest.param("from dataclasses import dataclass\n@dataclass\nclass A:\n    x: int\n", False,
+                 id="the decorator of a mark, bare"),
+    pytest.param("from dataclasses import dataclass\n@dataclass()\nclass A:\n    x: int\n", False,
                  id="the decorator of a mark, called without its keyword"),
     pytest.param("from dataclasses import dataclass\n@dataclass(frozen=False)\nclass A:\n    x: int\n", False,
                  id="its keyword with another value"),
     pytest.param("from typing import NamedTuple\nclass A(NamedTuple):\n    x: int\n", True, id="a base a mark names"),
+    pytest.param("import typing\nclass A(typing.NamedTuple):\n    x: int\n", True, id="the base read through the module"),
+    pytest.param("from typing import NamedTuple\n@NamedTuple\nclass A:\n    x: int\n", False,
+                 id="a decorator a base mark names"),
     pytest.param("from dataclasses import dataclass\nclass A(dataclass):\n    x: int\n", False,
-                 id="a base a mark names only with keywords"),
+                 id="a base a decorator mark names"),
     pytest.param("def dataclass(**k): ...\n@dataclass(frozen=True)\nclass A:\n    x: int\n", False,
                  id="a decorator no import binds"),
 ])
-def test_a_class_is_an_immutable_record_when_a_mark_names_one_of_its_bases_or_its_decorators(tmp_path, text, immutable):
-    (tmp_path / "a.py").write_text(text)
-    assert FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], immutable=MARKS)[0].classes[0].immutable is immutable
+def test_a_class_is_an_immutable_record_when_a_base_mark_names_a_base_or_a_decorator_mark_a_decorator(tmp_path, text,
+                                                                                                    immutable):
+    assert immutable_of(tmp_path, text, MARKS) is immutable
+
+
+@pytest.mark.parametrize("text, immutable", [
+    pytest.param("from dataclasses import dataclass\n@dataclass\nclass A:\n    x: int\n", True, id="the decorator bare"),
+    pytest.param("from dataclasses import dataclass\n@dataclass()\nclass A:\n    x: int\n", True, id="the decorator called"),
+    pytest.param("from dataclasses import dataclass\n@dataclass(frozen=True)\nclass A:\n    x: int\n", True,
+                 id="the decorator called with keywords"),
+    pytest.param("from dataclasses import dataclass\nclass A(dataclass):\n    x: int\n", False, id="a base of that name"),
+])
+def test_a_decorator_mark_with_no_keywords_marks_the_decorator_however_it_is_written_and_no_base(tmp_path, text, immutable):
+    assert immutable_of(tmp_path, text, (RecordMark(decorator=("dataclasses", "dataclass")),)) is immutable
+
+
+@pytest.mark.parametrize("text", [
+    pytest.param("from typing import Final\nclass A(Final):\n    readonly: int\n", id="a base named as a type mark"),
+    pytest.param("from typing import Final\n@Final\nclass A:\n    readonly: int\n", id="a decorator named as a type mark"),
+])
+def test_a_fields_or_a_type_mark_marks_no_class_of_this_language(tmp_path, text):
+    assert immutable_of(tmp_path, text, (RecordMark(fields="readonly"), RecordMark(type=("typing", "Final")))) is False
 
 
 def test_no_class_is_an_immutable_record_when_the_reader_is_given_no_mark(tmp_path):
     text = "from typing import NamedTuple\nclass A(NamedTuple):\n    x: int\n"
     assert parsed(tmp_path, text).classes[0].immutable is False
+
+
+INTERFACE = (InterfaceMark(("typing", "Protocol")), InterfaceMark(("typing_extensions", "Protocol")))
+
+
+@pytest.mark.parametrize("text, interface", [
+    pytest.param("from typing import Protocol\nclass P(Protocol): ...\n", True, id="a base a mark names"),
+    pytest.param("import typing\nclass P(typing.Protocol): ...\n", True,
+                 id="the base read through the import that binds it"),
+    pytest.param("import typing_extensions\nclass P(typing_extensions.Protocol): ...\n", True, id="any of the marks"),
+    pytest.param("from typing import Protocol, TypeVar\nT = TypeVar('T')\nclass P(Protocol[T]): ...\n", True,
+                 id="a subscripted base names what it subscripts"),
+    pytest.param("from typing import Protocol as Port\nclass P(Port): ...\n", True, id="an alias reaches the path"),
+    pytest.param("class P: ...\n", False, id="a class with no base"),
+    pytest.param("from typing import NamedTuple\nclass P(NamedTuple): ...\n", False, id="a base no mark names"),
+    pytest.param("class Protocol: ...\nclass P(Protocol): ...\n", False,
+                 id="a class of the file's own named like a mark"),
+])
+def test_a_class_is_an_interface_when_a_base_mark_names_one_of_its_bases(tmp_path, text, interface):
+    (tmp_path / "a.py").write_text(text)
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=INTERFACE, standard=STANDARD, **HANDED)[0]
+    assert read.classes[-1].interface is interface
+
+
+def test_no_class_is_an_interface_when_the_reader_is_given_no_mark(tmp_path):
+    assert parsed(tmp_path, "from typing import Protocol\nclass P(Protocol): ...\n").classes[0].interface is False
+
+
+@pytest.mark.parametrize("keyword", [pytest.param("Protocol", id="the name of a base"),
+                                     pytest.param("class", id="the keyword of a class")])
+def test_a_keyword_mark_marks_no_class_of_this_language(tmp_path, keyword):
+    (tmp_path / "a.py").write_text("from typing import Protocol\nclass P(Protocol): ...\n")
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("a.py",)], interface=(InterfaceMark(keyword=keyword),),
+                                           standard=STANDARD, **HANDED)[0]
+    assert read.classes[0].interface is False
 
 
 def test_a_use_names_what_it_reaches_by_the_path_its_import_binds_and_how_many_steps_the_import_bound(tmp_path):
@@ -440,7 +653,7 @@ def test_the_names_a_file_defines_as_functions_at_module_level_are_listed(tmp_pa
 ])
 def test_only_files_are_listed_as_source(tmp_path, make, listed):
     make(tmp_path)
-    assert FsSourceTree(FileSystem()).paths(tmp_path, ".py") == listed
+    assert FsSourceTree(FileSystem()).paths(tmp_path, (".py",)) == listed
 
 
 def functions_of(tmp_path: Path, text: str):
@@ -461,7 +674,14 @@ def test_a_function_counts_its_real_statements_nested_ones_too_and_not_a_docstri
 def test_the_files_listed_are_those_whose_name_ends_in_the_extension_given(tmp_path):
     (tmp_path / "a.py").write_text("")
     (tmp_path / "b.pas").write_text("")
-    assert FsSourceTree(FileSystem()).paths(tmp_path, ".pas") == [("b.pas",)]
+    assert FsSourceTree(FileSystem()).paths(tmp_path, (".pas",)) == [("b.pas",)]
+
+
+def test_the_files_listed_are_those_whose_name_ends_in_one_of_the_endings_given_each_once(tmp_path):
+    (tmp_path / "b").mkdir()
+    for name in ("x.d.ts", "a.ts", "b/c.tsx", "d.js"):
+        (tmp_path / name).write_text("")
+    assert FsSourceTree(FileSystem()).paths(tmp_path, (".ts", ".tsx", ".d.ts")) == [("a.ts",), ("b", "c.tsx"), ("x.d.ts",)]
 
 
 def test_two_functions_have_one_shape_when_only_formatting_docstrings_and_local_names_differ(tmp_path):
@@ -756,8 +976,9 @@ def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_pa
     pytest.param("from app.kernel import ids, Name\n", (Import(1, ("app", "kernel"), ("ids", "Name"), written="app.kernel"),),
          id="names imported from a module named from the top"),
     pytest.param("from . import doc\nfrom ..store import Repo\n",
-         (Import(1, (), ("doc",), True, 0, written="."), Import(2, ("store",), ("Repo",), True, 1, written="..store")),
-         id="a relative import climbs one folder fewer than its dots"),
+         (Import(1, (), ("doc",), True, 0, written=".", unresolved=True),
+          Import(2, ("store",), ("Repo",), True, 1, written="..store", unresolved=True)),
+         id="a relative import climbs one folder fewer than its dots, and with no file it is not followed"),
     pytest.param("from app.kernel import *\n", (Import(1, ("app", "kernel"), ("*",), written="app.kernel", every=True),),
          id="a star import imports every public name"),
     pytest.param("from \\\n    app.kernel import (\n    ids,\n)\nimport app . platform\n",
@@ -766,7 +987,43 @@ def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_pa
          id="an import over several lines says its last line"),
 ])
 def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
-    assert FsSourceTree(FileSystem()).parsed(text).imports == imports
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD, **HANDED).imports == imports
+
+
+@pytest.mark.parametrize("standard, marked", [
+    pytest.param(frozenset({"fs"}), [True, True, True, False],
+                 id="an import whose first step is a module the reader is handed is of the standard library"),
+    pytest.param(frozenset(), [False, False, False, False], id="handed none, no import is"),
+])
+def test_an_import_is_of_the_standard_library_by_the_modules_the_reader_is_handed(tmp_path, standard, marked):
+    (tmp_path / "x.py").write_text("import fs\nimport fs.sub\nfrom fs.sub import x\nimport os\n")
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=standard, **HANDED)[0]
+    assert [i.standard for i in read.imports] == marked
+
+
+def test_a_relative_import_is_never_of_the_standard_library_whatever_the_reader_is_handed(tmp_path):
+    (tmp_path / "fs.py").write_text("")
+    (tmp_path / "x.py").write_text("from . import fs\nfrom .fs import x\n")
+    read = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=frozenset({"fs"}), **HANDED)[0]
+    assert [i.standard for i in read.imports] == [False, False]
+
+
+def test_a_text_in_no_file_marks_its_imports_as_a_file_does(tmp_path):
+    text = "import fs\nfrom fs.sub import x\nimport os\nfrom .fs import y\n"
+    (tmp_path / "x.py").write_text(text)
+    tree = FsSourceTree(FileSystem())
+    read = tree.read(tmp_path, [("x.py",)], standard=frozenset({"fs"}), **HANDED)[0]
+    assert [i.standard for i in tree.parsed(text, frozenset({"fs"}), **HANDED).imports] == [i.standard for i in read.imports] == [
+        True, True, False, False]
+
+
+def test_handed_the_interpreter_s_standard_library_every_import_of_xarch_s_own_source_is_marked_by_its_first_step():
+    root = Path(__file__).parents[4] / "xarch"
+    tree = FsSourceTree(FileSystem())
+    imports = [i for f in tree.read(root, tree.paths(root, (".py",)), standard=STANDARD, **HANDED) for i in f.imports
+               if not i.relative]
+    assert {i.standard for i in imports} == {True, False}
+    assert [i for i in imports if i.standard != (i.module[0] in STANDARD)] == []
 
 
 @pytest.mark.parametrize("text, error", [
@@ -774,7 +1031,7 @@ def test_the_imports_are_recorded_in_terms_no_language_owns(text, imports):
     pytest.param("x = 1\n", None, id="a text that parses has none"),
 ])
 def test_a_text_in_no_file_is_parsed_as_a_file_is(text, error):
-    assert FsSourceTree(FileSystem()).parsed(text).error == error
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD, **HANDED).error == error
 
 
 PIECES = (
@@ -828,19 +1085,103 @@ def test_the_pieces_of_a_file_are_its_top_level_functions_and_classes_and_their_
 
 
 def test_a_text_in_no_file_has_its_pieces_too():
-    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n").pieces == (Piece("function", "f", 1, 2),)
+    assert FsSourceTree(FileSystem()).parsed("def f():\n    pass\n", STANDARD, **HANDED).pieces == (Piece("function", "f", 1, 2),)
 
 
 @pytest.mark.parametrize("text, comments", [
-    pytest.param("x = 1  # one\n    # two\n", (Comment(1, "# one", 7, 12), Comment(2, "# two", 4, 9)),
+    pytest.param("x = 1  # one\n    # two\n",
+                 (Comment(1, "# one", 7, 12, marker="#"), Comment(2, "# two", 4, 9, marker="#")),
                  id="a comment after code and one on a line of its own, each where it lies on its line"),
-    pytest.param("x = '# not one'  # one\n", (Comment(1, "# one", 17, 22),), id="a # inside a string is no comment"),
+    pytest.param("x = '# not one'  # one\n", (Comment(1, "# one", 17, 22, marker="#"),),
+                 id="a # inside a string is no comment"),
     pytest.param('"""# no comment"""\ndef f():\n    """Nor # this."""\n', (),
                  id="a docstring is no comment, whatever it holds"),
     pytest.param("x = 1  # one\ry = 2  # two\r\nz = 3  # three\n",
-                 (Comment(1, "# one", 7, 12), Comment(2, "# two", 7, 12), Comment(3, "# three", 7, 14)),
+                 (Comment(1, "# one", 7, 12, marker="#"), Comment(2, "# two", 7, 12, marker="#"),
+                  Comment(3, "# three", 7, 14, marker="#")),
                  id="a line ended by a carriage return alone is a line of its own, as the parser counts it"),
 ])
 def test_each_comment_is_read_with_where_it_lies(tmp_path, text, comments):
     assert parsed(tmp_path, text).comments == comments
-    assert FsSourceTree(FileSystem()).parsed(text).comments == comments
+    assert FsSourceTree(FileSystem()).parsed(text, STANDARD, **HANDED).comments == comments
+    assert all(comment.marker == "#" and comment.doc is False for comment in parsed(tmp_path, text).comments)
+
+
+PRIVACY = ("class A: ...\nclass _A: ...\nclass Kept:\n    def __init__(self): ...\n    def m(self): ...\n"
+           "    def _m(self): ...\ndef f(): ...\ndef _f(): ...\nX = 1\n_X = 1\n__all__ = ['A']\n"
+           "from m import a, _b\nfrom m import _c as c\nimport os\n")
+"""A class, a function, a method, a constant and an import of each sort, public and not, special names among them."""
+
+
+def flags(found: SourceFile) -> tuple:
+    """Whether each class, function and constant is public, by its name, and what each import takes and withholds."""
+    return ({c.name: c.public for c in found.classes}, {f.name: f.public for f in found.functions},
+            {c.name: c.public for c in found.constants}, [(i.names, i.withheld) for i in found.imports])
+
+
+def test_the_reader_says_a_name_is_public_unless_it_starts_with_the_private_prefix_it_is_handed(tmp_path):
+    assert flags(parsed(tmp_path, PRIVACY)) == (
+        {"A": True, "_A": False, "Kept": True},
+        {"__init__": False, "m": True, "_m": False, "f": True, "_f": False},
+        {"X": True, "_X": False, "__all__": False},
+        [(("a", "_b"), frozenset({"_b"})), (("_c",), frozenset({"_c"})), (None, frozenset())])
+
+
+def test_handed_no_prefix_the_reader_makes_every_name_public(tmp_path):
+    (tmp_path / "x.py").write_text(PRIVACY)
+    classes, functions, constants, imports = flags(
+        FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=STANDARD, private="", special=SPECIAL)[0])
+    assert {*classes.values(), *functions.values(), *constants.values()} == {True}
+    assert [withheld for _, withheld in imports] == [frozenset(), frozenset(), frozenset()]
+
+
+def test_a_text_in_no_file_is_told_public_as_a_file_is(tmp_path):
+    assert flags(FsSourceTree(FileSystem()).parsed(PRIVACY, STANDARD, **HANDED)) == flags(
+        parsed(tmp_path, PRIVACY))
+
+
+def test_the_reader_must_be_handed_the_prefix(tmp_path):
+    tree = FsSourceTree(FileSystem())
+    with pytest.raises(TypeError):
+        tree.read(tmp_path, [], standard=STANDARD)
+    with pytest.raises(TypeError):
+        tree.parsed("x = 1\n", STANDARD)
+
+
+@pytest.mark.parametrize("text, record", [
+    pytest.param("class P:\n    def __init__(self): ...\n    def __eq__(self, other): ...\n\ndef make() -> P: ...\n", True,
+                 id="only special methods, returned by a top-level function"),
+    pytest.param("class P:\n    x: int\n\ndef make() -> P: ...\n", True, id="no method at all, returned by a top-level function"),
+    pytest.param("class P:\n    async def __aenter__(self): ...\n\nasync def make() -> P: ...\n", True,
+                 id="an async special method, returned by an async top-level function"),
+    pytest.param("class P:\n    pass\n\ndef find() -> P | None: ...\n", True, id="named inside a union"),
+    pytest.param("class P:\n    pass\n\ndef every() -> list[P]: ...\n", True, id="named inside a subscript"),
+    pytest.param("class P:\n    pass\n\ndef make() -> 'P': ...\n", True, id="named in a string annotation"),
+    pytest.param("class P:\n    def size(self): ...\n\ndef make() -> P: ...\n", False, id="an ordinary method"),
+    pytest.param("class P:\n    def __init__(self): ...\n\ndef make(): ...\n", False, id="returned by no function"),
+    pytest.param("class P:\n    pass\n\nclass Q:\n    def make(self) -> P: ...\n", False,
+                 id="returned by a method of another class only"),
+    pytest.param("class P:\n    pass\n\ndef make(p: P) -> None: ...\n", False, id="named only in a parameter's annotation"),
+])
+def test_a_class_is_a_record_when_its_methods_are_all_special_and_a_top_level_function_returns_it(tmp_path, text, record):
+    assert parsed(tmp_path, text).classes[0].record is record
+
+
+def test_handed_no_special_pattern_only_a_class_with_no_method_can_be_a_record(tmp_path):
+    (tmp_path / "x.py").write_text("class P:\n    def __init__(self): ...\n\nclass Q:\n    pass\n\ndef make() -> P | Q: ...\n")
+    found = FsSourceTree(FileSystem()).read(tmp_path, [("x.py",)], standard=STANDARD, private=PRIVATE, special="")[0]
+    assert {c.name: c.record for c in found.classes} == {"P": False, "Q": True}
+
+
+def test_a_text_in_no_file_is_told_its_records_as_a_file_is(tmp_path):
+    text = "class P:\n    def __repr__(self): ...\n\nclass Q:\n    def size(self): ...\n\ndef make() -> P | Q: ...\n"
+    found = FsSourceTree(FileSystem()).parsed(text, STANDARD, **HANDED)
+    assert [c.record for c in found.classes] == [c.record for c in parsed(tmp_path, text).classes] == [True, False]
+
+
+def test_the_reader_must_be_handed_the_pattern_of_a_special_name(tmp_path):
+    tree = FsSourceTree(FileSystem())
+    with pytest.raises(TypeError):
+        tree.read(tmp_path, [], standard=STANDARD, private=PRIVATE)
+    with pytest.raises(TypeError):
+        tree.parsed("x = 1\n", STANDARD, private=PRIVATE)

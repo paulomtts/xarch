@@ -55,6 +55,7 @@ import re
 from collections.abc import Callable, Mapping
 
 from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
@@ -260,7 +261,7 @@ def _block(files: list[tuple[str, str, str]], in_fence: bool, language: Language
     body = "\n\n".join(f"{comment} {header}\n" + text.rstrip("\n") for header, _, text in files)
     if in_fence:
         return body
-    named = language.name if suffix == language.checked.extension else kind.fence or suffix.lstrip('.')
+    named = language.name if suffix in language.checked.extensions else kind.fence or suffix.lstrip('.')
     return f"```{named}\n{body}\n```"
 
 
@@ -452,7 +453,9 @@ def _never_use_line(architecture: Architecture) -> str:
     groups: dict[tuple[tuple[str, ...], ...], list[str]] = {}
     for name, names in architecture.uses_never.items():
         groups.setdefault(names, []).append(f"`{docs_name(architecture, architecture.parts[name])}`")
-    listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
+    member = architecture.language.checked.member
+    listed = "; ".join(f"{_and(parts)}: {_ticked(tuple(outside_text(n, member) for n in names))}"
+                       for names, parts in groups.items())
     tiers = [tier.name for tier in architecture.tiers if tier.apply_never]
     tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
     methods = any(not entry[0] for names in groups for entry in names)
@@ -507,8 +510,11 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
                     f"`{'/'.join((DEFAULT_TESTS, *fakes.folder))}/` by a test; the wiring and re-exports do not "
                     f"count.{reached}")
         case PrivateImports():
-            return ("`private-imports`: no file of the app or its tests imports a name that starts with "
-                    f"`{architecture.language.checked.private}` from another file of them.")
+            private = architecture.language.checked.private
+            if private:
+                return ("`private-imports`: no file of the app or its tests imports a name that starts with "
+                        f"`{private}` from another file of them.")
+            return "`private-imports`: no file of the app or its tests imports a name another file of them keeps private."
         case NoTwins(least, renamed, subset, translated):
             copies = [said for minimum, said in (
                 (renamed, f"renames some of its fields (from {renamed} fields: more than half of its names kept in "
@@ -615,8 +621,9 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: str, built: str
     mocks = (f"; and every mock in the {tiers} tests names what it stands in for, `{mock}({spec}=<Port>)`{fixture}, "
              "never a read port") if tiers else ""
     interface = architecture.language.interface_name
+    nothing = " or ".join(f"`{annotation}`" for annotation in architecture.language.checked.nothing)
     return (f"`stand-ins`: every `{interface}` in {parts} is fire-only (every method returns "
-            f"`{architecture.language.checked.nothing}`) or read (any method returns a value), each method annotated; every "
+            f"{nothing}) or read (any method returns a value), each method annotated; every "
             f"read port `<Port>` has a fake `{fakes.prefix}<Port>` in `{'/'.join((DEFAULT_TESTS, *fakes.folder))}/`{mocks} "
             "(section 6).")
 

@@ -1,6 +1,8 @@
 """Every filter, on the facts of a small project: one row per filter, each the facts of one kind of one file it holds
 of, by their lines (a filter about the file holds of every fact of a file or of none), so that a filter the vocabulary
 publishes and the engine does not answer, or answers wrongly, fails here; a negated filter holds where it does not."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.application.logic.world import (
@@ -14,9 +16,11 @@ from tests.modules.rules.application.logic.world import (
     HELPER,
     LISTED,
     NARROWED,
+    NOTES,
     PORTS,
     PROFILE,
     RESERVED,
+    RULE,
     SERVICE,
     STRUCTURE,
     TEST,
@@ -24,9 +28,13 @@ from tests.modules.rules.application.logic.world import (
     WIRING,
     found,
 )
+from tests.modules.rules.builders import BRACE, imp, source
 from xarch.kernel.logic.conditions import condition
 from xarch.modules.rules.application.logic import filters
+from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.application.logic.filters import question
+from xarch.modules.rules.domain.parsed import Class
+from xarch.modules.rules.domain.rule import Found
 from xarch.modules.rules.domain.vocabulary import FILTERS
 
 
@@ -72,6 +80,7 @@ from xarch.modules.rules.domain.vocabulary import FILTERS
     pytest.param("receiver", DOMAIN, "callback", [16], PROFILE, None, id="receiver"),
     pytest.param("annotated-callable", DOMAIN, "callback", [15], PROFILE, None, id="annotated-callable"),
     pytest.param("directive", DOMAIN, "comment", [13], PROFILE, None, id="directive"),
+    pytest.param("doc", NOTES, "comment", [1], PROFILE, None, id="doc"),
     pytest.param("unreadable", UNREAD, "syntax-error", [0], PROFILE, None, id="unreadable"),
     pytest.param("unreadable", BROKEN, "syntax-error", [], PROFILE, None, id="unreadable: a file that does not parse"),
     pytest.param("no-statements", PORTS, "file", [0], PROFILE, None, id="no-statements"),
@@ -104,3 +113,30 @@ def test_a_negated_filter_holds_where_the_filter_does_not():
 def test_every_filter_the_vocabulary_publishes_has_a_row_and_the_engine_answers_it():
     rows = {param.values[0].split(" ")[0] for param in test_a_filter_holds_of_the_facts_it_says.pytestmark[0].args[1]}
     assert rows == {word.name for word in FILTERS} == set(filters.NAMES)
+
+
+def test_the_interface_filter_holds_of_the_classes_the_reader_marks_whatever_their_bases():
+    ports = source("modules/docs/application/ports/store.py",
+                   classes=(Class(2, "Store", interface=True), Class(4, "Based", (("typing", "Protocol"),))))
+    built = facts_of([ports], [], PROFILE, "app", "tests")
+    read = built.files[0]
+    assert [fact.line for fact in read.facts["class"]
+            if question(condition("interface"))(Found(RULE, read, fact, None), built, PROFILE)] == [2]
+
+
+def test_the_standard_filter_holds_of_the_imports_marked_by_the_standard_modules_of_the_language_read():
+    read_as_brace = source("modules/docs/domain/doc.py", imp(1, "fs", "readFile", language=BRACE),
+                           imp(2, "lodash", language=BRACE))
+    built = facts_of([read_as_brace], [], PROFILE, "app", "tests")
+    read = built.files[0]
+    assert [fact.line for fact in read.facts["import"]
+            if question(condition("standard"))(Found(RULE, read, fact, None), built, PROFILE)] == [1]
+
+
+def test_the_public_filter_holds_of_the_names_the_reader_says_are_public_whatever_they_are_spelled():
+    file = source("modules/docs/domain/doc.ts", imp(1, "app.kernel.ids", "_shown", "hidden", withheld=("hidden",),
+                                                    language=BRACE), language=BRACE)
+    built = facts_of([file], [], replace(PROFILE, language=BRACE), "app", "tests")
+    read = built.files[0]
+    assert [fact.name for fact in read.facts["imported-name"]
+            if question(condition("public"))(Found(RULE, read, fact, None), built, PROFILE)] == ["_shown"]

@@ -11,7 +11,7 @@ from xarch.modules.rules.domain.rule import Fact
 from xarch.profile_values.checks import APP, Condition, Scope
 
 DOMAIN = "modules/docs/domain/x.py"
-CODE = SourceFile("", (), (), functions=(Function(2, "publish", owner="Document"), Function(5, "_check")),
+CODE = SourceFile("", (), (), functions=(Function(2, "publish", owner="Document"), Function(5, "_check", public=False)),
                   classes=(Class(1, "Document"),))
 
 

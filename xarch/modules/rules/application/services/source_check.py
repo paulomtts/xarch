@@ -27,6 +27,7 @@ from xarch.modules.rules.contract import (
     ExcludedView,
     FindingView,
     OwnCheckView,
+    UnresolvedView,
 )
 from xarch.modules.rules.domain.errors import RootMissing
 from xarch.modules.rules.domain.outcomes import Checked, Enforcement
@@ -53,7 +54,8 @@ class SourceCheckService:
                                                   enforcement.approximation(a.address, a.fact, a.note or ""))
                                   for a in state.approximate),
             tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
-            state.known, state.translated)
+            state.known, state.translated,
+            unresolved=tuple(UnresolvedView(item, enforcement.detail(item)) for item in state.unresolved))
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, each given in full with its links followed, and the state of the
@@ -68,14 +70,16 @@ class SourceCheckService:
         if absent:
             raise RootMissing(absent[0])
         rules = resolved(self._profiles.profile(profile))
-        extension = rules.language.extension
-        paths = [p for p in self._tree.paths(root, extension) if not governed.excluded(rules, p)]
-        marks = rules.language.immutable
-        app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks)
+        extensions = rules.language.extensions
+        paths = [p for p in self._tree.paths(root, extensions) if not governed.excluded(rules, p)]
+        marks, interface, standard = rules.language.immutable, rules.language.interface, rules.language.standard_modules
+        private, special = rules.language.private, rules.language.special
+        app = self._tree.read(root, [p for p in paths if governed.governed(rules, p)], immutable=marks,
+                              interface=interface, standard=standard, private=private, special=special)
         table = rules.scenarios.table if rules.scenarios is not None else \
             rules.framework.table if rules.framework is not None else None
-        test_files = self._tree.read(tests, self._tree.paths(tests, extension), table, marks) \
-            if tests is not None else []
+        test_files = self._tree.read(tests, self._tree.paths(tests, extensions), table, marks, interface,
+                                     standard=standard, private=private, special=special) if tests is not None else []
         tests_root = tests.name if tests is not None else None
         shown = root.name
         unread = governed.unread(paths, rules, shown)
@@ -133,6 +137,7 @@ class SourceCheckService:
         return Enforcement(standing.guards_off, standing.baseline_off, tuple(ungoverned),
                            tuple(enforcement.drift(standing.init_files, texts)),
                            skipped=tuple(enforcement.skipped(tests, rules)),
-                           dynamic=tuple(enforcement.dynamic([*app, *tests], rules)), weak=tuple(weak),
+                           dynamic=tuple(enforcement.dynamic([*app, *tests], rules)),
+                           unresolved=tuple(enforcement.unresolved([*app, *tests])), weak=tuple(weak),
                            excluded=rules.excluded, app=resolved.name, language=rules.language.title,
                            approximate=rules.approximate, unplaced=enforcement.unplaced(standing.looser))

@@ -13,9 +13,9 @@ examples) and is allowed everywhere. Nor is importlib.metadata, which reads what
 Naming the language: no file of xarch's own code, but the reader and the platform (technology: the interpreter, the
 package data), carries a word that encodes what is true of the language. The words are read from the data file of
 the language the bundled profiles name: its title, the ending of a source file's name, the file that stands for a
-folder (and its stem), every step of the names that mark an interface and of those that import by a computed name, the
-namespace of the builtins and the folder of compiled files; and WORDS_BESIDES, the words the data file cannot hold
-because it has no key for them. They are looked for in:
+folder (and its stem), every step of the bases and every keyword that mark an interface and of the names that import
+by a computed name, split at the data file's member, the namespace of the builtins and the folder of compiled files; and
+WORDS_BESIDES, the words the data file cannot hold because it has no key for them. They are looked for in:
 
     every string literal  the text of an f-string included, whole words (an ending is a word that ends a name)
     every docstring       prose too: a docstring that describes the mechanism says it in the words of any language
@@ -31,14 +31,21 @@ its own imports of the standard library are of no concern to the guard.
 The data file also gives the tokens of the language's code, which are looked for by their kind:
 
     a literal that is a token     the prefix of a private name, the affix of a special one, the special method calling
-                                  an instance runs, the annotation of no value, the comment marker, the shebang: a
-                                  string literal equal to one is the language's rule written in xarch's code
+                                  an instance runs, the annotation of no value, the comment markers (the marker of
+                                  each line form, the opening and the closing of each block or doc form), the
+                                  shebang: a string literal equal to one is the language's rule written in xarch's code
     a directive word              the comment texts its tools read, as whole words in literals and docstrings
     a branching keyword           quoted as code (`if`) in literals and docstrings: plain prose may say "if"
 
 And in the docstrings of the engine (ENGINE), a span quoted as code that writes the language's code: a token of it, its
 annotation of no value or a special name, an import as the language writes one (its data file's `importing`), or a
 name the testing preset builds a mock with or a fixture of its mocks.
+
+Privacy: how the language starts a private name (its data file's `private`) is read only by the reader, which decides
+by it whether each name is public and says so as the fact public, by the services that hand it to the reader, by
+scaffold and layout, which refuse a new private name and leave a private folder unmirrored, and by spec, which hands it
+to them and prints it. No other file of xarch's code reads an attribute `private` or names `is_private_name`; PRIVACY
+lists those that do, with why, and a stale entry fails.
 
 EXEMPT names every file or word that stays, with why; a stale entry fails the test. Nothing is exempt by pattern but
 the reader and the platform.
@@ -52,6 +59,9 @@ import pytest
 import yaml
 
 import xarch
+from xarch.kernel.logic.names import outside_steps
+from xarch.kernel.logic.placement import stem
+from xarch.kernel.placement import Marks
 from xarch.profile_values.language import CheckedLanguage
 
 SRC = Path(xarch.__file__).parent
@@ -104,8 +114,12 @@ LANGUAGES = tuple(sorted((SRC / "architectures" / "presets" / "language").glob("
 """The data file of every language xarch reads: the guard holds the source to each."""
 LANGUAGE = SRC / "architectures" / "presets" / "language" / "python.yaml"
 """The language the guard's own tests below are written for."""
+TEST_LANGUAGES = tuple(sorted((Path(__file__).resolve().parents[1] / "fakes" / "languages").glob("*.yaml")))
+"""The test-only languages, which no profile names: each loads, and the guard reads its words; later steps extend
+them."""
 WORDS_BESIDES = {"stdlib_module_names": "the interpreter's list of the standard library, which no data file can hold "
-                                        "current: the platform reads it and the reader marks each import with it"}
+                                        "current: the platform reads it, and spec hands the reader the modules it "
+                                        "lists"}
 NAMES_BESIDES = {"iskeyword", "kwlist", "isidentifier"}
 """Identifiers of the interpreter's own tests of a name against the language's rules, which no data file can hold."""
 IDENTIFIER_FREE = {"protocol", "typing", "typing_extensions"}
@@ -115,6 +129,16 @@ SEAM = ("modules/rules/adapters/fs_source_tree.py", "platform/")
 """The reader adapter and the platform: where the language and its interpreter are allowed to be named."""
 
 EXEMPT: dict[tuple[str, str], str] = {
+    ("modules/spec/domain/values.py", "builtins"): "the key of a data file's `standard` that lists the names a "
+                                                   "language binds without an import, a word of the format every "
+                                                   "language's file writes and not the namespace of one: a field "
+                                                   "of StandardLists",
+    ("modules/spec/application/logic/language_file.py", "builtins"): "the same key of the format, named where the "
+                                                                     "loader's docstring says the keys of a data "
+                                                                     "file",
+    ("modules/spec/application/services/architecture.py", "builtins"): "the same key of the format, read from "
+                                                                        "StandardLists to fill the names a language "
+                                                                        "binds without an import",
     ("modules/rules/domain/parsed.py", "from"): "the records the reader fills say how it reads an import by an import "
                                                 "of the language it reads: the engine's Python-shaped bundles, left on "
                                                 "purpose (engine R3-2)",
@@ -129,37 +153,60 @@ EXEMPT: dict[tuple[str, str], str] = {
 
 
 def language_words(language: Path = LANGUAGE) -> tuple[re.Pattern[str], set[str]]:
-    """The pattern of the words the data file gives, as literal text, and the lowercase words of an identifier."""
+    """The pattern of the words the data file gives, as literal text (each step of an interface mark's base and of a
+    dynamic name, and each keyword of a mark), and the lowercase words of an identifier."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    steps = {step for name in (*data["interface"], *data["dynamic"]) for step in name.split(".")}
-    words = {data["namespace"], data["cache"], data["package_file"].removesuffix(data["extension"]), *steps,
-             *WORDS_BESIDES}
-    ending = re.escape(data["extension"])
+    marks = data.get("interface", ())
+    named = (*(mark["base"] for mark in marks if "base" in mark), *data.get("dynamic", ()))
+    steps = {step for name in named for step in outside_steps(name, data.get("member", ""))} | {
+        mark["keyword"] for mark in marks if "keyword" in mark}
+    marks = Marks(tuple(data["extensions"]), tuple(data.get("package_files", ())))
+    stems = (stem(name, marks) or "" for name in marks.package_files)
+    words = {word for word in (data["namespace"], data.get("cache", ""), *stems, *steps, *WORDS_BESIDES) if word}
+    ending = "|".join(re.escape(extension) for extension in marks.extensions)
     whole = "|".join(sorted((re.escape(word) for word in words), key=len, reverse=True))
     title = f"(?i:{re.escape(data['title'])})"
-    pattern = re.compile(rf"(?<![A-Za-z0-9_])(?:{title}|{whole})(?![A-Za-z0-9_])|{ending}(?![A-Za-z0-9_])")
+    pattern = re.compile(rf"(?<![A-Za-z0-9_])(?:{title}|{whole})(?![A-Za-z0-9_])|(?:{ending})(?![A-Za-z0-9_])")
     return pattern, {data["title"].lower(), data["namespace"], *{s.lower() for s in steps} - IDENTIFIER_FREE,
                      *WORDS_BESIDES, *NAMES_BESIDES}
 
 
-TOKEN_KEYS = ("private", "special", "call", "nothing", "comment", "shebang")
-"""The keys of the data file whose value is a token of the language's code."""
+TOKEN_KEYS = ("private", "call", "shebang")
+"""The keys of the data file whose value is a token of the language's code; `nothing` lists several, each a token, and
+`comments` several markers, each a token too (comment_markers); `special` is the pattern of a special name, which a
+literal may not match in full."""
 
 
-def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str]]:
-    """The tokens a literal may not be, and the pattern of the directive words and of the branching keywords quoted as
-    code."""
+def comment_markers(data: dict) -> set[str]:
+    """Every marker of the data file's comment forms: each line form's marker, and the opening and the closing of each
+    block or doc form; a doc form's empty closing (the end of its line) is none."""
+    found: set[str] = set()
+    for form in data.get("comments", ()):
+        for kind, value in form.items():
+            found |= {value} if kind == "line" else set(value)
+    return found - {""}
+
+
+def alternatives(words) -> str:
+    """The words as the alternatives of a pattern, the longest first; a pattern that matches nothing when there are
+    none."""
+    return "|".join(sorted((re.escape(word) for word in words), key=len, reverse=True)) or "(?!)"
+
+
+def language_tokens(language: Path = LANGUAGE) -> tuple[set[str], re.Pattern[str], re.Pattern[str]]:
+    """The tokens a literal may not be, the pattern of a special name a literal may not match in full, and the pattern
+    of the directive words and of the branching keywords quoted as code."""
     data = yaml.safe_load(language.read_text(encoding="utf-8"))
-    tokens = {data[key] for key in TOKEN_KEYS}
-    directives = "|".join(sorted((re.escape(word) for word in data["directives"]), key=len, reverse=True))
-    branching = "|".join(re.escape(word) for word in data["branching"])
-    return tokens, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
+    tokens = {data[key] for key in TOKEN_KEYS if key in data} | set(data.get("nothing", ())) | comment_markers(data)
+    special = re.compile(data.get("special") or "(?!)")
+    directives, branching = alternatives(data.get("directives", ())), alternatives(data.get("branching", ()))
+    return tokens, special, re.compile(rf"(?<![A-Za-z0-9_])(?:{directives})(?![A-Za-z0-9_])|`(?:{branching})`")
 
 
 def token_leaks(root: Path, language: Path = LANGUAGE) -> list[tuple[str, int, str]]:
     """(file below root, line, token) of every literal that is a token of the language, and every directive word or
     branching keyword quoted as code, outside the seam."""
-    tokens, words = language_tokens(language)
+    tokens, special, words = language_tokens(language)
     found: list[tuple[str, int, str]] = []
     for path in sorted(root.rglob("*.py")):
         relative = path.relative_to(root).as_posix()
@@ -167,7 +214,8 @@ def token_leaks(root: Path, language: Path = LANGUAGE) -> list[tuple[str, int, s
             continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                found += [(relative, node.lineno, node.value)] if node.value in tokens else []
+                found += [(relative, node.lineno, node.value)] if node.value in tokens or special.fullmatch(node.value) \
+                    else []
                 found += [(relative, node.lineno, match[0]) for match in words.finditer(node.value)]
     return found
 
@@ -184,11 +232,12 @@ def ticked_pattern(language: Path = LANGUAGE, testing: Path = TESTING) -> re.Pat
     names = {*mocks["fixtures"], *(name.split(".")[-1] for name in (*mocks["calls"], *mocks["autospec"])),
              *(name for fixture in mocks["fixtures"].values() for key in ("calls", "autospec")
                for name in fixture.get(key, ()))}
-    tokens = "|".join(re.escape(data[key]) for key in TOKEN_KEYS)
-    special, importing = re.escape(data["special"]), re.escape(data["importing"].split("{")[0].strip())
-    words = "|".join(re.escape(name) for name in sorted({data["nothing"], *names}, key=len, reverse=True))
-    return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|{special}\w+{special}|^{re.escape(data['private'])}\w"
-                      rf"|^{re.escape(data['comment'])}|^{importing}(?= )")
+    markers = comment_markers(data)
+    tokens = alternatives((*(data[key] for key in TOKEN_KEYS if key in data), *data.get("nothing", ()), *markers))
+    special, importing = data.get("special") or "(?!)", re.escape(data["importing"].split("{")[0].strip())
+    words = "|".join(re.escape(name) for name in sorted({*data.get("nothing", ()), *names}, key=len, reverse=True))
+    return re.compile(rf"^(?:{tokens})$|(?<!\w)(?:{words})(?!\w)|(?<!\w)(?:{special})(?!\w)|^{re.escape(data['private'])}\w"
+                      rf"|^(?:{alternatives(markers)})|^{importing}(?= )")
 
 
 def ticked_leaks(root: Path, files: tuple[str, ...], pattern: re.Pattern[str]) -> list[tuple[str, int, str]]:
@@ -243,6 +292,19 @@ def named(language: Path) -> set[tuple[str, str]]:
     return {(file, word) for file, _, word in leaks(SRC, *language_words(language))}
 
 
+def test_the_test_only_languages_are_the_brace_and_the_percent_ones():
+    assert [path.stem for path in TEST_LANGUAGES] == ["brace", "percent"]
+
+
+@pytest.mark.parametrize("stem, expected", [
+    pytest.param("brace", {"Brace", "globalThis", "node:module", "createRequire", "interface"}, id="brace"),
+    pytest.param("percent", {"Percent", "%SYSTEM", "OBJ", "Load", "Abstract"}, id="percent"),
+])
+def test_the_guard_reads_the_words_of_a_test_only_language(stem, expected):
+    pattern, _ = language_words(next(path for path in TEST_LANGUAGES if path.stem == stem))
+    assert {match[0] for match in pattern.finditer(" ".join(sorted(expected)))} == expected
+
+
 def written(language: Path) -> set[tuple[str, str]]:
     return {(file, token) for file, _, token in token_leaks(SRC, language)}
 
@@ -264,6 +326,14 @@ def test_no_data_file_of_the_format_names_the_language_of_the_data_file(language
 
 
 @pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
+def test_no_data_file_of_the_format_writes_an_annotation_of_no_value_of_the_language_as_a_word(language):
+    nothing = yaml.safe_load(language.read_text(encoding="utf-8")).get("nothing", ())
+    pattern = re.compile(rf"(?<!\w)(?:{'|'.join(re.escape(entry) for entry in nothing)})(?!\w)")
+    found = [(path.name, match[0]) for path in FORMAT for match in pattern.finditer(path.read_text(encoding="utf-8"))]
+    assert FORMAT and nothing and found == []
+
+
+@pytest.mark.parametrize("language", LANGUAGES, ids=lambda path: path.stem)
 def test_no_file_outside_the_reader_and_the_platform_writes_a_token_of_the_language_of_the_data_file(language):
     assert sorted(written(language) - set(EXEMPT)) == []
 
@@ -276,6 +346,8 @@ def test_every_exemption_is_one_some_language_still_needs():
 @pytest.mark.parametrize("text, found", [
     pytest.param('PRIVATE = "_"\nx = name.startswith(("_", "."))\n', ["_", "_"], id="a literal that is the private prefix"),
     pytest.param('x = name.startswith("__") and name.endswith("__")\n', ["__", "__"], id="the affix of a special name"),
+    pytest.param('A = "__init__"\nB = "x__"\nC = "__x"\n', ["__init__"],
+                 id="a literal the pattern of a special name matches in full"),
     pytest.param('A = "__call__"\nB = "None"\nC = "#"\nD = "#!"\n', ["__call__", "None", "#", "#!"],
                  id="the call method, no value, the comment marker and the shebang"),
     pytest.param('def f():\n    """Allowed: `# noqa` and `# type: ignore`; no `if` or `for`."""\n',
@@ -286,6 +358,13 @@ def test_every_exemption_is_one_some_language_still_needs():
 def test_the_guard_finds_a_token_of_the_language_where_it_is_written(tmp_path, text, found):
     (tmp_path / "tokens.py").write_text(text)
     assert sorted(token for _, _, token in token_leaks(tmp_path)) == sorted(found)
+
+
+def test_the_guard_finds_every_comment_marker_of_a_test_only_language_and_never_an_empty_closing(tmp_path):
+    brace, percent = (next(path for path in TEST_LANGUAGES if path.stem == stem) for stem in ("brace", "percent"))
+    (tmp_path / "tokens.py").write_text('A = "/*"\nB = "*/"\nC = "/**"\nD = "//"\nE = ";"\nF = "///"\nG = ""\nH = "/"\n')
+    assert sorted(token for _, _, token in token_leaks(tmp_path, brace)) == ["*/", "/*", "/**", "//"]
+    assert sorted(token for _, _, token in token_leaks(tmp_path, percent)) == ["*/", "/*", "//", "///", ";"]
 
 
 def test_the_words_are_read_from_the_data_file_of_the_language():
@@ -378,9 +457,9 @@ def test_the_engine_holds_no_fact_of_the_language_but_what_its_data_file_says(fi
 @pytest.mark.parametrize("code, syntax, unsaid", [
     pytest.param("def f(function, profile):\n    return function.signature.star or profile.language.keywords\n",
                  {"signature", "star"}, {"keywords"}, id="how a function is written, and a word the data file lacks"),
-    pytest.param("def f(profile):\n    lang = profile.language\n    return lang.decorators, lang.extension\n",
+    pytest.param("def f(profile):\n    lang = profile.language\n    return lang.decorators, lang.extensions\n",
                  set(), {"decorators"}, id="a read through a local name bound to the language"),
-    pytest.param("def f(language: CheckedLanguage):\n    return language.keywords, language.is_public('x')\n",
+    pytest.param("def f(language: CheckedLanguage):\n    return language.keywords, language.extensions\n",
                  set(), {"keywords"}, id="a read of a parameter annotated as the language"),
     pytest.param("def f(profile):\n    return profile.language.call, profile.language.marks\n", set(), set(),
                  id="a field and a property of the language are said"),
@@ -405,6 +484,8 @@ def test_no_docstring_of_the_engine_writes_the_code_of_the_language_of_the_data_
                  id="the annotation of no value quoted as code"),
     pytest.param('"""Its methods, dunder ones aside but `__call__`; a name not starting with `_`."""\n', ["__call__", "_"],
                  id="a special name, and the private prefix alone"),
+    pytest.param('"""Its `__init__`, a `a__b` and `__`."""\n', ["__init__", "__"],
+                 id="a special name by the pattern, as a whole word"),
     pytest.param('"""A spec, `from <module> import X`, or `mocker.Mock()`."""\n', ["from", "mocker", "Mock"],
                  id="an import as the language writes it and the names of the preset's mocks"),
     pytest.param('"""The key `parts.<part>.shared`, a `{target_part}`, `may_import`, and None in prose."""\n', [],
@@ -413,3 +494,62 @@ def test_no_docstring_of_the_engine_writes_the_code_of_the_language_of_the_data_
 def test_the_guard_finds_the_code_of_the_language_quoted_in_a_docstring(tmp_path, text, found):
     (tmp_path / "engine.py").write_text(text)
     assert sorted(what for _, _, what in ticked_leaks(tmp_path, ("engine.py",), ticked_pattern())) == sorted(found)
+
+
+PRIVACY: dict[str, str] = {
+    "modules/rules/adapters/fs_source_tree.py": "the reader: it decides by the prefix whether each name is public",
+    "modules/rules/application/services/source_check.py": "hands the reader the prefix for the app and the tests",
+    "modules/rules/application/services/holding.py": "hands the reader the prefix for the files given and the app's",
+    "modules/rules/application/services/sources.py": "hands the reader the prefix for a file another module reads",
+    "modules/rules/application/services/asking.py": "hands the reader the prefix for an eval's files",
+    "modules/rules/application/services/examples.py": "hands the reader the prefix for the profile's own examples",
+    "modules/scaffold/application/logic/names.py": "scaffold refuses a new part or module of a private name",
+    "modules/scaffold/application/services/scaffolding.py": "scaffold says the prefix in that refusal",
+    "modules/scaffold/adapters/spec_skeleton.py": "hands scaffold the prefix spec publishes",
+    "modules/layout/application/logic/requirements.py": "layout requires no private file or folder",
+    "modules/layout/application/logic/unmirrored.py": "layout leaves a private folder unmirrored",
+    "modules/layout/adapters/spec_skeleton.py": "hands layout the prefix spec publishes",
+    "modules/spec/application/services/publishing.py": "publishes the prefix to scaffold and layout",
+    "modules/spec/application/logic/explain.py": "fills %private% in the texts of the format",
+    "modules/spec/application/logic/docs_template.py": "prints the prefix in the private-imports line when there is one",
+}
+"""Every file of xarch's code that reads how the language starts a private name, and why it may."""
+
+
+def privacy_reads(path: Path) -> bool:
+    """Whether the file reads how the language starts a private name: an attribute `private` read off anything, or
+    `is_private_name` imported, called or read off its module."""
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Attribute) and node.attr in ("private", "is_private_name"):
+            return True
+        if (isinstance(node, ast.Name) and node.id == "is_private_name") or (
+                isinstance(node, ast.alias) and node.name.split(".")[-1] == "is_private_name"):
+            return True
+    return False
+
+
+def privacy_readers(root: Path = SRC) -> set[str]:
+    """The files below root, but the bundled profiles' example project, that read it."""
+    return {path.relative_to(root).as_posix() for path in root.rglob("*.py")
+            if not path.relative_to(root).as_posix().startswith("architectures/") and privacy_reads(path)}
+
+
+def test_only_the_reader_scaffold_layout_and_what_hands_them_the_prefix_read_how_a_private_name_starts():
+    assert sorted(privacy_readers() - set(PRIVACY)) == []
+
+
+def test_every_file_privacy_exempts_still_reads_it():
+    assert sorted(set(PRIVACY) - privacy_readers()) == []
+
+
+@pytest.mark.parametrize("code", [
+    pytest.param("def f(profile):\n    return profile.language.private\n", id="the prefix read off the language"),
+    pytest.param("from xarch.kernel.logic.names import is_private_name\n", id="the test of a private name imported"),
+    pytest.param("from xarch.kernel.logic import names\n\n\ndef f(x, p):\n    return names.is_private_name(x, p)\n",
+                 id="the test called through its module"),
+])
+def test_the_privacy_guard_finds_the_prefix_read_in_a_file_of_the_rules_logic(tmp_path, code):
+    folder = tmp_path / "modules" / "rules" / "application" / "logic"
+    folder.mkdir(parents=True)
+    (folder / "filters.py").write_text(code)
+    assert privacy_readers(tmp_path) == {"modules/rules/application/logic/filters.py"}

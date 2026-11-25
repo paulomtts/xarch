@@ -9,7 +9,8 @@ class ExampleReader(Protocol):
     """What the source of an example says, read by the reader of the app's language."""
 
     def imports(self, text: str) -> tuple[Import, ...] | Unparsable:
-        """The imports of an example's text, in order, or where and why it does not parse."""
+        """The imports of an example's text, in order, or where and why it does not parse; none is marked of the
+        standard library, since spec reads no such mark of an example's import."""
         ...
 
     def comments(self, text: str) -> tuple[CommentSpan, ...] | Unparsable:

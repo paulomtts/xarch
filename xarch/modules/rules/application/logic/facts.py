@@ -14,7 +14,8 @@ turns its language's imports and names into such paths, and a fact into the app 
     names-mentioned     every name the file mentions, annotations included, by its last step alone
     import              each import as written: the module it names (path), relative, standard
     imported-name       each name an import takes, path the module and the name (the module alone for an import of
-                        a whole module), the name it takes (None for a whole module); its traits are the import's
+                        a whole module), the name it takes (None for a whole module); its traits are the import's,
+                        and public when the reader says the name it takes is public
     use                 each name read, path the dotted path it reaches, bound how many steps the binding import bound
     method-call         each call of an attribute no import binds, name the attribute; on-own-object when it is
                         on the object a method is called on
@@ -25,13 +26,14 @@ turns its language's imports and names into such paths, and a fact into the app 
                         the name it takes when that is no file; a test's relative imports are its own and none is one
     import-into-tests   each import of a test file into the tests' own package, the target it reaches below the tests
                         root
-    comment             each line comment, text as written
+    comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
     class               each class defined at the top level, name its name, names those its bases and body mention;
-                        exception, record, interface and immutable when it is one (below)
+                        exception, record, interface and immutable when it is one (below); public when the reader
+                        says it is public
     function            each function defined at the top level or in a class of the top level, name its name, path
-                        its class and its name; top-level when it is in no class; forwards when it is a method the
-                        reader says only forwards, text the callee it forwards to and target the attributes it
-                        returns of the call's result
+                        its class and its name; top-level when it is in no class; public when the reader says it is
+                        public; forwards when it is a method the reader says only forwards, text the callee it
+                        forwards to and target the attributes it returns of the call's result
     callback            each call of a function's own parameter by its bare name, path the function, name the
                         parameter; receiver when the parameter is the first of a method, annotated-callable when its
                         annotation says it is a callable
@@ -46,11 +48,10 @@ and the facts derived from them over the whole app:
                         root, at where its file sits
     exception           a class that derives from one of the language's builtin exceptions, as the reader says, or from
                         a class of the app that is an exception, however far that goes (a base read through the
-                        absolute import that binds it)
-    record              a class with no method but the language's special methods (its data file says how they are
-                        named) that a top-level function of its file names in its return annotation
-    interface           a class with one of the names the language's data file marks interfaces with among its bases,
-                        the last of its name in its file
+                        import that binds it)
+    record              a class the language's reader says is a record
+    interface           a class the reader says is an interface, by the marks of the language's data file, the last
+                        of its name in its file
     immutable           a class the reader says is an immutable record, by the marks of the language's data file
 """
 from __future__ import annotations
@@ -83,6 +84,8 @@ _TRAITS = {(relative, standard, held): frozenset(name for name, on in (("relativ
 _TOP = frozenset({"top-level"})
 _RECEIVER, _ANNOTATED = "receiver", "annotated-callable"
 _FORWARDS = frozenset({"forwards"})
+_DOC = frozenset({"doc"})
+_PUBLIC = frozenset({"public"})
 
 
 def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
@@ -167,10 +170,11 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "names-mentioned":
             return (Fact("names-mentioned", 0, names=file.named),)
         case "comment":
-            return tuple(Fact("comment", c.line, text=c.text) for c in file.comments)
+            return tuple(Fact("comment", c.line, name=c.marker or None, traits=_DOC if c.doc else frozenset(),
+                              text=c.text) for c in file.comments)
         case "class":
-            ports = {c.name: c for c in file.classes if any(base in profile.language.interface for base in c.bases)}
-            return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, file, read, profile, defined, ports),
+            ports = {c.name: c for c in file.classes if c.interface}
+            return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, read, defined, ports),
                               names=c.named) for c in file.classes)
         case "function":
             return tuple(_function(f) for f in file.functions)
@@ -234,22 +238,21 @@ def _placed(profile: Profile, cache: Placements, path: tuple[str, ...]) -> Place
     return cache[path]
 
 
-def _class(cls: Class, file: SourceFile, read: Read, profile: Profile, defined: Defined,
-           ports: dict[str, Class]) -> frozenset[str]:
+def _class(cls: Class, read: Read, defined: Defined, ports: dict[str, Class]) -> frozenset[str]:
     exception = (read.steps, cls.name) in defined.exceptions and not read.in_tests
-    record = all(profile.language.is_special(m.name) for m in cls.methods) and any(
-        cls.name in f.returns_named for f in file.functions if not f.owner)
-    return frozenset(n for n, on in (("exception", exception), ("record", record),
-                                     ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable)) if on)
+    return frozenset(n for n, on in (("exception", exception), ("record", cls.record),
+                                     ("interface", ports.get(cls.name) is cls), ("immutable", cls.immutable),
+                                     ("public", cls.public)) if on)
 
 
 def _function(function: Function) -> Fact:
     path = (function.owner, function.name) if function.owner else (function.name,)
+    public = _PUBLIC if function.public else frozenset()
     if not function.owner:
-        return Fact("function", function.line, path, function.name, _TOP)
+        return Fact("function", function.line, path, function.name, _TOP | public)
     if not function.forwards or function.sole_call is None:
-        return Fact("function", function.line, path, function.name)
-    return Fact("function", function.line, path, function.name, _FORWARDS, target=function.sole_call.then,
+        return Fact("function", function.line, path, function.name, public)
+    return Fact("function", function.line, path, function.name, _FORWARDS | public, target=function.sole_call.then,
                 text=function.forwards)
 
 
@@ -282,4 +285,5 @@ def _imported(file: SourceFile) -> Iterator[Fact]:
         if i.names is None:
             yield Fact("imported-name", i.line, i.module, traits=traits, text=i.written)
         else:
-            yield from (Fact("imported-name", i.line, (*i.module, name), name, traits, text=i.written) for name in i.names)
+            yield from (Fact("imported-name", i.line, (*i.module, name), name,
+                             traits if name in i.withheld else traits | _PUBLIC, text=i.written) for name in i.names)

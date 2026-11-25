@@ -1,7 +1,9 @@
 """Filling a docs template from a profile file: the prose is the author's, the file supplies the structure."""
+
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import parsed
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidTemplate
@@ -283,3 +285,39 @@ def test_a_shared_part_is_said_in_the_guards():
     lines = [line for line in filled("{{guards}}", parts=parts(shared={"shared": 2})).splitlines() if "`shared`" in line]
     assert lines == ["- `shared`: every public name of `shared/` is used by at least 2 users (each instance of a repeating "
                      "folder, or each part outside them; tests not read), or it belongs to the one that uses it."]
+
+
+def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_the_language_s_name():
+    view = "src/billing/api/view.tsx"
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace"), folders={"ex": (view,)},
+                          languages={"python": PYTHON, "brace": BRACE})
+    assert fill("{{example:" + view + "}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES) == (
+        "```brace\n// src/billing/api/view.tsx\nx\n```")
+
+
+def test_the_no_comments_line_says_the_first_comment_marker_of_the_language_and_each_directive_after_it():
+    view = "src/billing/api/view.tsx"
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace", guards={"no-comments": {}}),
+                          folders={"ex": (view,)}, languages={"python": PYTHON, "brace": BRACE})
+    filled_in = fill("{{guards}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES)
+    assert [line for line in filled_in.splitlines() if "`no-comments`" in line] == [
+        "- `no-comments`: no `//` comments in the app or its tests; docstrings and tool directives "
+        "(`// @ts-expect-error`, `// eslint-disable`) stay."]
+
+
+def test_the_private_imports_line_says_the_prefix_the_language_gives():
+    lines = [line for line in filled("{{guards}}", guards={"private-imports": {}}).splitlines()
+             if "`private-imports`" in line]
+    assert lines == ["- `private-imports`: no file of the app or its tests imports a name that starts with `_` from "
+                     "another file of them."]
+
+
+def test_the_private_imports_line_of_a_language_that_gives_no_prefix_says_the_rule_by_what_a_file_keeps_private():
+    view = "src/billing/api/view.tsx"
+    architecture = parsed(layered(docs=DOCS | {"example_notes": {}}, language="brace", guards={"private-imports": {}}),
+                          folders={"ex": (view,)}, languages={"python": PYTHON, "brace": BRACE})
+    filled_in = fill("{{guards}}", architecture, "layered.md", {view: "x\n"}, file_types=FILE_TYPES)
+    lines = [line for line in filled_in.splitlines() if "`private-imports`" in line]
+    assert lines == ["- `private-imports`: no file of the app or its tests imports a name another file of them keeps "
+                     "private."]
+    assert "``" not in lines[0]

@@ -1,12 +1,16 @@
 """The architecture files bundled with xarch, cli and web: what every one of them promises."""
 from importlib import resources
+from pathlib import Path
 
 import pytest
 
-from tests.bootstrap.project import bundled_profiles
+from tests.bootstrap.project import PURE, bundled_profiles
 from xarch.bootstrap.wiring import load_architecture
 
 PROFILE_NAMES = ["cli", "web"]
+OWN = Path(__file__).parent.parent.parent / "architecture.yaml"
+FILES = [OWN, *(Path(str(resources.files("xarch").joinpath("architectures", f"{name}.yaml")))
+                for name in PROFILE_NAMES)]
 
 
 @pytest.fixture(params=PROFILE_NAMES)
@@ -73,3 +77,15 @@ def test_every_folder_of_the_tree_has_a_note_but_the_modules_folders(profile):
 def test_placement_lists_every_part_once(profile):
     architecture = load_architecture(profile)
     assert sorted(architecture.placement) == sorted(architecture.parts)
+
+
+@pytest.mark.parametrize("location", [*PROFILE_NAMES, str(OWN)])
+def test_published_is_pure_then_typing_any_and_pure_is_as_written(location):
+    architecture = load_architecture(location)
+    assert architecture.uses_never["domain"] == tuple(tuple(name.split(".")) for name in PURE)
+    assert architecture.uses_never["contract"] == tuple(tuple(name.split(".")) for name in (*PURE, "typing.Any"))
+
+
+@pytest.mark.parametrize("path", FILES, ids=lambda path: path.name)
+def test_each_profile_writes_published_as_an_include_of_pure(path):
+    assert path.read_text(encoding="utf-8").count("\n  published: [pure, typing.Any]\n") == 1

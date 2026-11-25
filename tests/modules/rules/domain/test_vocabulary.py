@@ -41,3 +41,28 @@ def test_every_word_applies_to_some_kind_of_fact(word):
 def test_the_variable_key_is_shown_with_a_key_of_the_profile_as_a_profile_writes_it_now():
     key = next(variable for variable in VARIABLES if variable.name == "key")
     assert key.meaning == "the key of the profile the check comes from: parts.store.uses.never, checks.<id>"
+
+
+def test_the_interface_of_a_class_needs_the_reader_to_mark_interfaces_and_says_no_word_of_bases():
+    kind = next(kind for kind in KINDS if kind.name == "class")
+    interface = next(word for word in FILTERS if word.name == "interface")
+    assert (kind.field_needs["interface"], interface.meaning) == (
+        ("class.interface",), "the class is an interface: the language marks it as one")
+
+
+def test_whether_a_class_is_a_record_needs_the_reader_to_say_it():
+    kind = next(kind for kind in KINDS if kind.name == "class")
+    record = next(word for word in FILTERS if word.name == "record")
+    assert (kind.field_needs["record"], record.meaning) == (
+        ("class.record",), "the class is a record, as the language's reader decides")
+
+
+def test_whether_a_name_is_public_is_a_field_of_the_kinds_whose_names_the_language_decides_and_needs_the_fact():
+    public = next(word for word in FILTERS if word.name == "public")
+    carrying = [kind for kind in KINDS if kind.carries("public")]
+    assert [kind.name for kind in carrying] == ["imported-name", "class", "function"]
+    assert [kind.field_needs["public"] for kind in carrying] == [("public",), ("public",), ("public",)]
+    assert [kind.name for kind in KINDS if public.applies_to(kind)] == ["imported-name", "class", "function"]
+    assert (public.reads, public.meaning, FIELDS["public"]) == (
+        ("public",), "the name the fact carries is public: the language's reader says it is for other files to use",
+        "whether the name is for other files to use, as the language decides it")

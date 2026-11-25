@@ -29,6 +29,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from xarch.kernel.logic.conditions import condition
+from xarch.kernel.logic.placement import stem
 from xarch.kernel.violations import OWN_ID, RULES
 from xarch.modules.spec.domain.values import (
     CASE_SLOTS,
@@ -265,7 +266,7 @@ def _examples(value: Any, where: str, language: Language,
         listed: list[tuple[str, str]] = []
         for path, code in files.items():
             steps = path.split("/") if isinstance(path, str) else []
-            if not steps or any(step in ("", ".", "..") for step in steps) or not path.endswith(language.checked.extension):
+            if not steps or any(step in ("", ".", "..") for step in steps) or stem(steps[-1], language.checked.marks) is None:
                 problems.append(f"{where}.{side}: {path!r} is not a path of a source file below the app (or tests/...)"
                                 f", ending in {language.checked.extension}")
             elif not isinstance(code, str):

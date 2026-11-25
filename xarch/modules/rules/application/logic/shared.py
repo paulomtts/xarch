@@ -1,6 +1,7 @@
 """The shared check: a part the profile declares shared (`parts.<part>.shared: <least>`) holds only what at least that
 many users use. Every public name a file of the part defines at the top level (a class, a function a definition alone
-binds, a name an assignment binds) is used by at least least users, or it is reported at its definition.
+binds, a name an assignment binds), public as the language's reader says it is, is used by at least least users, or
+it is reported at its definition.
 
 A user is where a file of the app that uses the name lies: the instance of a repeating folder it is in, for a file of
 a part in one (every part of that instance counts as that one user), else its part. A file in no part (the structure,
@@ -59,10 +60,10 @@ def violations(app: Iterable[SourceFile], profile: Profile, root: str) -> list[V
                 users[key].add(own)
     _spread(users, _mentions(files, defined, passed, known, root))
     found: list[Violation] = []
-    for key, (file, line, kind, part) in defined.items():
+    for key, (file, line, kind, part, public) in defined.items():
         least = profile.shared[part]
         shown = sorted(users[key])
-        if not profile.language.is_public(key[1]) or len(shown) >= least:
+        if not public or len(shown) >= least:
             continue
         name = key[1]
         message = (f"the {kind} {name} is used by {_users(shown, part)}, but {part}/ holds only what at least {least} "
@@ -72,19 +73,20 @@ def violations(app: Iterable[SourceFile], profile: Profile, root: str) -> list[V
 
 
 def _defined(files, where: dict[tuple[str, ...], Place | None],
-             profile: Profile) -> dict[Name, tuple[SourceFile, int, str, str]]:
-    """Every name a file of a shared part binds at its top level, private ones too: the file, the line, what it is
-    and the part."""
-    found: dict[Name, tuple[SourceFile, int, str, str]] = {}
+             profile: Profile) -> dict[Name, tuple[SourceFile, int, str, str, bool]]:
+    """Every name a file of a shared part binds at its top level, private ones too: the file, the line, what it is,
+    the part, and whether the reader says it is public (a function's name is public as that function is)."""
+    found: dict[Name, tuple[SourceFile, int, str, str, bool]] = {}
     for file, steps, _ in files:
         at = where[steps]
         if at is None or at.part not in profile.shared:
             continue
-        named = [(c.line, c.name, "class") for c in file.classes]
-        named += [(f.line, f.name, "function") for f in file.functions if not f.owner and f.name in file.module_functions]
-        named += [(c.line, c.name, "constant") for c in file.constants]
-        for line, name, kind in sorted(named):
-            found.setdefault((steps, name), (file, line, kind, at.part))
+        named = [(c.line, c.name, "class", c.public) for c in file.classes]
+        named += [(f.line, f.name, "function", f.public) for f in file.functions
+                  if not f.owner and f.name in file.module_functions]
+        named += [(c.line, c.name, "constant", c.public) for c in file.constants]
+        for line, name, kind, public in sorted(named):
+            found.setdefault((steps, name), (file, line, kind, at.part, public))
     return found
 
 

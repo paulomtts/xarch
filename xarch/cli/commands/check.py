@@ -28,10 +28,10 @@ StrictOption = Annotated[bool, typer.Option(
     "--strict", metavar="",
     help="Also fail (exit 1) on every finding the enforcement section lists under `strict` (JSON `strict_failures`): "
          "guards left off that the compared bundled profile switches on (every guard, when none is compared), "
-         "ungoverned files, missing or changed init files, skipped tests, dynamic imports, checks met to the letter "
-         "only (weak), approximate keys, checks of the profile's own that read nothing, and a part redefined without "
-         "the litmus the compared profile gives it. Every other way a custom profile differs from the compared one "
-         "is shown, never failed on.")]
+         "ungoverned files, missing or changed init files, skipped tests, dynamic imports, imports the reader could "
+         "not follow, checks met to the letter only (weak), approximate keys, checks of the profile's own that read "
+         "nothing, and a part redefined without the litmus the compared profile gives it. Every other way a custom "
+         "profile differs from the compared one is shown, never failed on.")]
 
 
 def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:

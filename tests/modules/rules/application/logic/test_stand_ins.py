@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from tests.modules.rules.builders import AUTOSPEC, MOCK, PROFILE, in_tests, profile, source
+from tests.modules.rules.builders import AUTOSPEC, BRACE, MOCK, PERCENT, PROFILE, in_tests, profile, source
 from xarch.modules.rules.application.logic.stand_ins import violations, weak
 from xarch.modules.rules.domain.parsed import Call, Class, Method, ParameterCall
 from xarch.modules.rules.domain.published import Weak
@@ -14,8 +14,8 @@ PROTOCOL = ("typing", "Protocol")
 PORT_FILE = "modules/docs/application/ports/repo.py"
 REPO = ("app", "modules", "docs", "application", "ports", "repo", "Repo")
 NOTIFIER = ("app", "modules", "docs", "application", "ports", "repo", "Notifier")
-READ = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "str | None"), Method(5, "save", "None")))
-FIRE = Class(8, "Notifier", (PROTOCOL,), (Method(9, "send", "None"),))
+READ = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "str | None"), Method(5, "save", "None")), interface=True)
+FIRE = Class(8, "Notifier", (PROTOCOL,), (Method(9, "send", "None"),), interface=True)
 PORTS = source(PORT_FILE, classes=(READ, FIRE))
 FAKE = in_tests("fakes/repo.py", classes=(Class(1, "FakeRepo", (), (Method(2, "get", None), Method(3, "save", None))),))
 INTEGRATION_TEST = "modules/docs/application/test_publish.py"
@@ -31,27 +31,30 @@ def ported(*classes: Class, path: str = PORT_FILE):
 
 @pytest.mark.parametrize("classes, expected", [
     pytest.param([READ, FIRE], [], id="a read port with its fake and a fire-only port pass"),
-    pytest.param([Class(3, "Repo", (("typing_extensions", "Protocol"),), (Method(4, "get", "int"),))], [],
-                 id="typing_extensions' Protocol makes a port too"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "int"),))],
+    pytest.param([Class(3, "Repo", (), (Method(4, "get", "int"),), interface=True)], [],
+                 id="a class the reader marks is a port, whatever its bases"),
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "int"),), interface=True)],
                  [f"app/{PORT_FILE}:3: Store is a read port with no fake (stand-ins)"],
                  id="a read port with no fake is reported at the port"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "None"), Method(5, "put", "None")))], [],
-                 id="a fire-only port needs no fake"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "int"),)),
-                  Class(6, "Other", (PROTOCOL,), (Method(7, "get", "None"),))],
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "None"), Method(5, "put", "None")), interface=True)],
+                 [], id="a fire-only port needs no fake"),
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "int"),), interface=True),
+                  Class(6, "Other", (PROTOCOL,), (Method(7, "get", "None"),), interface=True)],
                  [f"app/{PORT_FILE}:3: Store is a read port with no fake (stand-ins)"],
                  id="only the read ports of a file need fakes"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", None), Method(5, "put", "int")))],
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", None), Method(5, "put", "int")), interface=True)],
                  [f"app/{PORT_FILE}:4: Store.get has no return annotation, and whether Store is fire-only or read "
                   "follows from it (stand-ins)"],
                  id="a method with no return annotation is reported, and the port then has no kind"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "__init__", None), Method(5, "send", "None")))], [],
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "__init__", None), Method(5, "send", "None")),
+                        interface=True)], [],
                  id="a dunder method is not one of the port's methods"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "__call__", "int"),))],
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "__call__", "int"),), interface=True)],
                  [f"app/{PORT_FILE}:3: Store is a read port with no fake (stand-ins)"],
                  id="__call__ is the method a callable port is"),
-    pytest.param([Class(3, "Store", (PROTOCOL,), ())], [], id="a port with no methods is neither kind"),
+    pytest.param([Class(3, "Store", (PROTOCOL,), (), interface=True)], [], id="a port with no methods is neither kind"),
+    pytest.param([Class(3, "Store", (PROTOCOL,), (Method(4, "get", "int"),))], [],
+                 id="a class with a Protocol base the reader does not mark is no port"),
     pytest.param([Class(3, "Store", (("app", "Base"),), (Method(4, "get", "int"),))], [],
                  id="a class that is not a Protocol is not a port"),
     pytest.param([Class(3, "Store", (None,), (Method(4, "get", "int"),))], [],
@@ -62,7 +65,7 @@ def test_ports(classes, expected):
 
 
 def test_a_protocol_outside_the_parts_the_fakes_stand_in_for_is_not_a_port():
-    store = Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),))
+    store = Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),), interface=True)
     assert problems([ported(store, path="modules/docs/domain/store.py"), ported(store, path="scripts/store.py")]) == []
 
 
@@ -82,7 +85,7 @@ def test_without_a_tests_root_missing_fakes_are_not_reported():
 
 
 def test_without_a_tests_root_ports_are_still_held_to_their_annotations():
-    bare = Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),))
+    bare = Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),), interface=True)
     assert problems([ported(bare)], [], has_tests=False) == [
         f"app/{PORT_FILE}:4: Store.get has no return annotation, and whether Store is fire-only or read follows from it (stand-ins)"]
 
@@ -92,7 +95,7 @@ def test_without_a_tests_root_ports_are_still_held_to_their_annotations():
     pytest.param(profile(fakes=None), id="the profile has no fakes"),
 ])
 def test_without_the_guard_or_fakes_nothing_is_checked(checked):
-    bare = Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),))
+    bare = Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),), interface=True)
     tests = [in_tests(INTEGRATION_TEST, calls=(Call(5, MOCK),)), in_tests("fakes/x.py", classes=(Class(1, "FakeStore"),))]
     assert (problems([ported(bare)], tests, checked), weak([ported(bare)], tests, checked)) == ([], [])
 
@@ -256,7 +259,7 @@ def test_weak(tests, expected):
 
 OTHER_FILE = "modules/other/application/ports/repo.py"
 OTHER_REPO = Class(3, "Repo", (PROTOCOL,), (Method(4, "get", "int"), Method(5, "list", "int"),
-                                            Method(6, "drop", "None")))
+                                            Method(6, "drop", "None")), interface=True)
 
 
 @pytest.mark.parametrize("defined, expected", [
@@ -275,7 +278,7 @@ def test_one_fake_serves_read_ports_of_the_same_name_in_two_instances():
 
 @pytest.mark.parametrize("app, tests, fix", [
     pytest.param([PORTS], [], "write FakeRepo under tests/fakes/", id="a read port with no fake"),
-    pytest.param([ported(Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),)))], [FAKE],
+    pytest.param([ported(Class(3, "Store", (PROTOCOL,), (Method(4, "get", None),), interface=True))], [FAKE],
                  "annotate what Store.get returns", id="a method with no return annotation"),
     pytest.param([PORTS], [FAKE, in_tests(INTEGRATION_TEST, calls=(Call(5, MOCK),))],
                  "give it a spec, such as Mock(spec=<port>)", id="a mock with no spec"),
@@ -291,3 +294,31 @@ def test_one_fake_serves_read_ports_of_the_same_name_in_two_instances():
 ])
 def test_a_violation_names_its_rule_and_says_what_to_do(app, tests, fix):
     assert [(v.rule, v.fix) for v in violations(app, tests, PROFILE, "app", "tests")] == [("stand-ins", fix)]
+
+
+BRACE_PORT = "modules/docs/application/ports/repo.ts"
+PERCENT_PORT = "modules/docs/application/ports/Repo.cls"
+
+
+@pytest.mark.parametrize("methods, expected", [
+    pytest.param((Method(4, "send", "Promise<void>"), Method(5, "close", "void")), [],
+                 id="every method returns one of the annotations of no value: fire-only"),
+    pytest.param((Method(4, "get", "Promise<Order>"), Method(5, "close", "void")),
+                 [f"app/{BRACE_PORT}:3: Store is a read port with no fake (stand-ins)"],
+                 id="one method returns something else: read, and its fake is missing"),
+])
+def test_under_a_typescript_like_language_a_port_s_kind_follows_its_annotations_of_no_value(methods, expected):
+    store = Class(3, "Store", (), methods, interface=True)
+    assert problems([ported(store, path=BRACE_PORT)], checked=profile(language=BRACE)) == expected
+
+
+@pytest.mark.parametrize("methods, expected", [
+    pytest.param((Method(4, "%OnNew", "Order"), Method(5, "Send", None)), [],
+                 id="a method with no annotation gives no value, and a special one is left out"),
+    pytest.param((Method(4, "Send", None), Method(5, "Get", "Order")),
+                 [f"app/{PERCENT_PORT}:3: Store is a read port with no fake (stand-ins)"],
+                 id="an annotated method gives a value: read"),
+])
+def test_under_an_objectscript_like_language_a_method_with_no_annotation_gives_no_value(methods, expected):
+    store = Class(3, "Store", (), methods, interface=True)
+    assert problems([ported(store, path=PERCENT_PORT)], checked=profile(language=PERCENT)) == expected

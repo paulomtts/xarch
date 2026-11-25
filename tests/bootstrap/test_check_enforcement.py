@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 import xarch
@@ -44,6 +45,7 @@ def test_the_json_enforcement_always_holds_every_key():
         "init_files": [],
         "skipped": {"count": 0, "at": []},
         "dynamic": {"count": 0, "at": []},
+        "unresolved": [],
         "weak": [],
         "approximate": [],
         "strict_failures": []}
@@ -187,3 +189,28 @@ def test_a_public_name_the_profile_accepts_as_only_the_tests_is_named_and_an_ent
         f"    weak: {gone}"]
     document = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)
     assert document["enforcement"]["known"] == [{"file": "app/kernel/ids.py", "line": 1, "name": "make"}]
+
+
+LOST = 'app/kernel/a.py:2: import ".ordr" names no file of the app'
+
+
+def test_an_import_the_reader_could_not_follow_is_listed_and_fails_only_strict(tmp_path):
+    (tmp_path / "app/kernel/a.py").write_text("x = 1\nfrom .ordr import X\n")
+    result = check()
+    assert result.exit_code == 0, result.stdout
+    assert result.stdout.splitlines() == ["OK: no violations", "enforcement", "  profile:     web (bundled)",
+                                          f"  unresolved:  {LOST}"]
+    strict = check("--strict")
+    assert strict.exit_code == 1
+    assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", f"    unresolved: {LOST}"]
+    document = json.loads(check("--format", "json").stdout)
+    assert document["ok"] is True
+    assert document["enforcement"]["unresolved"] == [{"file": "app/kernel/a.py", "line": 2, "written": ".ordr"}]
+    assert document["enforcement"]["strict_failures"] == [{"key": "unresolved", "detail": LOST}]
+    assert json.loads(check("--strict", "--format", "json").stdout)["ok"] is False
+
+
+def test_the_help_of_strict_names_the_imports_the_reader_could_not_follow():
+    command = typer.main.get_command(app).commands["check"]
+    strict = next(param for param in command.params if "--strict" in param.opts)
+    assert "dynamic imports, imports the reader could not follow, checks met to the letter" in strict.help

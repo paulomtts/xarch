@@ -49,12 +49,18 @@ class ExamplesService:
             rule, problems = evals.made(name, asked)
             unread += problems
             for side, files in (("flagged", asked.flagged), ("clean", asked.clean)) if rule is not None else ():
-                facts = project([(path, self._tree.parsed(code)) for path, code in files], profile, app, (rule,))
+                facts = project([(path, self._tree.parsed(code, profile.language.standard_modules,
+                                                          private=profile.language.private,
+                                                          special=profile.language.special)) for path, code in files],
+                                profile, app, (rule,))
                 unread += evals.unread(name, side, files, kept(rule, facts, profile), asked.reads)
         return ChecksHeld(tuple(found), len(profile.written), tuple(unread), len(profile.asked))
 
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile,
                app: str) -> list[Violation | Weak]:
         rules = (own.rule,)
-        facts = project([(path, self._tree.parsed(code)) for path, code in files], profile, app, rules)
+        facts = project([(path, self._tree.parsed(code, profile.language.standard_modules,
+                                                  private=profile.language.private,
+                                                  special=profile.language.special)) for path, code in files],
+                        profile, app, rules)
         return run(rules, facts, profile)

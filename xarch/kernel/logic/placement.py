@@ -2,8 +2,8 @@
 
 A pattern is a path whose one `*` step stands for any name: an instance's of the repeating folder it sits in. A path
 sits in the pattern it lies in, the deepest when patterns nest, with `*` capturing the name; what lies below the
-pattern is the place's sub-path. A path is compared as its language names it (see Marks): no ending on its file, and
-the file that stands for a folder is the folder itself.
+pattern is the place's sub-path. A path is compared as its language names it (see Marks): no ending on its file (the
+longest of the language's endings it carries, see stem), and a file that stands for a folder is the folder itself.
 
 A target names a part, a scope, an optional path below the part and an optional name pattern. Scope "own" reaches the
 part in the importer's instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
@@ -33,16 +33,31 @@ def repeat_of(repeats: Iterable[Repeat], pattern: tuple[str, ...]) -> Repeat | N
     return next((repeat for repeat in repeats if repeat.root == root), None) if root is not None else None
 
 
+def stem(name: str, marks: Marks) -> str | None:
+    """The name without the ending of the marks it carries, the longest when several match; None when it carries
+    none of them."""
+    ending = max((extension for extension in marks.extensions if name.endswith(extension)), key=len, default=None)
+    return None if ending is None else name.removesuffix(ending)
+
+
 def module_steps(path: tuple[str, ...], marks: Marks) -> tuple[str, ...]:
-    """A path as the language names it: no ending on its file, and the file that stands for its folder is the folder."""
-    steps = path[:-1] + (path[-1].removesuffix(marks.extension),) if path else path
+    """A path as the language names it: no ending on its file (a step carrying none kept as written), and a file that
+    stands for its folder is the folder."""
+    if not path:
+        return path
+    last = stem(path[-1], marks)
+    steps = path[:-1] + (path[-1] if last is None else last,)
     return steps[:-1] if stands_for_folder(path, marks) else steps
 
 
 def stands_for_folder(path: tuple[str, ...], marks: Marks) -> bool:
-    """Whether a path is the file that stands for its folder, written with its ending or without it."""
-    stem = marks.package_file.removesuffix(marks.extension)
-    return bool(path) and bool(stem) and path[-1].removesuffix(marks.extension) == stem
+    """Whether a path is a file that stands for its folder: one of the package files, or, carrying no ending, the stem
+    of one (a package file written without its ending)."""
+    if not path:
+        return False
+    name = path[-1]
+    return name in marks.package_files or (stem(name, marks) is None
+                                           and name in {stem(file, marks) for file in marks.package_files})
 
 
 def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...], marks: Marks) -> Place:

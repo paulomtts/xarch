@@ -82,3 +82,12 @@ def test_every_group_of_the_book_has_a_row():
     rows = {param.values[0] for param in
             test_each_group_of_the_book_expands_to_the_rules_its_keys_mean.pytestmark[0].args[1]}
     assert rows == set(expansion.book(ON))
+
+
+def test_the_rules_that_read_whether_a_name_is_public_need_the_fact_and_those_of_ports_fakes_and_files_do_not():
+    book = expansion.book(ON)
+    assert {group: ["public" in rule.needs for rule in book[group]]
+            for group in ("private-imports", "names", "holds", "tests-only")} == {
+        "private-imports": [True], "names": [True], "holds": [True, False], "tests-only": [True, True]}
+    assert book["dead-code"] and book["untested"]
+    assert not any("public" in rule.needs for rule in (*book["dead-code"], *book["untested"]))

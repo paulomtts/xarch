@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 import xarch
+from tests.bootstrap.project import PURE
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
@@ -169,3 +170,9 @@ def test_a_part_that_may_import_every_outside_package_says_so_in_words(tmp_path)
     (tmp_path / "app/glue").mkdir()
     assert lines("app/glue/x.py", "--profile", "wide.yaml")["libraries"] == "any outside package"
     assert document("app/glue/x.py", "--profile", "wide.yaml")["libraries"] == ["*"]
+
+
+def test_the_contract_part_never_uses_pure_s_names_then_typing_any_in_order():
+    found = document("app/modules/docs/contract/commands.py")
+    assert found["never_uses"] == [*PURE, "typing.Any"]
+    assert lines("app/modules/docs/contract/commands.py")["never uses"] == ", ".join((*PURE, "typing.Any"))

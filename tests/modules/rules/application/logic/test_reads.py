@@ -16,11 +16,12 @@ from xarch.profile_values.placement import Target
 KINDS = {kind.name: kind for kind in VOCABULARY}
 
 TRAITS = ("relative", "standard", "on-own-object", "top-level", "forwards", "exception", "record", "interface",
-          "immutable", "receiver", "annotated-callable", "no-statements", "exceptions-only", "unreadable")
+          "immutable", "receiver", "annotated-callable", "no-statements", "exceptions-only", "unreadable", "doc",
+          "public")
 """The fields a fact carries as a trait, by its name."""
 STORED = {"line": "line", "path": "path", "method": "name", "name": "name", "written": "text", "text": "text",
-          "forwarded": "text", "mentions": "names", "reaches": "target", "returned": "target", "place": "at",
-          "bound": "bound", "function": "path", **{trait: trait for trait in TRAITS}}
+          "marker": "name", "forwarded": "text", "mentions": "names", "reaches": "target", "returned": "target",
+          "place": "at", "bound": "bound", "function": "path", **{trait: trait for trait in TRAITS}}
 """Where a fact keeps each field of the vocabulary: an attribute of the fact, or a trait by its name."""
 VALUES = {"named": "Doc*", "below": "fakes", "of-kind": "import", "target-below": "fakes",
           "target-allows-under": "built_by"}

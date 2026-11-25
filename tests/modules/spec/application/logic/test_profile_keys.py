@@ -2,12 +2,13 @@
 as xarch ships it, give each key its meaning, what it accepts and an example, and every example loads through the loader
 once merged into the smallest profile."""
 from copy import deepcopy
+from dataclasses import replace
 
 import pytest
 import yaml
 
 from tests.modules.spec.format_files import CATALOGUE
-from tests.modules.spec.languages import PYTHON
+from tests.modules.spec.languages import BRACE, PERCENT, PYTHON
 from tests.modules.spec.profiles import PRESETS, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.explain import said
@@ -25,6 +26,7 @@ from xarch.modules.spec.domain.profile_keys import (
     Key,
 )
 from xarch.modules.spec.domain.values import Language
+from xarch.profile_values.language import InterfaceMark
 
 BASE = {"name": "example", "parts": {"documents": {"path": "documents", "role": "the documents"}}}
 LISTING = ("src/documents.py", "tests/documents/check_documents.py", "tests/documents/builders.py")
@@ -179,3 +181,28 @@ def test_a_word_of_the_table_is_what_the_language_says_for_it():
     assert said("a %interface% as `%interface_path%`; %other%", PYTHON) == "a Protocol as `typing.Protocol`; %other%"
     assert said("%interface%s", Language()) == "s"
     assert said("a name that starts with `%private%`", PYTHON) == "a name that starts with `_`"
+
+
+def test_the_ending_and_the_package_file_a_text_says_are_the_language_s_first_and_nothing_when_it_has_none():
+    assert said("%extension% `%package_file%`", BRACE) == ".ts `index.ts`"
+    assert said("%extension% `%package_file%`", PERCENT) == ".cls ``"
+
+
+def test_the_path_of_an_interface_is_said_with_the_member_of_the_language():
+    based = (InterfaceMark(("%Library", "RegisteredObject")),)
+    hashed = replace(PERCENT, checked=replace(PERCENT.checked, member="#", interface=based))
+    assert said("`%interface_path%`", hashed) == "`%Library#RegisteredObject`"
+
+
+def test_an_interface_is_called_by_the_last_step_of_its_first_base_or_by_its_keyword():
+    assert (PYTHON.interface_name, BRACE.interface_name, PERCENT.interface_name, Language().interface_name) == (
+        "Protocol", "interface", "Abstract", "")
+
+
+def test_the_path_of_an_interface_is_its_first_base_or_its_keyword():
+    assert [said("`%interface_path%`", language) for language in (PYTHON, BRACE, PERCENT, Language())] == [
+        "`typing.Protocol`", "`interface`", "`Abstract`", "``"]
+
+
+def test_the_annotations_of_no_value_are_said_each_as_written_joined_by_or():
+    assert [said("%nothing%", language) for language in (PYTHON, BRACE, PERCENT)] == ["None", "void or Promise<void>", ""]

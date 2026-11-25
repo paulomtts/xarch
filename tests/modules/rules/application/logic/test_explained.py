@@ -60,7 +60,7 @@ def test_a_category_is_found_alone():
 @pytest.mark.parametrize("typed, near", [
     pytest.param("filters.publik", ("filters.public", "filters.below", "filters.placed"), id="a word misspelt"),
     pytest.param("publc", ("filters.public", "targets.place"), id="a name without its category"),
-    pytest.param("filtrs", ("filters", "filters.test", "filters.named"), id="a category misspelt"),
+    pytest.param("filtrs", ("filters", "filters.doc", "filters.test"), id="a category misspelt"),
     pytest.param("zzz", tuple(CATEGORIES), id="nothing alike: the categories"),
 ])
 def test_an_address_of_no_word_has_the_nearest_ones(typed, near):
@@ -102,6 +102,8 @@ def word(table, name):
 @pytest.mark.parametrize("found, said", [
     pytest.param(word(FILTERS, "below"), WordFacets(about="file", value=word(FILTERS, "below").value),
                  id="a filter: what it asks about and its value"),
+    pytest.param(word(FILTERS, "package-file"), WordFacets(about="file", needs=("file.package",)),
+                 id="a filter that needs a fact: what it asks about and the fact"),
     pytest.param(word(TARGETS, "place"), WordFacets(side=word(TARGETS, "place").side, value=word(TARGETS, "place").values),
                  id="a target: its side and its values"),
     pytest.param(word(QUANTIFIERS, "may_not"), WordFacets(), id="a quantifier: nothing besides"),
@@ -113,9 +115,11 @@ def test_a_word_says_what_its_category_has_besides_its_name_and_meaning(found, s
 def test_a_kind_says_its_fields_each_with_the_filter_it_carries_it_under_what_it_needs_and_its_verb():
     imported = word(KINDS, "imported-name")
     fields = tuple((name, FIELDS[name], when) for name, when in (
-        ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("name", "takes-a-name")))
+        ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("public", ""),
+        ("name", "takes-a-name")))
     assert facets(imported) == WordFacets(side=imported.side, fields=fields,
-                                          needs=("import", "import.relative", "import.standard"), verb=imported.verb)
+                                          needs=("import", "import.relative", "import.standard", "public"),
+                                          verb=imported.verb)
 
 
 @pytest.mark.parametrize("category, name, found", [

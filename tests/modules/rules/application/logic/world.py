@@ -11,6 +11,7 @@ and variable can name a fact by its file and line: PROFILE's app (package `app`)
     app/bootstrap/wiring.py                   bootstrap, which may import everything
     app/modules/__init__.py                   the structure's package file
     app/modules/docs/domain/errors.py         a file of exceptions only
+    app/modules/docs/domain/notes.py          comments of several forms, the first a doc comment
     app/platform/latin.py                     a file that could not be read as text
     app/platform/broken.py                    a file that does not parse
     tests/modules/docs/domain/test_doc.py     a unit test of domain: imports of the app, a helper, a fake, a test
@@ -36,6 +37,7 @@ SERVICE = "app/modules/docs/application/services/publish.py"
 WIRING = "app/bootstrap/wiring.py"
 STRUCTURE = "app/modules/__init__.py"
 ERRORS = "app/modules/docs/domain/errors.py"
+NOTES = "app/modules/docs/domain/notes.py"
 TEST = "tests/modules/docs/domain/test_doc.py"
 HELPER = "tests/modules/docs/builders.py"
 FAKE = "tests/fakes/repo.py"
@@ -56,13 +58,13 @@ APP = [
                       Function(11, "get", owner="Doc", forwards="self.repo.get",
                                sole_call=SoleCall(("self", "repo", "get"), then=("name",))),
                       Function(12, "put", owner="Doc", forwards="self.repo.put", sole_call=SoleCall(("self", "repo", "put")))),
-           comments=(Comment(13, "# noqa: E501"), Comment(14, "# a note TODO")),
+           comments=(Comment(13, "# noqa: E501", marker="#"), Comment(14, "# a note TODO", marker="#")),
            callbacks=(Callback(15, "make", "check", annotated=True), Callback(16, "get", "self", receiver=True)),
            uses=(Use(17, ("datetime", "datetime", "now"), 2), Use(18, ("yaml", "load"), 1)),
            method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute")),
            module_functions=("make",), named=frozenset({"Doc", "make", "Repo"})),
     source("modules/docs/application/ports/repo.py", imp(1, "typing", "Protocol"),
-           classes=(Class(2, "Repo", bases=(("typing", "Protocol"),)),)),
+           classes=(Class(2, "Repo", bases=(("typing", "Protocol"),), interface=True),)),
     source("modules/docs/application/services/publish.py", imp(1, "app.modules.docs.domain", "doc"),
            imp(2, "app.modules.docs.domain.doc", "Doc"), imp(3, "app.platform", "db"),
            calls=(Call(4, DOC), Call(5, MAKE), Call(6, ("yaml", "dump"))), uses=(Use(5, MAKE, 2), Use(7, MAKE, 2)),
@@ -72,7 +74,9 @@ APP = [
     source("kernel/ids.py"), source("platform/db.py"),
     source("platform/latin.py", error=Unparsable(0, "not UTF-8 text", unreadable=True)),
     source("platform/broken.py", error=Unparsable(3, "invalid syntax")),
-    source("modules/docs/domain/errors.py", classes=(Class(1, "DocMissing", exception=True),))]
+    source("modules/docs/domain/errors.py", classes=(Class(1, "DocMissing", exception=True),)),
+    source("modules/docs/domain/notes.py",
+           comments=(Comment(1, "/** a doc */", marker="/**", doc=True), Comment(2, "// a note", marker="//")))]
 TESTS = [
     in_tests("modules/docs/domain/test_doc.py", imp(1, "app.modules.docs.domain", "doc"),
              imp(2, "tests.modules.docs", "builders"), imp(3, "tests.fakes", "repo"),

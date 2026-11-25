@@ -4,7 +4,7 @@ defaults), and a check that breaks the format, or names an id, a part or a tier 
 its address and left out; what a target's values name is the rules module's to read."""
 import pytest
 
-from tests.modules.spec.languages import PYTHON
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import layered, parsed
 from xarch.modules.spec.application.logic.written_checks import checks
 from xarch.profile_values.checks import (
@@ -132,3 +132,12 @@ def test_a_check_of_its_own_may_not_take_the_id_may_import_and_may_take_rules_wh
 def test_a_hint_for_a_check_of_its_own_named_rules_is_the_hint_of_that_check():
     architecture = parsed(layered(checks={"rules": SMALL}, hints={"rules": "see the docs"}))
     assert (list(architecture.checks), architecture.hints) == (["rules"], {"rules": "see the docs"})
+
+
+def test_an_example_of_any_ending_of_the_language_is_read_and_a_refusal_prints_the_first():
+    problems: list[str] = []
+    braced = {"x": {**SMALL, "examples": {"flagged": {"src/billing/api/x.tsx": "a\n"},
+                                          "clean": {"src/billing/api/y.js": "b\n"}}}}
+    assert checks(braced, set(ARCHITECTURE.parts), ARCHITECTURE.tiers, BRACE, problems) == {}
+    assert problems == ["checks.x.examples.clean: 'src/billing/api/y.js' is not a path of a source file below the app "
+                        "(or tests/...), ending in .ts"]

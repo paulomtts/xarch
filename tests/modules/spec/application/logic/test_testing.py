@@ -1,10 +1,14 @@
 """How a profile file names what its test framework names: the `testing` key, and the framework's names the guards
 scenario-coverage and stand-ins read from it."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
+from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import TESTING, covered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
+from xarch.modules.spec.application.logic.profile_checks import use_case_file
 from xarch.profile_values.testing import Fixture
 
 FILES = {"files": ["test_*.py"], "functions": "test_*"}
@@ -30,7 +34,7 @@ MOCKS = ("layered.yaml: testing.mocks: must be a mapping {calls, spec_keywords},
          "methods build one")
 POSITION = ("layered.yaml: testing.mocks.spec_position: must be a whole number, at least 0, such as 0: the position of "
             "the argument that names the spec; leave it out when only a keyword names it")
-DOTTED = "must be a list of dotted names such as pkg.sub.Name"
+DOTTED = "must be a list of outside names such as <package>.<name>"
 METHODS = "must be a list of method names such as [build]"
 WRITE = "write testing: <preset>, or testing: {files: [<pattern>, ...], functions: <pattern>}"
 
@@ -82,12 +86,12 @@ def test_the_keywords_of_the_table_decorator_are_optional():
     pytest.param(TABLE_OK | {"id": "a b"}, "layered.yaml: testing.table.id: must be a keyword name",
                  id="an id that is no keyword name is refused"),
     pytest.param(TABLE_OK | {"decorator": "parametrize"},
-                 "layered.yaml: testing.table.decorator: 'parametrize' is not a dotted name such as pkg.sub.name",
+                 "layered.yaml: testing.table.decorator: 'parametrize' is not an outside name such as <package>.<name>",
                  id="a decorator that is not dotted is refused"),
     pytest.param(TABLE_OK | {"row": "pytest..param"},
-                 "layered.yaml: testing.table.row: 'pytest..param' is not a dotted name such as pkg.sub.name",
+                 "layered.yaml: testing.table.row: 'pytest..param' is not an outside name such as <package>.<name>",
                  id="a row with an empty step is refused"),
-    pytest.param(TABLE_OK | {"row": 3}, "layered.yaml: testing.table.row: 3 is not a dotted name such as pkg.sub.name",
+    pytest.param(TABLE_OK | {"row": 3}, "layered.yaml: testing.table.row: 3 is not an outside name such as <package>.<name>",
                  id="a row that is no text is refused"),
     pytest.param(TABLE_OK | {"keywords": ["argnames"]}, KEYWORDS, id="one keyword is refused"),
     pytest.param(TABLE_OK | {"keywords": ["a", "a"]}, KEYWORDS, id="the same keyword twice is refused"),
@@ -170,7 +174,7 @@ def test_a_bad_fixtures_entry_is_refused(fixtures, expected):
     pytest.param(MOCKS_OK | {"calls": "unittest.mock.Mock"}, f"layered.yaml: testing.mocks.calls: {DOTTED}",
                  id="calls given as one text are refused"),
     pytest.param(MOCKS_OK | {"calls": ["Mock"]},
-                 "layered.yaml: testing.mocks.calls: 'Mock' is not a dotted name such as pkg.sub.name",
+                 "layered.yaml: testing.mocks.calls: 'Mock' is not an outside name such as <package>.<name>",
                  id="a call that is not dotted is refused"),
     pytest.param(MOCKS_OK | {"calls": ["a.B", "a.B"]}, "layered.yaml: testing.mocks.calls: 'a.B' is listed twice",
                  id="a call listed twice is refused"),
@@ -257,6 +261,15 @@ def test_the_guards_lines_say_the_names_of_the_framework_the_file_declares():
         "(or, from a fixture, `mocker.Mock(spec=<Port>)`), never a read port (section 6)."]
 
 
+def test_the_stand_ins_line_says_each_annotation_of_no_value_of_the_language():
+    architecture = parsed(covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=FAKES))
+    checked = replace(architecture.language.checked, nothing=("void", "Promise<void>"))
+    brace = replace(architecture, language=replace(architecture.language, checked=checked))
+    lines = fill("{{guards}}", brace, "layered.md", file_types=FILE_TYPES).splitlines()
+    line = next(line for line in lines if line.startswith("- `stand-ins`"))
+    assert "is fire-only (every method returns `void` or `Promise<void>`) or read" in line
+
+
 def test_a_profile_naming_another_framework_gets_its_own_words_in_the_guards_lines():
     testing = {"files": ["*_spec.py"], "functions": "it_*",
                "table": {"decorator": "cases.table", "row": "cases.row", "id": "name"},
@@ -274,7 +287,7 @@ def test_testing_may_name_the_markers_and_calls_that_skip_a_test_or_expect_it_to
 
 
 @pytest.mark.parametrize("skips, expected", [
-    pytest.param(["skip"], "'skip' is not a dotted name such as pkg.sub.name", id="a skip that is not dotted is refused"),
+    pytest.param(["skip"], "'skip' is not an outside name such as <package>.<name>", id="a skip that is not dotted is refused"),
     pytest.param([], DOTTED, id="no skip at all is refused"),
     pytest.param(["a.b", "a.b"], "'a.b' is listed twice", id="a skip listed twice is refused"),
 ])
@@ -311,3 +324,42 @@ def test_dead_code_s_names_accepted_as_only_the_tests_are_said_by_their_entries(
     assert line.endswith("is listed in the enforcement section, and fails `check --strict` only. `shared/text.py:clean` "
                          "and `shared/wiring.py:build` are accepted as only the tests' (`guards.dead-code.known`) and "
                          "named in the enforcement section instead; an entry that no longer holds is listed.")
+
+
+BRACED = {"python": PYTHON, "brace": BRACE}
+
+
+def braced(files) -> dict:
+    return covered(testing={"files": files, "functions": "test*"}, language="brace")
+
+
+def test_under_several_endings_a_file_pattern_may_end_in_any_of_them():
+    assert parsed(braced(["*.test.tsx", "*.test.mts", "*.test.ts"]), languages=BRACED).framework.files == (
+        "*.test.tsx", "*.test.mts", "*.test.ts")
+
+
+@pytest.mark.parametrize("files, expected", [
+    pytest.param(["*.test.js"], "layered.yaml: testing.files: '*.test.js' is not a file name pattern: a name ending in "
+                                ".ts, .tsx or .mts, with `*` for any text", id="an ending the language does not have"),
+    pytest.param("*.test.ts", "layered.yaml: testing.files: must be a non-empty list of file name patterns, each a .ts, "
+                              ".tsx or .mts name with `*` for any text", id="no list"),
+])
+def test_under_several_endings_a_refusal_lists_every_ending(files, expected):
+    assert problems(braced(files), languages=BRACED) == [expected]
+
+
+def test_a_file_pattern_may_hold_any_character_but_a_slash():
+    assert parsed(covered(testing={"files": ["tést_*.py"], "functions": "test_*"})).framework.files == ("tést_*.py",)
+    assert problems(covered(testing={"files": [".py"], "functions": "test_*"})) == [
+        "layered.yaml: testing.files: '.py' is not a file name pattern: a name ending in .py, with `*` for any text"]
+
+
+@pytest.mark.parametrize("file, kept, expected", [
+    pytest.param("{name}.test.tsx", "{name}.test.tsx", [], id="a file of the second ending"),
+    pytest.param("{name}.test.mts", "{name}.test.mts", [], id="a file of the third ending"),
+    pytest.param("{name}.test.js", None, ["scenarios: must be a file name below the test folders, such as a_{name}.ts"],
+                 id="an ending the language does not have, the refusal printing the first"),
+])
+def test_under_several_endings_the_scenario_file_may_end_in_any_of_them(file, kept, expected):
+    found: list[str] = []
+    assert (use_case_file(file, None, "scenarios", found, BRACE), found) == (kept, expected)

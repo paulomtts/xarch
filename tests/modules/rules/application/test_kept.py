@@ -18,7 +18,7 @@ from xarch.modules.rules.domain.profile import Asked
 from xarch.profile_values.checks import APP, Condition, Scope
 
 CLOCK = Import(1, ("app", "kernel", "time"), ("Clock",))
-PARSED = {"service": SourceFile("", (), (CLOCK,), functions=(Function(3, "__init__", owner="Publishing"),
+PARSED = {"service": SourceFile("", (), (CLOCK,), functions=(Function(3, "__init__", owner="Publishing", public=False),
                                                             Function(6, "publish", owner="Publishing"),
                                                             Function(12, "helper")),
                                 classes=(Class(2, "Publishing"),),

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import xarch
-from tests.bootstrap.project import APP, TESTS, source_check, write
+from tests.bootstrap.project import APP, TESTS, problems, source_check, write
 from xarch.bootstrap.wiring import build_controllers
 from xarch.kernel.violations import RULES, Violation
 from xarch.modules.layout.contract import CheckStructure
@@ -207,6 +207,31 @@ def test_a_part_used_only_as_a_type_names_its_rule_and_its_fix(tmp_path):
     (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))
     app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py":
                                    "from app.modules.docs.contract import Published\n\n\nclass DocService:\n"
+                                   "    def run(self):\n        return Published()\n"})
+    result = source_check(app, str(tmp_path / "arch/typed.yaml"), write(tmp_path / "tests", TESTS))
+    assert [(v.rule, v.line, bool(v.fix)) for v in result.violations] == [("types-only", 6, True)]
+
+
+@pytest.mark.parametrize("controller", [
+    pytest.param("from .services.doc import DocService\n\nDocService()\n", id="the class imported relatively"),
+    pytest.param("from .services import doc\n\ndoc.DocService()\n", id="its file imported relatively"),
+])
+def test_a_class_built_through_a_relative_import_is_held_to_built_by(tmp_path, controller):
+    assert problems(tmp_path, app={"modules/docs/application/services/doc.py": "class DocService: ...\n",
+                                   "modules/docs/application/controller.py": controller}) == [
+        "app/modules/docs/application/controller.py:3: controller/ of modules/docs builds DocService, a class of "
+        "services/ of modules/docs, which only bootstrap/ may build (parts.services.built_by)"]
+
+
+def test_a_part_used_only_as_a_type_is_held_to_it_through_a_relative_import(tmp_path):
+    """The web profile is given types_only on services, as in the test above, and the service imports relatively."""
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    services = "    may_import: [logic, domain, ports, contract, kernel, kernel-logic]\n    holds: classes\n"
+    text = (BUNDLED / "web.yaml").read_text()
+    assert text.count(services) == 1
+    (tmp_path / "arch/typed.yaml").write_text(text.replace(services, services + "    types_only: [contract]\n"))
+    app = write(tmp_path / "app", {**APP, "modules/docs/application/services/doc.py":
+                                   "from ...contract import Published\n\n\nclass DocService:\n"
                                    "    def run(self):\n        return Published()\n"})
     result = source_check(app, str(tmp_path / "arch/typed.yaml"), write(tmp_path / "tests", TESTS))
     assert [(v.rule, v.line, bool(v.fix)) for v in result.violations] == [("types-only", 6, True)]

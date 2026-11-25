@@ -75,7 +75,9 @@ class Kind:
 class Filter:
     """A filter: its name, what is true of what passes it, whether it asks about the file, the fact or what the fact
     reaches, the fields it reads (any one of them carried makes it apply; none: it applies to every kind), the side it
-    applies to, what its value is ("" for none), and whether it needs a target matched (HIT)."""
+    applies to, what its value is ("" for none), whether it needs a target matched (HIT), and the facts of the source
+    (FACTS of capabilities) it needs of the language when written as is: negated, it needs none, since under a
+    language without them every fact passes it."""
     name: str
     meaning: str
     about: str
@@ -83,6 +85,7 @@ class Filter:
     side: str = ""
     value: str = ""
     needs: str = ""
+    facts: tuple[str, ...] = ()
 
     def applies_to(self, kind: Kind) -> bool:
         return not self.reads or any(kind.carries(name) for name in self.reads)
@@ -160,6 +163,7 @@ FIELDS: dict[str, str] = {
             "parameter",
     "written": "what an import names, as the source writes it",
     "text": "what it says: a comment's text, a syntax error's message",
+    "marker": "the marker a comment opens with, as its reader writes it",
     "mentions": "the names it mentions, by their last step",
     "reaches": "the file or package of the app or of the tests it leads to",
     "place": "where what it leads to sits: a part, or a folder of the layout",
@@ -181,6 +185,8 @@ FIELDS: dict[str, str] = {
     "no-statements": "whether no function or method of a file holds a real statement",
     "exceptions-only": "whether a file defines classes, every one an exception, and no top-level function",
     "unreadable": "whether a file could not be read as text at all",
+    "doc": "whether a comment is a doc comment",
+    "public": "whether the name is for other files to use, as the language decides it",
 }
 """Every field a kind of fact may carry, and what it is."""
 
@@ -198,19 +204,22 @@ KINDS: tuple[Kind, ...] = (
          field_needs={"relative": ("import.relative",), "standard": ("import.standard",)}, verb="import"),
     Kind("imported-name", "each name an import takes, its path what the import names and the name (that alone for "
                           "an import of the whole)",
-         ("line", "path", "written", "relative", "standard"), {"name": "takes-a-name"}, needs=_IMPORT,
-         field_needs={"relative": ("import.relative",), "standard": ("import.standard",)}, verb="import"),
+         ("line", "path", "written", "relative", "standard", "public"), {"name": "takes-a-name"}, needs=_IMPORT,
+         field_needs={"relative": ("import.relative",), "standard": ("import.standard",), "public": ("public",)},
+         verb="import"),
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
-         ("line", "path", "bound"), needs=("use",), verb="use"),
+         ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
          ("line", "method", "name", "on-own-object"), needs=("method_call",), verb="call"),
     Kind("call", "each call whose callee an import binds, as that dotted path", ("line", "path"),
-         {"place": "target-placed"}, needs=("call",), verb="call"),
+         {"place": "target-placed"}, needs=("call", "import.resolved"), verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
-                         "that binds it", ("line", "path", "name", "place"), needs=("call", "class"), verb="build"),
+                         "that binds it", ("line", "path", "name", "place"), needs=("call", "class", "import.resolved"),
+         verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
-         ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions"), verb="reference"),
+         ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions", "import.resolved"),
+         verb="reference"),
     Kind("import-into-app", "each import of a file or package of the app, as the file or package it reaches (an "
                             "import that takes a name from a file or package reaches the name's own file when it is "
                             "one, else the file or package it takes the name from)",
@@ -218,17 +227,19 @@ KINDS: tuple[Kind, ...] = (
          verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",
          ("line", "reaches"), side=TESTS_SIDE, needs=("import", "import.relative"), verb="import"),
-    Kind("comment", "each line comment, its text as written", ("line", "text"), needs=("comment",)),
+    Kind("comment", "each comment, its text as written", ("line", "text", "marker", "doc"), needs=("comment",),
+         field_needs={"doc": ("comment.doc",)}),
     Kind("class", "each class defined at the top level of a file", ("line", "name", "mentions", "exception", "record",
-                                                                    "interface", "immutable"),
+                                                                    "interface", "immutable", "public"),
          needs=("class",), field_needs={"mentions": ("class.named",), "exception": _CLASS_EXCEPTION,
-                                        "record": ("class.methods", "function.returns"),
-                                        "immutable": ("class.immutable",)}),
+                                        "record": ("class.record",),
+                                        "interface": ("class.interface",), "immutable": ("class.immutable",),
+                                        "public": ("public",)}),
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
-         ("line", "name", "top-level", "forwards"),
+         ("line", "name", "top-level", "forwards", "public"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
          field_needs={"forwards": ("function.forwards",), "forwarded": ("function.forwards",),
-                      "returned": ("function.forwards",)}),
+                      "returned": ("function.forwards",), "public": ("public",)}),
     Kind("callback", "each call of a function's own parameter by its bare name",
          ("line", "function", "name", "receiver", "annotated-callable"), needs=("callback",), verb="call"),
 )
@@ -240,7 +251,8 @@ FILTERS: tuple[Filter, ...] = (
     Filter("tiered", "the file has a tier: a test's own, or for a file of the app the tier whose tests cover its part",
            FILE),
     Filter("placed", "the file lies in a part or in a folder of the layout", FILE, side=APP_SIDE),
-    Filter("package-file", "the file is the language's package file, which stands for its folder", FILE),
+    Filter("package-file", "the file is the language's package file, which stands for its folder", FILE,
+           facts=("file.package",)),
     Filter("mirrors-a-part", "the test's folder mirrors a part of the app, rather than lying in its tier's `folder`",
            FILE, side=TESTS_SIDE),
     Filter("may-import-everything", "the file's part may import everything (`may_import: everything`)", FILE,
@@ -253,7 +265,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("reserved", "the top-level package the import names is one `reserved` lists", FACT, ("path",)),
     Filter("listed-by-another-part", "the top-level package the import names is in the `libraries` of a part other "
                                      "than the file's", FACT, ("path",), side=APP_SIDE),
-    Filter("app-package", "the import names the app's own package by its root (an absolute import of the app)", FACT,
+    Filter("app-package", "the import names the app's own package by its root (an import written from the top)", FACT,
            ("path",)),
     Filter("own-code", "the import is of the project's own code: relative, or naming the app's or the tests' package",
            FACT, ("path", "relative")),
@@ -261,8 +273,8 @@ FILTERS: tuple[Filter, ...] = (
            ("name",)),
     Filter("on-own-object", "the method is called on the object itself or on something it holds; `not on-own-object` is "
                             "a call on anything else", FACT, ("on-own-object",)),
-    Filter("public", "the name the fact carries is public in the language: it does not start as a private name does",
-           FACT, ("name",)),
+    Filter("public", "the name the fact carries is public: the language's reader says it is for other files to use",
+           FACT, ("public",)),
     Filter("special", "the name the fact carries is one the language reserves for itself", FACT, ("name",)),
     Filter("named", "the name the fact carries matches the pattern, `*` standing for any text", FACT, ("name",),
            value=PATTERN),
@@ -273,18 +285,17 @@ FILTERS: tuple[Filter, ...] = (
            ("returned",)),
     Filter("exception", "the class is an exception: it derives from one of the language's exceptions, or from a class "
                         "of the app that is one, however far", FACT, ("exception",)),
-    Filter("record", "the class is a record: no method but the language's special ones, and a top-level function of "
-                     "its file names it in its return annotation", FACT, ("record",)),
-    Filter("interface", "the class is an interface: one of its bases is a name the language marks interfaces with",
-           FACT, ("interface",)),
+    Filter("record", "the class is a record, as the language's reader decides", FACT, ("record",)),
+    Filter("interface", "the class is an interface: the language marks it as one", FACT, ("interface",)),
     Filter("immutable", "the class is an immutable record: one of its bases, or one of its decorators called with the "
                         "keywords written beside it, is a name the language marks immutable records with", FACT,
            ("immutable",)),
     Filter("receiver", "the parameter called is the object or class its method is called on", FACT, ("receiver",)),
     Filter("annotated-callable", "the parameter called is annotated as a callable", FACT, ("annotated-callable",)),
     Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),
-    Filter("directive", "the comment is one the language's tools read: a directive after the comment marker, a "
-                        "shebang on line 1, an encoding declaration on line 1 or 2", FACT, ("text",)),
+    Filter("directive", "the comment is one the language's tools read: a directive after the marker of the comment, "
+                        "a shebang on line 1, an encoding declaration on line 1 or 2", FACT, ("text", "marker")),
+    Filter("doc", "the comment is a doc comment: one the language keeps its documentation in", FACT, ("doc",)),
     Filter("no-statements", "no function or method of the file holds a real statement: types, constants, interface "
                             "stubs", FACT, ("no-statements",)),
     Filter("exceptions-only", "the file defines classes, every one an exception, and no top-level function", FACT,
@@ -296,7 +307,7 @@ FILTERS: tuple[Filter, ...] = (
     Filter("of-kind", "the fact is of that kind", FACT, value=KIND),
     Filter("target-placed", "what the fact reaches lies in a part or in a folder of the layout", TARGET, ("place",)),
     Filter("target-inside-part", "what the fact reaches lies below its part's own folder: one of its files, not the "
-                                 "part as a whole", TARGET, ("place",)),
+                                 "part as a whole", TARGET, ("place",), facts=("file.package",)),
     Filter("target-in-own-part", "what the fact reaches lies in the file's own part, in the file's own instance of a "
                                  "repeating folder", TARGET, ("place",), side=APP_SIDE),
     Filter("target-in-own-tier", "what the fact reaches is a file of the app the file's own tier tests", TARGET,

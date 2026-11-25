@@ -6,13 +6,17 @@ pass over, read from the same parsed files.
                as `pytest.skip(...)`, read through imports like any use (see the Use value); one per use
     dynamic    a use, in a file read, of what the language of the app imports by a computed or string name with,
                the names its data file lists; the import rules cannot see what those import
+    unresolved an import, in a file read, naming a place of the app (relative, or by an alias the project maps) the
+               reader found no file or folder for, with the module as written; the import rules cannot see what it
+               names
     drift      an init file (`files` in the profile) that is missing, or pinned and not what `init` would write now
 
 strict_findings lists what `--strict` fails on: what the profile in force leaves unenforced or unseen. That is every
 guard it leaves off but those that the bundled profile in force, or the one a custom profile is compared with, also
 leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
-changed, the skips, the dynamic imports, the weak checks, the keys whose check reads a fact the language supplies only
-partly (approximate), the checks of the profile's own that read nothing (vacuous) and each part a custom profile
+changed, the skips, the dynamic imports, the imports the reader could not follow, the weak checks, the keys whose
+check reads a fact the language supplies only partly (approximate), the checks of the profile's own that read
+nothing (vacuous) and each part a custom profile
 redefines without the litmus the bundled profile it is compared with gives it (litmus), which leaves its code no
 question to be placed by. Every other way a custom profile differs from the closest bundled one (`origin.looser`) is
 information in the enforcement section and no finding: the profile defines the architecture.
@@ -36,11 +40,13 @@ from xarch.modules.rules.domain.published import (
     SKIPPED,
     UNGOVERNED,
     UNPLACED,
+    UNRESOLVED,
     VACUOUS,
     WEAK,
     At,
     Drift,
     Loosened,
+    Unresolved,
     Weak,
 )
 from xarch.profile_values.capabilities import Shortfall
@@ -57,6 +63,13 @@ def skipped(tests: Iterable[SourceFile], profile: Profile) -> list[At]:
 
 def dynamic(files: Iterable[SourceFile], profile: Profile) -> list[At]:
     return [At(file.name, use.line) for file in files for use in file.uses if use.name in profile.language.dynamic]
+
+
+def unresolved(files: Iterable[SourceFile]) -> list[Unresolved]:
+    """Each import of the files that the reader could not follow, the files in the order given and the imports of each
+    by line: a reader need not hand them over in that order."""
+    return [Unresolved(file.name, i.line, i.written) for file in files
+            for i in sorted(file.imports, key=lambda i: i.line) if i.unresolved]
 
 
 def drift(files: Sequence[InitFile], found: Sequence[str | None]) -> list[Drift]:
@@ -78,6 +91,7 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding(INIT_FILES, item) for item in enforcement.init_files]
     found += [Finding(SKIPPED, at) for at in enforcement.skipped]
     found += [Finding(DYNAMIC, at) for at in enforcement.dynamic]
+    found += [Finding(UNRESOLVED, item) for item in enforcement.unresolved]
     found += [Finding(WEAK, weak) for weak in enforcement.weak]
     found += [Finding(APPROXIMATE, item) for item in enforcement.approximate]
     found += [Finding(VACUOUS, _vacuous(name)) for name, read in enforcement.checks if not read]
@@ -96,15 +110,18 @@ def _vacuous(name: str) -> str:
             "reads, or drop it")
 
 
-def detail(item: str | Drift | At | Weak | Shortfall) -> str:
+def detail(item: str | Drift | At | Unresolved | Weak | Shortfall) -> str:
     """A finding's item in words: a guard or a file by its name, an init file with its state, a place as
-    `<file>:<line>`, a weak check as its place (the file alone for a whole file) and its message, a key whose check
+    `<file>:<line>`, an import the reader could not follow as its place, its module as written and that it names no
+    file of the app, a weak check as its place (the file alone for a whole file) and its message, a key whose check
     reads a fact partly as the key, the fact and what the reader misses."""
     match item:
         case Drift(path, state):
             return f"{'/'.join(path)} is {state}"
         case At(file, line):
             return f"{file}:{line}"
+        case Unresolved(file, line, written):
+            return f'{file}:{line}: import "{written}" names no file of the app'
         case Weak(file=file, line=line, message=message):
             return f"{file}{f':{line}' if line else ''}: {message}"
         case Shortfall(address, fact, note):

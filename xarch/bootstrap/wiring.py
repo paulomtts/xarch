@@ -72,7 +72,8 @@ checks of rules and spec's example reading would then take a reader per language
 language the profile names."""
 RUNTIME = InterpreterRuntime
 """What that language says of itself (its standard library, reserved words and the names it binds before any code),
-as the interpreter running xarch says it; a second language needs its own beside its reader."""
+as the interpreter running xarch says it, for a language whose data file gives `standard: interpreter`; a language
+whose data file lists them is not asked, and needs no runtime of its own."""
 MODEL = "jev-1.14.0"
 """The version of the decision model review asks, pinned: the one the evidence for its lines was measured with. Each
 answer kept records the version that gave it."""

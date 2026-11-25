@@ -1,0 +1,20 @@
+# A test-only language that imitates an ObjectScript-like one: no profile names it and no reader is written for it.
+# Its names and packages may start with %, and a name in a package is joined to it by a dot. Its source files end in
+# .cls or .mac, and it has no package file: no file stands for the folder holding it. Its comments come in four forms,
+# two line ones (// and ;), a block one (/* */) and a doc one (///) that runs to the end of its line; the docs print
+# the first line marker. It gives no private: its names are public or not as its reader says, by a mark, never by a
+# prefix. The tests load it to show that the profile and the checks read outside names and comments by a language's
+# own patterns; later steps add their keys to it.
+title: Percent
+extensions: [.cls, .mac]
+namespace: "%SYSTEM"
+standard: interpreter
+name: '%?[A-Za-z][A-Za-z0-9]*'
+package: '%?[A-Za-z][A-Za-z0-9]*'
+member: "."
+special: '%\w+'
+unannotated: nothing
+interface: [{keyword: Abstract}]
+dynamic: ["%SYSTEM.OBJ.Load"]
+immutable: [{base: "%SerialObject"}]
+comments: [{line: "//"}, {line: ";"}, {block: ["/*", "*/"]}, {doc: ["///", ""]}]

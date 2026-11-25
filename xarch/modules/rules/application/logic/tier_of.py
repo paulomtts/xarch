@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from fnmatch import fnmatchcase
 
-from xarch.kernel.logic.placement import place_of
+from xarch.kernel.logic.placement import place_of, stem
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import instance_root, matches, targets_of
 from xarch.modules.rules.domain.profile import Profile
@@ -63,7 +63,7 @@ def _tier(profile: Profile, path: tuple[str, ...]) -> tuple[CheckedTier | None, 
         return tier, where.instance, (where.part,)
     folder = path[:-1]
     file_parts = [name for name, pattern in profile.parts.items()
-                  if pattern and pattern[-1].endswith(profile.language.extension)
+                  if pattern and stem(pattern[-1], profile.language.marks) is not None
                   and matches(pattern[:-1], folder, profile.language.marks)]
     tiers = {id(t): t for name in file_parts for t in [_first(profile, lambda t, n=name: _tests(t, n))] if t}
     if len(tiers) == 1:

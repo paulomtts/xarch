@@ -1,15 +1,31 @@
-"""SourceTree on the local filesystem for Python, the one language xarch reads: lists the files of the extension it is
-given, and parses one as Python with ast and tokenize, never running it.
+"""SourceTree on the local filesystem for Python, the one language xarch reads: lists the files whose name ends in one
+of the endings it is given, and parses one as Python with ast and tokenize, never running it.
 
 A name in a call or a class base is read as Python scopes it: through the innermost function, lambda or
 comprehension that binds it (a class body only for its own statements), then the module. It is a Ref only when that
-scope binds it with an absolute import and nothing else; a parameter, an assignment, a def, a relative import or a
-second, different binding of the same name in that scope makes it None, and so does a name no scope binds.
+scope binds it with an import, however written, that the reader follows, and nothing else; a parameter, an
+assignment, a def or a second, different binding of the same name in that scope makes it None, and so does a name no
+scope binds.
+
+A relative import is followed from the package of the file it is in, the root's name then the folders below it (a
+package file stands for its own folder): up one folder fewer than its dots, then down its module's steps, to a `.py`
+file or a folder of that name, looked up on the file system and never opened or run. One that climbs above the root,
+or names nothing below it, binds None and is marked unresolved; so is every relative import of a text read with no
+file. A name a relative import binds is bound none of its steps, since that import names none of them from the top.
+
+An absolute import is of the standard library when its first step is one of the standard modules the reader is
+handed, which spec reads from the language's data file or from the interpreter running xarch; a relative import
+never is, nor one that names no module.
 
 A call of a method of a parameter, `<parameter>.<method>(...)`, is listed apart, whatever the parameter's name, when
 the nearest scope binding the name binds it as a parameter of its function and nothing else binds it there: a
 parameter the body rebinds (an assignment, a loop, an import, a def, `global`) is not read, nor is a call of the
 parameter itself, a call deeper in a chain (`p.a.b()`) or a method of any other expression.
+
+A name is public unless the prefix of private names the reader is handed (the language's data file's `private`) is
+given and the name starts with it, a special name included: each class, each function (a method too), each name the
+top level binds by an assignment, and each name a `from` import takes as written, its name before any `as`, which the
+import withholds when it is not public. An empty prefix makes every name public.
 
 A file also lists the names it defines at module level as functions: a name one `def` (or `async def`) binds in the
 module's own scope, a branch of an `if` or `try` included, and nothing else binds (no second def, import,
@@ -58,9 +74,20 @@ A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and 
 the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
 staticmethod's; also inside a function nested in that method) or a chain of attributes on it.
 
-A class is an immutable record when a mark it is given (the language's data file's `immutable`) names one of its bases,
-or one of its decorators, by the dotted path its name reaches (read as a call's callee is), called with each keyword
-the mark is written with, its value as written (`ast.unparse`); a mark written with keywords names no base.
+A class is an immutable record when a mark it is given (the language's data file's `immutable`) is a base mark whose
+path is one of its bases (a subscripted base by what it subscripts, an alias by the path it reaches), or a decorator
+mark whose path is that of one of its decorators (read as a call's callee is), called with each keyword the mark
+gives, its value as written (`ast.unparse`); a decorator mark with no keywords marks the decorator bare or called. A
+fields or a type mark marks no class: Python marks none by a keyword on its fields or by a wrapper type.
+
+A class is a record when the name of every method of its body matches in full the pattern of a special name the
+reader is handed (the language's data file's `special`; an empty one makes no name special), and a function of the
+file's top level names the class in its return annotation, as that function's returns_named holds it (inside a union,
+a subscript or a string annotation too). A class with no method is one when such a function names it.
+
+A class is an interface when a mark it is given (the language's data file's `interface`) is a base mark whose path is
+one of its bases, read as for an immutable record (a subscripted base, `Protocol[T]`, by what it subscripts; an alias
+by the path it reaches). A keyword mark marks no class: Python declares no class with a keyword.
 
 A class lists its fields: the names a statement of its own body annotates (`x: int`, `y: str = ""`), in order, but one
 annotated `ClassVar` (alone or subscripted, by its bare name or as an attribute, or as a string annotation); and the
@@ -83,11 +110,13 @@ import builtins
 import copy
 import hashlib
 import io
-import sys
+import re
 import tokenize
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
+from xarch.kernel.logic.names import is_private_name
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.domain.parsed import (
     Call,
@@ -110,7 +139,7 @@ from xarch.modules.rules.domain.parsed import (
 )
 from xarch.modules.rules.domain.published import CLASS, FUNCTION, METHOD, Piece
 from xarch.platform.filesystem import FileSystem
-from xarch.profile_values.language import RecordMark
+from xarch.profile_values.language import InterfaceMark, RecordMark
 from xarch.profile_values.testing import CaseTable
 
 
@@ -121,11 +150,12 @@ class FsSourceTree:
     def absent(self, roots: Iterable[Path]) -> list[Path]:
         return [root for root in roots if not self._fs.is_dir(root)]
 
-    def paths(self, root: Path, extension: str) -> list[tuple[str, ...]]:
-        return [f.relative_to(root).parts for f in self._fs.files(root, f"*{extension}")]
+    def paths(self, root: Path, extensions: tuple[str, ...]) -> list[tuple[str, ...]]:
+        return sorted({f.relative_to(root).parts for extension in extensions for f in self._fs.files(root, f"*{extension}")})
 
     def read(self, root: Path, paths: list[tuple[str, ...]], table: CaseTable | None = None,
-             immutable: tuple[RecordMark, ...] = ()) -> list[SourceFile]:
+             immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (), *,
+             standard: frozenset[str], private: str, special: str) -> list[SourceFile]:
         """Each file below root, read as UTF-8 and parsed; one that is not UTF-8, or cannot be read, holds why as its
         error, as one that does not parse does."""
         found: list[SourceFile] = []
@@ -142,7 +172,8 @@ class FsSourceTree:
                 found.append(SourceFile(name, path, (), error=Unparsable(
                     0, f"cannot be read ({e.strerror or e})", unreadable=True)))
                 continue
-            found.append(_parsed(name, path, text, table, immutable))
+            found.append(_parsed(name, path, text, table, immutable, interface, standard, private, special,
+                                 _Where((root.name, *path[:-1]), root, self._fs)))
         return found
 
     def existing(self, paths: Iterable[Path]) -> frozenset[Path]:
@@ -151,15 +182,49 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
-    def parsed(self, text: str) -> SourceFile:
-        return _parsed("", (), text, None)
+    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
+        return _parsed("", (), text, None, (), (), standard, private, special)
 
     def resolved(self, folder: Path, path: Path) -> Path:
         return self._fs.real(folder / path)
 
 
-def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
-            marks: tuple[RecordMark, ...] = ()) -> SourceFile:
+@dataclass(frozen=True)
+class _Where:
+    """Where a file read below a root lies, so that its relative imports can be followed: the steps of the package it
+    is in, the root's name first (a package file stands for its own folder), the root, and the file system the places
+    below the root are looked up on."""
+    package: tuple[str, ...]
+    root: Path
+    fs: FileSystem
+
+    def target(self, level: int, module: tuple[str, ...]) -> tuple[str, ...] | None:
+        """The place a relative import of that many dots names, the root's name first: up one folder fewer than its
+        dots, then down module's steps; None when it climbs above the root or names neither a file nor a folder."""
+        kept = len(self.package) - (level - 1)
+        if kept < 1:
+            return None
+        steps = (*self.package[:kept], *module)
+        return steps if self._exists(steps[1:]) else None
+
+    def _exists(self, steps: tuple[str, ...]) -> bool:
+        """Whether steps below the root name a folder or a `.py` file; a place the file system cannot look up is not
+        there."""
+        place = self.root.joinpath(*steps)
+        try:
+            return self.fs.is_dir(place) or (bool(steps) and self.fs.is_file(place.with_name(f"{steps[-1]}.py")))
+        except OSError:
+            return False
+
+
+class _Relative(tuple):
+    """A path a relative import binds: read as any other, but bound none of its steps, since the import's line names
+    none of them from the top (see the module's docstring)."""
+
+
+def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None, marks: tuple[RecordMark, ...],
+            interface: tuple[InterfaceMark, ...], standard: frozenset[str], private: str, special: str,
+            where: _Where | None = None) -> SourceFile:
     try:
         tree = ast.parse(text)
         comments = _comments(text)
@@ -167,13 +232,15 @@ def _parsed(name: str, path: tuple[str, ...], text: str, form: CaseTable | None,
         return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
     except (tokenize.TokenError, IndentationError) as e:
         return SourceFile(name, path, (), error=Unparsable(0, str(e)))
-    calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset())
+    calls = _Calls(_BUILTINS if not _star_import(tree) else frozenset(), where)
     calls.visit(tree)
-    return SourceFile(name, path, tuple(_imports(tree)), comments, _functions(tree, form),
-                      tuple(_unions(tree)), calls=tuple(calls.found), classes=tuple(_classes(tree, marks)),
+    functions = _functions(tree, form, private, where)
+    return SourceFile(name, path, tuple(_imports(tree, standard, private, where)), comments, functions,
+                      tuple(_unions(tree)), calls=tuple(calls.found),
+                      classes=tuple(_classes(tree, private, special, functions, marks, interface, where)),
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
-                      method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree)),
+                      method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree, private)),
                       unmentioned=_unmentioned(tree), pieces=_pieces(tree))
 
 
@@ -221,26 +288,34 @@ _BUILTINS = frozenset(name for name in vars(builtins) if not name.startswith("__
 """Python's builtins, as a bare name reads them; the dunder names the builtins namespace holds about itself left out."""
 
 
-def _standard(name: str) -> bool:
-    return name in sys.stdlib_module_names
-
-
 def _star_import(tree: ast.AST) -> bool:
     return any(isinstance(n, ast.ImportFrom) and any(a.name == "*" for a in n.names) for n in ast.walk(tree))
 
 
-def _imports(tree: ast.AST) -> list[Import]:
+def _from(node: ast.ImportFrom, where: _Where | None) -> tuple[str, ...] | None:
+    """The place a `from` import takes its names from: its module for an absolute one; for a relative one the place
+    it climbs to, the root's name first, or None when it cannot be followed (no file to climb from, above the root,
+    or nothing there)."""
+    module = tuple(node.module.split(".")) if node.module else ()
+    if not node.level:
+        return module
+    found = where.target(node.level, module) if where is not None else None
+    return _Relative(found) if found is not None else None
+
+
+def _imports(tree: ast.AST, standard: frozenset[str], private: str, where: _Where | None = None) -> list[Import]:
     found: list[Import] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=_standard(alias.name.split(".")[0]),
+            found += [Import(node.lineno, tuple(alias.name.split(".")), standard=alias.name.split(".")[0] in standard,
                              written=alias.name, last=_last(node)) for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
             found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
-                                max(node.level - 1, 0), not node.level and bool(module) and _standard(module[0]),
+                                max(node.level - 1, 0), not node.level and bool(module) and module[0] in standard,
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
-                                _last(node)))
+                                _last(node), _from(node, where) is None,
+                                frozenset(a.name for a in node.names if is_private_name(a.name, private))))
     return found
 
 
@@ -252,9 +327,11 @@ def _last(node: ast.Import | ast.ImportFrom) -> int:
 
 def _comments(text: str) -> tuple[Comment, ...]:
     """Each comment the tokens of the text hold, a `#` inside a string being none, its lines cut where the parser
-    cuts them (a carriage return alone ending one too), so that they are the lines an import or a piece is on."""
+    cuts them (a carriage return alone ending one too), so that they are the lines an import or a piece is on. Each
+    opens with `#`, Python's one marker, and none is a doc comment: Python keeps its documentation in docstrings."""
     tokens = tokenize.generate_tokens(io.StringIO(text, newline=None).readline)
-    return tuple(Comment(t.start[0], t.string, t.start[1], t.end[1], t.end[0] if t.end[0] != t.start[0] else 0)
+    return tuple(Comment(t.start[0], t.string, t.start[1], t.end[1], t.end[0] if t.end[0] != t.start[0] else 0,
+                         marker="#", doc=False)
                  for t in tokens if t.type == tokenize.COMMENT)
 
 
@@ -265,21 +342,22 @@ _CHOICES = {ast.IfExp: "if"}
 """Each expression that chooses between values, by the keyword that writes the choice (`a if c else b`)."""
 
 
-def _functions(tree: ast.Module, form: CaseTable | None) -> tuple[Function, ...]:
-    scope = [_scope(tree)]
+def _functions(tree: ast.Module, form: CaseTable | None, private: str,
+               where: _Where | None = None) -> tuple[Function, ...]:
+    scope = [_scope(tree, where)]
     lists = _lists(tree)
     found: list[Function] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            found.append(_function(node, scope, lists, form))
+            found.append(_function(node, scope, lists, form, private))
         elif isinstance(node, ast.ClassDef):
-            found += [_function(n, scope, lists, form, node.name) for n in node.body
+            found += [_function(n, scope, lists, form, private, node.name) for n in node.body
                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
     return tuple(found)
 
 
 def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], lists: dict[str, ast.expr],
-              form: CaseTable | None, owner: str = "") -> Function:
+              form: CaseTable | None, private: str, owner: str = "") -> Function:
     inside = [n for statement in node.body for n in ast.walk(statement)]
     mentions = frozenset(n.id if isinstance(n, ast.Name) else n.attr for n in inside
                          if isinstance(n, (ast.Name, ast.Attribute)))
@@ -294,7 +372,7 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
                     bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node),
-                    choices)
+                    choices, public=not is_private_name(node.name, private))
 
 
 def _mentioned(node: ast.AST) -> frozenset[str]:
@@ -320,7 +398,7 @@ def _annotations(node: ast.AST) -> list[ast.expr]:
     return found
 
 
-def _constants(tree: ast.Module) -> list[Constant]:
+def _constants(tree: ast.Module, private: str) -> list[Constant]:
     """The names the assignments of the top level bind, in order, each with what its statement mentions."""
     found: list[Constant] = []
     for node in _own(tree.body):
@@ -333,7 +411,8 @@ def _constants(tree: ast.Module) -> list[Constant]:
         else:
             continue
         named = _mentioned(node)
-        found += [Constant(node.lineno, name, named) for target in targets for name in _bound_names(target)]
+        found += [Constant(node.lineno, name, named, not is_private_name(name, private))
+                  for target in targets for name in _bound_names(target)]
     return found
 
 
@@ -605,13 +684,13 @@ _COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 _NESTED = (*_FUNCTIONS, ast.ClassDef, *_COMPREHENSIONS)
 
 
-def _scope(node: ast.AST) -> Scope:
-    """The names a module, class, function, lambda or comprehension binds: the path an absolute import binds, or
-    None when the name is bound any other way."""
-    return _bound(node)[0]
+def _scope(node: ast.AST, where: _Where | None = None) -> Scope:
+    """The names a module, class, function, lambda or comprehension binds: the path an import binds, however
+    written, or None when the name is bound any other way or by a relative import the reader cannot follow."""
+    return _bound(node, where)[0]
 
 
-def _bound(node: ast.AST) -> tuple[Scope, frozenset[str], frozenset[str]]:
+def _bound(node: ast.AST, where: _Where | None = None) -> tuple[Scope, frozenset[str], frozenset[str]]:
     """What _scope returns, then the names its signature binds as parameters and nothing else binds, and the names
     one `def` binds and nothing else binds."""
     found: Scope = {}
@@ -641,10 +720,12 @@ def _bound(node: ast.AST) -> tuple[Scope, frozenset[str], frozenset[str]]:
                 steps = tuple(alias.name.split("."))
                 bind(alias.asname or steps[0], steps if alias.asname else steps[:1])
         elif isinstance(child, ast.ImportFrom):
+            base = _from(child, where)
             for alias in child.names:
-                if alias.name != "*":
-                    path = (*child.module.split("."), alias.name) if child.module and not child.level else None
-                    bind(alias.asname or alias.name, path)
+                if alias.name == "*":
+                    continue
+                path = None if base is None else (*base, alias.name)
+                bind(alias.asname or alias.name, _Relative(path) if child.level and path is not None else path)
         elif isinstance(child, ast.Name) and not isinstance(child.ctx, ast.Load):
             bind(child.id, None)
         elif isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -677,8 +758,8 @@ def _ref(node: ast.AST, chain: list[Scope]) -> Ref:
 
 
 def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[Ref, int]:
-    """The path a name or a chain of attributes on one reaches, and how many of its steps the binding bound; a name
-    no scope binds that is in names is a builtin."""
+    """The path a name or a chain of attributes on one reaches, and how many of its steps the import binding it names
+    from the top (none for a relative import); a name no scope binds that is in names is a builtin."""
     attrs: list[str] = []
     while isinstance(node, ast.Attribute):
         attrs.insert(0, node.attr)
@@ -689,13 +770,16 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str]) -> tuple[
     if scope is None:
         return (("builtins", node.id, *attrs), 0) if node.id in names else (None, 0)
     base = scope[node.id]
-    return ((*base, *attrs), len(base)) if base is not None else (None, 0)
+    if base is None:
+        return None, 0
+    return (*base, *attrs), 0 if isinstance(base, _Relative) else len(base)
 
 
 class _Calls(ast.NodeVisitor):
     """Collects every call whose callee is a Ref, reading each name in the scope it is read in."""
 
-    def __init__(self, builtins: frozenset[str] = frozenset()) -> None:
+    def __init__(self, builtins: frozenset[str] = frozenset(), where: _Where | None = None) -> None:
+        self._where = where
         self.found: list[Call] = []
         self.uses: list[Use] = []
         self._builtins = builtins
@@ -753,7 +837,7 @@ class _Calls(ast.NodeVisitor):
         outer_parameters = [p for p, k in zip(self._parameters, keep) if k]
         outer_owners = [o for o, k in zip(self._owners, keep) if k]
         saved = self._chain, self._parameters, self._classes, self._owners
-        scope, parameters, _ = _bound(node)
+        scope, parameters, _ = _bound(node, self._where)
         self._chain, self._parameters = [scope, *outer], [parameters, *outer_parameters]
         self._classes = [is_class, *([False] * len(outer))]
         self._owners = [owner, *outer_owners]
@@ -837,8 +921,10 @@ class _Calls(ast.NodeVisitor):
             self.uses.append(Use(node.lineno, name, bound))
 
 
-def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = ()) -> list[Class]:
-    scope = [_scope(tree)]
+def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Function, ...],
+             marks: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (),
+             where: _Where | None = None) -> list[Class]:
+    scope = [_scope(tree, where)]
     builtin = frozenset() if _star_import(tree) else _EXCEPTIONS - set(scope[0])
     exceptions: set[str] = set()
     found: list[Class] = []
@@ -854,19 +940,35 @@ def _classes(tree: ast.Module, marks: tuple[RecordMark, ...] = ()) -> list[Class
             found.append(Class(node.lineno, node.name, bases, methods, _attributes(node), _named(node) - {node.name},
                                exception, tuple(child.target.id for child in declared),
                                tuple(_annotation(child.annotation) or "" for child in declared),
-                               _immutable(node, bases, scope, marks)))
+                               _immutable(node, bases, scope, marks), _interface(bases, interface),
+                               not is_private_name(node.name, private),
+                               record=_record(node.name, methods, functions, special)))
     return found
 
 
+def _record(name: str, methods: tuple[Method, ...], functions: tuple[Function, ...], special: str) -> bool:
+    """Whether the class of that name is a record: every one of its methods is named as special says, in full ("": no
+    name is special), and a function of the file's top level names it in its return annotation."""
+    return all(bool(special) and re.fullmatch(special, method.name) is not None for method in methods) and any(
+        name in function.returns_named for function in functions if not function.owner)
+
+
 def _immutable(node: ast.ClassDef, bases: tuple[Ref, ...], scope: list[Scope], marks: tuple[RecordMark, ...]) -> bool:
-    """Whether a mark names one of the class's bases, or one of its decorators called with each keyword of the mark."""
+    """Whether a base mark names one of the class's bases, or a decorator mark one of its decorators called with each
+    keyword of the mark; a fields or a type mark names neither, since Python marks no class so."""
     for decorator in node.decorator_list:
         called = isinstance(decorator, ast.Call)
         path = _ref(decorator.func if called else decorator, scope)
         given = {(k.arg, ast.unparse(k.value)) for k in decorator.keywords if k.arg} if called else set()
-        if any(mark.path == path and set(mark.keywords) <= given for mark in marks):
+        if any(mark.decorator and mark.decorator == path and set(mark.keywords) <= given for mark in marks):
             return True
-    return any(mark.path in bases and not mark.keywords for mark in marks)
+    return any(mark.base and mark.base in bases for mark in marks)
+
+
+def _interface(bases: tuple[Ref, ...], marks: tuple[InterfaceMark, ...]) -> bool:
+    """Whether a base mark names one of the class's bases; a keyword mark names none, since Python declares no class
+    with a keyword."""
+    return any(mark.base and mark.base in bases for mark in marks)
 
 
 def _declared(node: ast.ClassDef) -> list[ast.AnnAssign]:

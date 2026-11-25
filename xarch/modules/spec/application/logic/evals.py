@@ -25,7 +25,7 @@ import re
 from collections.abc import Collection, Mapping
 from typing import Any
 
-from xarch.kernel.logic.placement import place_of
+from xarch.kernel.logic.placement import place_of, stem
 from xarch.kernel.violations import OWN_ID
 from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.key_lookup import names_of
@@ -324,7 +324,7 @@ def _examples(value: Any, where: str, language: Language, problems: list[str],
 def _example(path: Any, code: Any, where: str, language: Language, problems: list[str]) -> tuple[str, str]:
     extension = language.checked.extension
     steps = path.split("/") if isinstance(path, str) else []
-    if not steps or any(step in ("", ".", "..") for step in steps) or not path.endswith(extension):
+    if not steps or any(step in ("", ".", "..") for step in steps) or stem(steps[-1], language.checked.marks) is None:
         problems.append(f"{where}: {path!r} is not a path of a source file below the app, ending in {extension}")
         return "", ""
     if not isinstance(code, str):

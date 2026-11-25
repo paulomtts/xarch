@@ -1,9 +1,11 @@
 """The facts of a run, read once from hand-made parsed files: each file placed once, and what it says by kind, with
 the facts derived over the whole app (a construction of a class of the app, a reference to a function of the app);
 and, for the rules given, only the kinds they read."""
+from dataclasses import replace
+
 import pytest
 
-from tests.modules.rules.builders import PROFILE, imp, in_tests, source
+from tests.modules.rules.builders import BRACE, PERCENT, PROFILE, imp, in_tests, profile, source
 from xarch.kernel.placement import Place
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import KINDS, facts_of
@@ -92,20 +94,59 @@ def test_a_method_call_on_what_the_object_holds_says_so():
 
 def test_a_class_carries_its_name_the_names_it_mentions_and_what_it_is():
     assert DOMAIN.facts["class"] == (
-        Fact("class", 1, ("Doc",), "Doc", names=frozenset({"Repo"})),
-        Fact("class", 9, ("Shown",), "Shown", frozenset({"record"})))
+        Fact("class", 1, ("Doc",), "Doc", frozenset({"public"}), names=frozenset({"Repo"})),
+        Fact("class", 9, ("Shown",), "Shown", frozenset({"record", "public"})))
 
 
 def test_a_class_the_reader_says_is_an_immutable_record_carries_it():
     classes = (Class(1, "Frozen", immutable=True), Class(2, "Loose"))
     read = facts_of([source("modules/docs/domain/a.py", classes=classes)], [], PROFILE, "app").files[0]
-    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"immutable"}), frozenset()]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"immutable", "public"}), frozenset({"public"})]
+
+
+def test_the_trait_record_follows_what_the_reader_says_alone():
+    classes = (Class(1, "Said", methods=(Method(2, "size", None),), record=True),
+               Class(4, "Unsaid", methods=(Method(5, "__repr__", "str"),)))
+    file = SourceFile("app/modules/docs/domain/a.py", ("modules", "docs", "domain", "a.py"), (), classes=classes,
+                      functions=(Function(8, "make", returns_named=frozenset({"Unsaid"})),))
+    read = facts_of([file], [], PROFILE, "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"record", "public"}), frozenset({"public"})]
+
+
+def test_under_brace_a_class_the_reader_says_is_a_record_is_one_with_no_method_list_and_no_function_naming_it():
+    file = source("modules/docs/domain/point.ts", classes=(Class(1, "Point", record=True), Class(2, "Shape")),
+                  language=BRACE)
+    read = facts_of([file], [], profile(language=BRACE), "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"record", "public"}), frozenset({"public"})]
+
+
+def test_under_percent_a_class_of_special_methods_a_top_level_function_returns_is_no_record_unless_the_reader_says():
+    file = source("modules/docs/domain/point.cls", classes=(Class(1, "Point", methods=(Method(2, "%OnNew", None),)),),
+                  functions=(Function(4, "Make", returns_named=frozenset({"Point"})),), language=PERCENT)
+    read = facts_of([file], [], profile(language=PERCENT), "app").files[0]
+    assert [fact.traits for fact in read.facts["class"]] == [frozenset({"public"})]
+
+
+def test_a_file_built_under_python_has_its_records_read_as_python_s_reader_would_and_one_given_stays_one():
+    file = source("modules/docs/domain/a.py", classes=(Class(1, "Shown", methods=(Method(2, "__repr__", "str"),)),
+                                                       Class(4, "Loose"),
+                                                       Class(5, "Given", methods=(Method(6, "size", None),), record=True)),
+                  functions=(Function(8, "make", returns_named=frozenset({"Shown"})),
+                             Function(9, "build", owner="Given", returns_named=frozenset({"Loose"}))))
+    assert [c.record for c in file.classes] == [True, False, True]
+
+
+def test_a_file_built_under_another_language_keeps_its_records_as_given():
+    file = source("modules/docs/domain/a.ts", classes=(Class(1, "Shown"), Class(2, "Given", record=True)),
+                  functions=(Function(8, "make", returns_named=frozenset({"Shown"})),), language=BRACE)
+    assert [c.record for c in file.classes] == [False, True]
 
 
 def test_a_function_says_whether_it_is_at_the_top_level_or_a_method_that_forwards():
     assert DOMAIN.facts["function"] == (
-        Fact("function", 4, ("make",), "make", frozenset({"top-level"})),
-        Fact("function", 6, ("Doc", "get"), "get", frozenset({"forwards"}), target=("name",), text="self.repo.get"))
+        Fact("function", 4, ("make",), "make", frozenset({"top-level", "public"})),
+        Fact("function", 6, ("Doc", "get"), "get", frozenset({"forwards", "public"}), target=("name",),
+             text="self.repo.get"))
 
 
 def test_a_callback_a_comment_the_names_of_a_file_and_the_file_as_a_whole_are_facts():
@@ -113,6 +154,18 @@ def test_a_callback_a_comment_the_names_of_a_file_and_the_file_as_a_whole_are_fa
     assert DOMAIN.facts["comment"] == (Fact("comment", 3, text="# a note"),)
     assert DOMAIN.facts["names-mentioned"] == (Fact("names-mentioned", 0, names=frozenset({"Doc", "make"})),)
     assert DOMAIN.facts["file"] == (Fact("file", 0, traits=frozenset({"no-statements"})),)
+
+
+def test_a_comment_carries_the_marker_it_opens_with_as_its_name():
+    read = facts_of([source("modules/docs/domain/a.py", comments=(Comment(2, "// a note", marker="//"),))], [],
+                    PROFILE, "app").files[0]
+    assert read.facts["comment"] == (Fact("comment", 2, name="//", text="// a note"),)
+
+
+def test_a_doc_comment_carries_the_doc_trait():
+    read = facts_of([source("modules/docs/domain/a.py", comments=(Comment(2, "/** a doc */", marker="/**", doc=True),))],
+                    [], PROFILE, "app").files[0]
+    assert read.facts["comment"] == (Fact("comment", 2, name="/**", traits=frozenset({"doc"}), text="/** a doc */"),)
 
 
 def test_a_file_that_does_not_parse_says_only_its_error():
@@ -144,3 +197,17 @@ def _rule(**changes) -> Rule:
 def test_for_the_rules_given_a_file_holds_only_the_kinds_they_read(rule, kinds):
     facts = facts_of(APP_FILES, TEST_FILES, PROFILE, "app", "tests", (rule,))
     assert {"/".join(r.file.path): set(r.facts) for r in facts.files if r.facts} == kinds
+
+
+def test_a_class_a_function_and_a_name_an_import_takes_carry_public_exactly_when_the_reader_says_so():
+    file = source("modules/docs/domain/a.ts", imp(1, "app.kernel.ids", "shown", "hidden", withheld=("hidden",),
+                                                  language=BRACE), imp(2, "app.kernel.ids", language=BRACE),
+                  classes=(Class(3, "Kept", public=False), Class(4, "_Shown")),
+                  functions=(Function(5, "kept", public=False), Function(6, "_shown"),
+                             Function(7, "m", owner="Kept", public=False)), language=BRACE)
+    read = facts_of([file], [], replace(PROFILE, language=BRACE), "app").files[0]
+    assert [(f.name, "public" in f.traits) for f in read.facts["class"]] == [("Kept", False), ("_Shown", True)]
+    assert [(f.name, "public" in f.traits) for f in read.facts["function"]] == [
+        ("kept", False), ("_shown", True), ("m", False)]
+    assert [(f.name, "public" in f.traits) for f in read.facts["imported-name"]] == [
+        ("shown", True), ("hidden", False), (None, False)]

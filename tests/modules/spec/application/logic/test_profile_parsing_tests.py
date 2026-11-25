@@ -59,7 +59,7 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
                  ["layered.yaml: testing.functions: must be a function name pattern: a name with `*` for any text"],
                  id="a function pattern with a space"),
     pytest.param({"files": ["a.py"], "functions": "t_*", "skips": ["skip"]}, PRESETS,
-                 ["layered.yaml: testing.skips: 'skip' is not a dotted name such as pkg.sub.name"], id="a skip that is not dotted"),
+                 ["layered.yaml: testing.skips: 'skip' is not an outside name such as <package>.<name>"], id="a skip that is not dotted"),
 ])
 def test_a_bad_testing_key_is_refused(testing, presets, expected):
     assert problems(covered(testing=testing), presets=presets) == expected
@@ -71,9 +71,9 @@ def test_the_table_of_cases_and_the_mocks_are_checked_with_the_framework_whether
     document["testing"]["mocks"] = {"calls": [], "autospec": ["a.b"], "spec_keywords": [], "fixtures": {}, "colour": 1}
     assert problems(document) == [
         "layered.yaml: testing.table: missing `id`",
-        "layered.yaml: testing.table.decorator: 'x' is not a dotted name such as pkg.sub.name",
+        "layered.yaml: testing.table.decorator: 'x' is not an outside name such as <package>.<name>",
         "layered.yaml: testing.mocks: unknown key 'colour': use autospec, calls, fixtures, spec_keywords, spec_position",
-        "layered.yaml: testing.mocks.calls: must be a list of dotted names such as pkg.sub.Name",
+        "layered.yaml: testing.mocks.calls: must be a list of outside names such as <package>.<name>",
         "layered.yaml: testing.mocks.spec_keywords: must be a list of keyword names such as [spec]",
         "layered.yaml: testing.mocks.fixtures: must be a mapping of parameter names to {calls}, and optionally "
         "autospec: the names of the methods that build a mock, and of those that build one from a spec given as an "

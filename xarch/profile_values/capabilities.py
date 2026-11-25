@@ -21,9 +21,10 @@ FACTS: dict[str, str] = {
     "import": "each import: what it names, the names it takes from it, the line",
     "import.relative": "whether an import is named from the importing file's own folder, and how far it climbs",
     "import.standard": "whether an import names the standard library",
+    "import.resolved": "every import of the app is followed to the place it names, however written",
     "import.mentioned": "whether a file mentions a name an import takes anywhere else, in code or an annotation",
-    "comment": "each line comment, its text, its line and where on it it starts and ends, which review cuts before it "
-               "sends a text",
+    "comment": "each comment, its text, its line and where on it it starts and ends, and the marker it opens with, "
+               "which review cuts before it sends a text",
     "use": "each name read, as the dotted path the import binding its first name reaches, and how much it bound",
     "call": "each call whose callee an import binds, as that dotted path, with its arguments",
     "method_call": "each call of an attribute no import binds, and whether it is on the object a method is called on",
@@ -38,6 +39,12 @@ FACTS: dict[str, str] = {
     "class.exception": "whether a class derives from one of the language's builtin exceptions",
     "class.named": "every name a class's bases and body mention",
     "class.immutable": "whether a class is an immutable record, by the marks of the language's data file",
+    "class.interface": "whether a class is an interface, by the marks of the language's data file",
+    "file.package": "a file stands for the folder that holds it",
+    "comment.doc": "whether a comment is a doc comment",
+    "public": "whether a name a file defines, or takes by an import, is for other files to use, as the language "
+              "decides it",
+    "class.record": "whether a class is a record, as the language writes one",
     "function": "the functions a file defines, at the top level and in its classes: name, owner, line",
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",

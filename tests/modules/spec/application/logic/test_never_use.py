@@ -4,15 +4,15 @@ refused at its address when it is written wrong, and the guards section of the d
 import pytest
 
 from tests.modules.spec.format_files import FILE_TYPES
+from tests.modules.spec.languages import BRACE
 from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.kernel.violations import RULES
 from xarch.modules.spec.application.logic.docs_template import fill
 
-DOTTED = "is not a dotted name such as datetime.datetime.now, nor an import name such as socket"
-METHOD = f"{DOTTED}, nor a method such as .absolute()"
+METHOD = "is not an outside name such as <package>.<name>, nor a package, nor a method such as .<name>()"
 LISTS = {"pure": ["socket"], "ambient": ["os.getcwd"]}
 NO_NAME = "must be the name of a list under `never`"
-ONE_LIST = "names one list under never: write the name of a list, such as pure"
+ONE_LIST = "names one list under never: write the name of a list, such as pure; a list may include others"
 
 
 def with_list(names, **changes) -> dict:
@@ -26,6 +26,29 @@ def service_uses(uses) -> dict:
     """The covered profile with the lists pure and ambient under `never`, its service part writing `uses` as given."""
     document = covered(never=LISTS)
     document["parts"]["service"]["uses"] = uses
+    return document
+
+
+EMPTY = ("must be a non-empty list of outside names, packages or methods, such as [<package>.<name>, <package>, "
+         ".<name>()]")
+TIME_SOCKET = (("time", "time"), ("socket",))
+
+
+def standard(name: str, title: str = "Python") -> str:
+    """The refusal of a list named like a package of the language's standard library."""
+    return (f"never.{name}: a list may not take the name of a package of the {title} standard library, since an entry "
+            f"{name} would name the list: rename it")
+
+
+def named(name: str, key: str) -> str:
+    """The refusal of a list named like a package the profile names at key."""
+    return f"never.{name}: a list may not take the name of a package this profile names ({key}): rename it"
+
+
+def naming(never, uses) -> dict:
+    """The covered profile with the lists given under `never`, its service part naming the list uses."""
+    document = covered(never=never)
+    document["parts"]["service"]["uses"] = {"never": uses}
     return document
 
 
@@ -93,7 +116,7 @@ def test_a_method_written_with_a_leading_dot_and_parentheses_is_kept_as_written(
 
 
 @pytest.mark.parametrize("name, problem", [
-    pytest.param(".absolute", "never.pure: '.absolute' is neither a dotted name nor a method: write .absolute() for "
+    pytest.param(".absolute", "never.pure: '.absolute' is neither an outside name nor a method: write .absolute() for "
                               "a method called on anything", id="a method without its parentheses"),
     pytest.param("path.absolute()", f"never.pure: 'path.absolute()' {METHOD}", id="a dotted name with parentheses"),
     pytest.param(".a.b()", f"never.pure: '.a.b()' {METHOD}", id="a method of more than one step"),
@@ -275,3 +298,213 @@ def test_a_hint_for_the_rule_id_forbidden_is_told_it_is_renamed_never_use():
     assert problems(layered(hints={"forbidden": "see the docs"})) == [
         "layered.yaml: hints.forbidden: unknown rule id 'forbidden': renamed in 0.3.0: write never-use; use "
         f"{', '.join(sorted(RULES))}"]
+
+
+BRACED = {"brace": BRACE}
+
+
+def brace_document(ambient=("node:fs#readFileSync", "globalThis#fetch", ".toISOString()"),
+                   libraries=("lodash-es", "@scope/pkg")) -> dict:
+    """The layered profile as an app in the brace language writes it: its store's outside packages by the language's
+    package names, and a list of outside names under `never`, which its service part never uses."""
+    document = layered(never={"ambient": list(ambient)})
+    document["parts"]["store"]["libraries"] = list(libraries)
+    document["parts"]["service"]["uses"] = {"never": "ambient"}
+    return document
+
+
+def test_outside_names_are_read_by_the_package_pattern_and_the_member_of_the_language():
+    architecture = parsed(brace_document(), languages=BRACED)
+    assert (architecture.libraries["store"], architecture.uses_never) == (
+        ("lodash-es", "@scope/pkg"),
+        {"service": (("node:fs", "readFileSync"), ("globalThis", "fetch"), ("", "toISOString()"))})
+
+
+def test_the_same_outside_names_are_refused_under_a_language_whose_patterns_do_not_allow_them():
+    assert problems(brace_document()) == [
+        f"layered.yaml: never.ambient: 'node:fs#readFileSync' {METHOD}",
+        f"layered.yaml: never.ambient: 'globalThis#fetch' {METHOD}",
+        "layered.yaml: parts.store.libraries: 'lodash-es' is not a package name the language Python allows",
+        "layered.yaml: parts.store.libraries: '@scope/pkg' is not a package name the language Python allows"]
+
+
+def test_a_bare_builtin_is_told_to_be_written_in_the_namespace_with_the_member_of_the_language():
+    assert problems(brace_document(ambient=["fetch"]), languages=BRACED) == [
+        "layered.yaml: never.ambient: 'fetch' is a Brace builtin, which a bare name does not ban: write globalThis#fetch"]
+
+
+@pytest.mark.parametrize("entry", [
+    pytest.param("node:fs#", id="a member with nothing after it"),
+    pytest.param("#readFileSync", id="nothing before the member"),
+    pytest.param("Fs#readFileSync", id="a head that is neither a package nor the namespace"),
+])
+def test_an_outside_name_the_language_s_patterns_refuse_is_refused_under_that_language(entry):
+    assert problems(brace_document(ambient=[entry]), languages=BRACED) == [
+        f"layered.yaml: never.ambient: '{entry}' is not an outside name such as <package>#<name>, nor a package, nor a "
+        "method such as .<name>()"]
+
+
+def test_an_outside_name_listed_twice_is_refused_once_under_a_member_that_is_not_a_dot():
+    assert problems(brace_document(ambient=["node:fs#readFileSync", "node:fs#readFileSync"]), languages=BRACED) == [
+        "layered.yaml: never.ambient: 'node:fs#readFileSync' is listed twice"]
+
+
+def test_a_package_is_never_the_namespace_of_the_language():
+    assert problems(brace_document(libraries=["globalThis"]), languages=BRACED) == [
+        "layered.yaml: parts.store.libraries: 'globalThis' is not a package name the language Brace allows"]
+
+
+def test_the_guards_section_writes_an_outside_name_with_the_member_of_the_language():
+    text = fill("{{guards}}", parsed(brace_document(), languages=BRACED), "layered.md", file_types=FILE_TYPES)
+    assert "(`service/`: `node:fs#readFileSync`, `globalThis#fetch`, `.toISOString()`)" in text
+
+
+@pytest.mark.parametrize("never, uses, found", [
+    pytest.param({"pure": ["time.time", "socket"], "published": ["pure", "typing.Any"]}, "published",
+                 (*TIME_SOCKET, ("typing", "Any")), id="an include, then a name"),
+    pytest.param({"pure": ["time.time", "socket"], "published": ["typing.Any", "pure", "os.getenv"]}, "published",
+                 (("typing", "Any"), *TIME_SOCKET, ("os", "getenv")), id="an include between two names"),
+    pytest.param({"a": ["b", "x.one"], "b": ["c", "x.two"], "c": ["x.three"]}, "a",
+                 (("x", "three"), ("x", "two"), ("x", "one")), id="a chain of three lists"),
+    pytest.param({"published": ["pure", "typing.Any"], "pure": ["time.time", "socket"]}, "published",
+                 (*TIME_SOCKET, ("typing", "Any")), id="the included list written below"),
+    pytest.param(LISTS | {"both": ["pure", "ambient"]}, "both", (("socket",), ("os", "getcwd")),
+                 id="a list of only includes"),
+    pytest.param({"pure": ["published"]}, "pure", (("published",),),
+                 id="a bare word that is no list name is a package"),
+    pytest.param({"pure": ["socket"], "published": ["Pure"]}, "published", (("Pure",),),
+                 id="an entry differing from a list name by case is a package"),
+])
+def test_an_entry_naming_a_list_puts_that_list_s_names_in_its_place(never, uses, found):
+    assert parsed(naming(never, uses)).uses_never == {"service": found}
+
+
+def test_a_list_including_another_reads_as_the_same_names_written_out():
+    included = parsed(naming({"pure": ["time.time", "socket"], "published": ["pure", "typing.Any"]}, "published"))
+    written = parsed(naming({"pure": ["time.time", "socket"], "published": ["time.time", "socket", "typing.Any"]},
+                            "published"))
+    assert included.uses_never == written.uses_never
+
+
+@pytest.mark.parametrize("never, found", [
+    pytest.param({"a": ["a", "x.one"]}, ["never.a: includes itself"], id="a list writing itself"),
+    pytest.param({"a": ["b"], "b": ["a"]}, ["never.a: includes itself, through never.b: drop one of the two"],
+                 id="two lists including each other, said at the one written first"),
+    pytest.param({"b": ["a"], "a": ["b"]}, ["never.b: includes itself, through never.a: drop one of the two"],
+                 id="said at whichever is written first"),
+    pytest.param({"a": ["b"], "b": ["c"], "c": ["a"]},
+                 ["never.a: includes itself, through never.b, never.c: drop one of the includes"],
+                 id="three lists in a loop"),
+    pytest.param({"top": ["a"], "a": ["b"], "b": ["a"]},
+                 ["never.a: includes itself, through never.b: drop one of the two"],
+                 id="a list including a list of a loop gets no problem for it"),
+    pytest.param({"pure": ["os.environ"], "published": ["pure", "os.environ"]},
+                 ["never.published: 'os.environ' is listed in never.pure, which never.published includes: drop it "
+                  "here"], id="a name written after an include holding it"),
+    pytest.param({"pure": ["os.environ"], "published": ["os.environ", "pure"]},
+                 ["never.published: 'os.environ' is listed in never.pure, which never.published includes: drop it "
+                  "here"], id="a name written before an include holding it"),
+    pytest.param({"pure": ["os.environ"], "mid": ["pure"], "top": ["mid", "os.environ"]},
+                 ["never.top: 'os.environ' is listed in never.pure, which never.top includes: drop it here"],
+                 id="a name held by a list included through another, naming the list holding it"),
+    pytest.param({"pure": ["os.environ"], "ambient": ["os.environ"], "both": ["pure", "ambient"]},
+                 ["never.both: 'os.environ' is listed in never.pure and in never.ambient, which never.both includes: "
+                  "drop it from one"], id="a name reached through two includes"),
+    pytest.param({"pure": ["socket"], "both": ["pure", "pure"]}, ["never.both: includes never.pure twice"],
+                 id="a list included twice"),
+    pytest.param({"pure": ["socket"], "mid": ["pure"], "both": ["pure", "mid"]},
+                 ["never.both: includes never.pure twice"],
+                 id="a list included directly and through another, and its names not said again"),
+    pytest.param({"pure": ["os.environ"], "mid": ["pure", "os.environ"], "top": ["mid"]},
+                 ["never.mid: 'os.environ' is listed in never.pure, which never.mid includes: drop it here"],
+                 id="a repeat said once, at the lowest list where it meets"),
+    pytest.param({"pure": ["datetime..now"], "published": ["pure"]}, [f"never.pure: 'datetime..now' {METHOD}"],
+                 id="a bad entry of an included list said once, under that list"),
+    pytest.param({"pure": [], "published": ["pure", "x.one"]}, [f"never.pure: {EMPTY}"],
+                 id="an included list that is empty"),
+    pytest.param({"pure": "socket", "published": ["pure", "x.one"]}, [f"never.pure: {EMPTY}"],
+                 id="an included list that is no list"),
+    pytest.param({"a b": ["x.one"], "c": ["a b"]},
+                 ["never: 'a b' is not a list name: use letters, digits, '_' and '-'", f"never.c: 'a b' {METHOD}"],
+                 id="a key refused as a list name is no list"),
+    pytest.param({1: ["x.one"], "c": ["pure", 3]},
+                 ["never: 1 is not a list name: use letters, digits, '_' and '-'", f"never.c: 3 {METHOD}"],
+                 id="a key that is no text, and an entry that is no text beside a name"),
+    pytest.param({"pure": ["socket"], "published": [" pure"]}, [f"never.published: ' pure' {METHOD}"],
+                 id="an entry with a space around a list name is no include"),
+    pytest.param({"pure": ["os.environ"], "published": ["pure", "os.environ", "2fast"]},
+                 [f"never.published: '2fast' {METHOD}",
+                  "never.published: 'os.environ' is listed in never.pure, which never.published includes: drop it "
+                  "here"], id="a list's entry problems before its include problems"),
+])
+def test_an_include_written_wrong_is_refused_at_the_list_it_is_about(never, found):
+    assert problems(covered(never=never)) == [f"layered.yaml: {problem}" for problem in found]
+
+
+def test_a_part_naming_a_list_of_a_loop_adds_no_problem_of_its_own():
+    assert problems(naming({"a": ["b"], "b": ["a"]}, "b")) == [
+        "layered.yaml: never.a: includes itself, through never.b: drop one of the two"]
+
+
+def test_a_chain_and_a_loop_of_many_lists_are_read_whole():
+    count = 1500
+    chain = {f"l{i}": [f"l{i + 1}"] for i in range(count)} | {f"l{count}": ["x.one"]}
+    assert parsed(naming(chain, "l0")).uses_never == {"service": (("x", "one"),)}
+    loop = {f"l{i}": [f"l{(i + 1) % count}"] for i in range(count)}
+    found = problems(naming(loop, "l0"))
+    assert len(found) == 1
+    assert found[0].startswith("layered.yaml: never.l0: includes itself, through never.l1, never.l2, never.l3, ")
+    assert found[0].endswith(f", never.l{count - 1}: drop one of the includes")
+
+
+def test_a_list_named_like_a_standard_package_is_refused_and_an_entry_of_that_name_still_includes_it():
+    assert problems(covered(never={"pure": ["socket"], "socket": ["time.time"]})) == [
+        f"layered.yaml: {standard('socket')}"]
+
+
+def test_the_standard_library_a_list_may_not_be_named_from_is_the_language_s():
+    document = layered(never={"fs": ["lodash"], "pure": ["fs"]})
+    document["parts"]["service"]["uses"] = {"never": "pure"}
+    assert problems(document, languages={"brace": BRACE}) == [
+        f"layered.yaml: {standard('fs', 'Brace')}"]
+    assert parsed(document).uses_never == {"service": (("lodash",),)}
+
+
+def test_a_list_named_like_a_package_a_part_lists_is_refused_naming_the_first_part_that_lists_it():
+    assert problems(covered(never={"sqlmodel": ["x.one"]})) == [
+        f"layered.yaml: {named('sqlmodel', 'parts.store.libraries')}"]
+    document = covered(never={"sqlmodel": ["x.one"]})
+    document["parts"]["service"]["libraries"] = ["sqlmodel"]
+    assert problems(document) == [f"layered.yaml: {named('sqlmodel', 'parts.service.libraries')}"]
+
+
+def test_a_list_named_like_a_reserved_module_is_refused_once_as_a_standard_package():
+    document = covered(never={"ast": ["x.one"]}, reserved={"ast": "only the reader parses the language"})
+    assert problems(document) == [f"layered.yaml: {standard('ast')}"]
+
+
+def test_a_part_whose_libraries_are_everything_names_no_package():
+    document = covered(never={"sqlmodel": ["x.one"]})
+    document["parts"]["store"]["libraries"] = "everything"
+    assert parsed(document).uses_never == {}
+
+
+def test_a_part_naming_a_list_refused_for_its_name_adds_no_problem_of_its_own():
+    assert problems(naming({"socket": ["time.time"]}, "socket")) == [f"layered.yaml: {standard('socket')}"]
+
+
+def test_a_list_s_name_problem_comes_first_then_its_entries_then_its_includes():
+    document = covered(never={"pure": ["os.environ"], "socket": ["pure", "os.environ", "2fast"]})
+    assert problems(document) == [
+        f"layered.yaml: {standard('socket')}",
+        f"layered.yaml: never.socket: '2fast' {METHOD}",
+        "layered.yaml: never.socket: 'os.environ' is listed in never.pure, which never.socket includes: drop it here"]
+
+
+def test_never_reserved_and_libraries_are_said_once_each_in_their_own_place():
+    document = covered(never={"pure": ["datetime..now"]}, reserved={"json": ""})
+    document["parts"]["store"]["libraries"] = ["2fast"]
+    assert problems(document) == [
+        f"layered.yaml: never.pure: 'datetime..now' {METHOD}",
+        "layered.yaml: reserved.json: must say in one line why it is reserved",
+        "layered.yaml: parts.store.libraries: '2fast' is not a package name the language Python allows"]
