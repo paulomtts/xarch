@@ -14,6 +14,10 @@ All notable changes to this project are written here. The format follows
   the paths given, and only those decide the exit code; every check still runs on the whole app and its tests, none
   skipped, and a `partial:` line (JSON `partial: {paths, skipped_checks, elsewhere}`) names the paths, says no check
   was skipped and counts the violations of other files, so its OK never reads as the whole app's.
+- `xarch hook claude [--command TEXT]` prints Claude Code hooks for `.claude/settings.json` and writes nothing:
+  `PostToolUse` on `Edit|Write` runs `xarch check --files-from -` on the file written, `Stop` runs
+  `xarch check --strict` (unless `stop_hook_active`); each hands the check's output back to the agent (exit 2) when
+  it fails. The README says how to do the same with another agent's hooks.
 - The reader keeps what it read of each file in a cache (`xarch/` in `$XDG_CACHE_HOME`, else `~/.cache`;
   `XARCH_CACHE_DIR` names another folder, empty switches it off), keyed by the file's text, how it is read, what
   its relative imports find on disk and xarch's own code: reading the tree was 87% of a check (about 11 s of 12.7 s

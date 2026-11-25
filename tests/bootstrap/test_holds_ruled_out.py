@@ -42,6 +42,7 @@ RULED_OUT = {
         "cli/commands/where.py",
         "cli/reports/document.py",
         "cli/reports/eval_report.py",
+        "cli/reports/hook_report.py",
         "cli/reports/profile_report.py",
         "cli/reports/refusal_report.py",
         "cli/reports/report.py",
@@ -261,6 +262,7 @@ RULED_OUT = {
         "profile_values/tiers.py",
     ),
     ('domain', 'logic', 'ports', 'services', 'controller', 'adapters', 'reports', 'profile-values', 'kernel', 'kernel-logic'): (
+        "cli/commands/hook.py",
         "cli/commands/review.py",
         "cli/terminal.py",
         "platform/typesafe.py",

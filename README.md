@@ -38,6 +38,8 @@ xarch check [PATH ...] [--files-from FILE|-] [--app PATH] [--profile NAME|FILE] 
                                                              # report every violation in the app and its tests, each
                                                              # with its fix, then the state of the check's own enforcement;
                                                              # with paths, only those of the files at or below them
+xarch hook claude [--command TEXT]                           # print Claude Code hooks that run the check after each edit
+                                                             # and before the agent stops; writes nothing
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
 xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--rule] [--app PATH] [--format text|json]
@@ -619,6 +621,31 @@ every guard left off); each ungoverned file; each missing or changed init file; 
 unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
 them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
 [Project files](#project-files)): a fresh project of either bundled profile has no such finding.
+
+## Running the check from an agent's hooks: `xarch hook claude`
+
+A coding agent that runs `xarch check` only when it remembers to finds the violations late. `xarch hook claude`
+prints the hooks that run it for Claude Code, as the JSON its settings hold; it writes nothing (add its `hooks` key
+to `.claude/settings.json`, or `.claude/settings.local.json` for yourself alone, merging it with hooks already
+there), reads no app and no profile, and needs `jq`, as Claude Code's own examples do:
+
+- `PostToolUse`, matched on `Edit|Write`: the check of the file just written,
+  `jq -r '.tool_input.file_path' | xarch check --files-from -` (see
+  [Checking some files](#checking-some-files-xarch-check-path-)); it does not pass `--strict`, so a weak finding
+  elsewhere does not interrupt every edit.
+- `Stop`: the whole check, `xarch check --strict`, what the guard test runs, skipped when Claude Code is already
+  going on because of this hook (`stop_hook_active`), so a check the agent cannot make pass never loops.
+
+Each runs from `$CLAUDE_PROJECT_DIR`, prints the check's output on stderr and exits 2 when the check fails: for
+`PostToolUse` Claude Code shows that output to the agent after the edit, and for `Stop` it keeps the agent working,
+with the output as the reason. `--command "uv run xarch"` (or any other) says how the hooks run xarch when it is not
+on the PATH.
+
+Another agent's hooks are not printed: their formats are their own. The same two hooks carry over to any agent that
+can run a command after it edits a file and before it ends its turn: after an edit, pipe the path edited into
+`xarch check --files-from -` (or give it as an argument), and before it finishes, run `xarch check --strict`; both
+exit 0 when clean, 1 with violations and 2 on a usage error, and print what to fix. An agent with no hooks follows
+`AGENTS.md`, which tells it to run `xarch check --strict` before it finishes; the guard test catches what it forgets.
 
 ## xarch where: ask before you write
 

@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import typer
 
-from xarch.cli.commands import check, profile, review, scaffold, where
+from xarch.cli.commands import check, hook, profile, review, scaffold, where
 from xarch.modules.review.application.controller import ReviewController
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.scaffold.application.controller import ScaffoldController
@@ -34,4 +34,5 @@ def build(rules: RulesController, scaffolding: ScaffoldController, spec: SpecCon
     where.register(app, rules, spec)
     profile.register(app, spec, rules)
     review.register(app, reviewing, spec)
+    hook.register(app)
     return app
