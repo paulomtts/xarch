@@ -36,14 +36,16 @@ def test_an_unknown_key_is_said_with_the_nearest_ones_in_text_and_in_json():
     found = UnknownKey("tire", ("tier", "tiers"))
     assert unknown_message(found) == "no key `tire` in the format: the nearest are tier, tiers"
     assert json.loads(unknown_document(found)) == {
-        "ok": False, "error": unknown_message(found), "key": "tire", "nearest": ["tier", "tiers"], "words": []}
+        "ok": False, "error": unknown_message(found), "key": "tire", "nearest": ["tier", "tiers"], "words": [],
+        "retired": None}
 
 
 def test_an_unknown_key_near_words_of_a_check_keeps_the_keys_and_the_words_apart_in_json():
     found = UnknownKey("public", ("name",))
     assert json.loads(unknown_document(found, ("filters.public",))) == {
         "ok": False, "error": "no key `public` in the format: the nearest are name; of the words of a check, "
-                              "filters.public", "key": "public", "nearest": ["name"], "words": ["filters.public"]}
+                              "filters.public", "key": "public", "nearest": ["name"], "words": ["filters.public"],
+        "retired": None}
 
 
 def test_a_new_profile_says_what_was_written_and_how_to_put_it_in_force_each_path_from_the_working_folder():
@@ -149,3 +151,15 @@ def test_the_problems_of_an_eval_of_the_profile_s_own_are_said_under_evals_not_c
     assert not any(line.startswith("  checks:") for line in lines) and lines[-1] == "INVALID: 1 problem"
     assert json.loads(check_document(held))["problems"] == [{"check": "evals",
                                                               "message": "evals.rule.keep: no filter is named 'x'"}]
+
+
+def test_an_address_xarch_retired_is_said_with_its_fixed_text_before_the_nearest_keys_and_in_json():
+    found = UnknownKey("parts.tested_by", ("parts.untested",), "renamed in 0.3.0: write tier")
+    assert unknown_message(found) == ("no key `parts.tested_by` in the format: renamed in 0.3.0: write tier; the nearest "
+                                      "are parts.untested")
+    assert unknown_message(found, ("filters.test",)) == (
+        "no key `parts.tested_by` in the format: renamed in 0.3.0: write tier; the nearest are parts.untested; of the "
+        "words of a check, filters.test")
+    assert json.loads(unknown_document(found)) == {
+        "ok": False, "error": unknown_message(found), "key": "parts.tested_by", "nearest": ["parts.untested"],
+        "words": [], "retired": "renamed in 0.3.0: write tier"}

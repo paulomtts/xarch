@@ -6,7 +6,9 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
+from tests.bootstrap.project import retiring
 from xarch.bootstrap.app import app
+from xarch.modules.spec.domain.profile_keys import PART
 
 runner = CliRunner()
 
@@ -143,3 +145,12 @@ def test_an_example_in_which_an_eval_reads_nothing_fails_at_its_address(tmp_path
     assert result.exit_code == 1
     assert ("evals.rule-of-state.examples.flagged.modules/documents/b.py: holds no function the eval reads (in its "
             "scope, passing keep): give it one") in result.output
+
+
+def test_a_key_xarch_retired_fails_like_any_profile_that_does_not_load_with_its_fixed_text(tmp_path, monkeypatch):
+    retiring(monkeypatch, PART, "tested_by", "renamed in 0.3.0: write tier")
+    edit(tmp_path, lambda d: d["parts"]["domain"].update(tested_by="unit"))
+    result = runner.invoke(app, ["profile", "check", COPY])
+    assert result.exit_code == 1
+    assert "parts.domain: unknown key 'tested_by': renamed in 0.3.0: write tier; use built_by, " in result.output
+    assert "examples: not checked" in result.output and "INVALID: 1 problem" in result.output

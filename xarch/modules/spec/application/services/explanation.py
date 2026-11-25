@@ -15,7 +15,7 @@ from xarch.modules.spec.application.logic.explain import (
     supplied,
 )
 from xarch.modules.spec.application.logic.key_catalogue import catalogue_of
-from xarch.modules.spec.application.logic.key_lookup import shown
+from xarch.modules.spec.application.logic.key_lookup import retired_at, shown
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
 from xarch.modules.spec.application.services.architecture import ArchitectureService
 from xarch.modules.spec.contract import FormatExplained, KeyExplained, Need, Shown, Symbol, UnknownKey
@@ -39,8 +39,9 @@ class ExplainService:
         self._catalogue: Catalogue | None = None
 
     def explain(self, address: str | None) -> FormatExplained | KeyExplained | UnknownKey:
-        """The whole format with no address, else the key at it, or the nearest keys when the format has none there;
-        raises InvalidArchitecture when the data file of a language, or of the format's texts, does not load."""
+        """The whole format with no address, else the key at it, or the nearest keys when the format has none there
+        and the text of the retired name there, if any; raises InvalidArchitecture when the data file of a language,
+        or of the format's texts, does not load."""
         language = self._architectures.default_language()
         catalogue = self._texts()
         if address is None:
@@ -49,7 +50,7 @@ class ExplainService:
                                                 for s, m in catalogue.symbols), catalogue.smallest)
         key = key_at(address)
         if key is None:
-            return UnknownKey(cleaned(address), nearest(cleaned(address)))
+            return UnknownKey(cleaned(address), nearest(cleaned(address)), retired_at(address))
         names, text = self.choices(key), catalogue.text(key.address)
         return KeyExplained(shown(key), key.where, said(text.meaning, language), said(text.accepts, language),
                             key.required, key.enforced, key.rules, said(example_of(key, text.example, names), language),

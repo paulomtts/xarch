@@ -330,9 +330,11 @@ class KeyExplained:
 
 @dataclass(frozen=True)
 class UnknownKey:
-    """A key the format does not have, with the nearest ones that exist."""
+    """A key the format does not have, with the nearest ones that exist, and the fixed text of the entry of the table
+    of retired names at its address ("" when none is there)."""
     key: str
     nearest: tuple[str, ...]
+    retired: str = ""
 
 
 ExplainResult = FormatExplained | KeyExplained | UnknownKey | ProfileRefused
