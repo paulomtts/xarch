@@ -105,3 +105,17 @@ def test_without_fakes_tiers_a_tier_first_test_may_not_import_the_fakes(tmp_path
     assert tier_first(tmp_path, FAKING, fakes="fakes: {folder: fakes, for: [sub]}\n") == [
         "tests/unit/test_a.py:1: a unit test may not import the fakes (tests.fakes.repo): only a tier that tests sub "
         "may"]
+
+
+NESTED = UNIT + "  meta:\n    proves: guards over the code\n    folder: unit/meta\n    imports:\n      may: everything\n"
+NESTING = {"unit/helpers.py": "x = 1\n", "unit/meta/edges.py": "x = 1\n",
+           "unit/test_a.py": "from tests.unit import helpers\nfrom tests.unit.meta import edges\n",
+           "unit/meta/test_b.py": "from tests.unit.meta import edges\nfrom tests.unit import helpers\n"}
+
+
+def test_a_tier_folder_inside_another_tier_s_is_its_own_tier_and_its_own_folder(tmp_path):
+    assert tier_first(tmp_path, NESTING, tiers=NESTED) == [
+        "tests/unit/meta/test_b.py:2: a test may import test code only from its own folder tests/unit/meta/ "
+        "(tests.unit.helpers)",
+        "tests/unit/test_a.py:2: a test may import test code only from its own folder tests/unit/ "
+        "(tests.unit.meta.edges)"]

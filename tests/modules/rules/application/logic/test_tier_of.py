@@ -119,6 +119,30 @@ def test_a_helper_of_an_instance_of_the_second_repeating_folder_is_its_own_folde
 
 
 
+OUTER, INNER = Tier("guard", (), ("architecture",)), Tier("meta", (), ("architecture", "meta"))
+
+
+@pytest.mark.parametrize("tiers, path, expected", [
+    pytest.param((OUTER, INNER), "architecture/meta/test_edges.py",
+                 tier_of.Tested(INNER, None, ("architecture", "meta"), True, False, ()),
+                 id="a test in a nested tier's folder has that tier and that folder as its own"),
+    pytest.param((INNER, OUTER), "architecture/meta/deep/test_edges.py",
+                 tier_of.Tested(INNER, None, ("architecture", "meta"), True, False, ()),
+                 id="the deepest folder wins whatever the order of the tiers, below it too"),
+    pytest.param((OUTER, INNER), "architecture/test_rules.py",
+                 tier_of.Tested(OUTER, None, ("architecture",), True, False, ()),
+                 id="a test outside the nested folder keeps the outer tier and its top folder"),
+    pytest.param((OUTER, INNER), "architecture/metal/test_x.py",
+                 tier_of.Tested(OUTER, None, ("architecture",), True, False, ()),
+                 id="a folder that only starts like the nested one is the outer tier's"),
+    pytest.param((OUTER, INNER), "architecture/meta/helpers.py",
+                 tier_of.Tested(INNER, None, ("architecture", "meta"), False, False, ()),
+                 id="a helper in the nested folder has it as its own folder too"),
+])
+def test_nested_tier_folders_the_deepest_that_holds_a_test_wins(tiers, path, expected):
+    assert tier_of.tested(profile(tiers=tiers), steps(path), False) == expected
+
+
 def test_a_file_part_of_any_ending_of_the_language_gives_the_tests_of_its_folder_its_tier():
     braced = profile(parts={**PARTS, "controller": ("modules", "*", "application", "controller.tsx")}, language=BRACE)
     found = tier_of.tested(braced, steps("modules/docs/application/publish.test.ts"), False)

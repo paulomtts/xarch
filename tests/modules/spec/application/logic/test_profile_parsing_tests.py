@@ -418,15 +418,23 @@ def test_a_tier_folder_follows_the_rules_it_had_and_its_allowance_is_a_part_s_ma
         "layered.yaml: tiers.guard.imports.may: 'parts.shared/' has an invalid path after the part"]
 
 
-def test_the_folders_of_two_tiers_or_a_tier_and_the_fakes_may_not_overlap():
+def test_a_tier_folder_may_not_overlap_the_fakes_nor_equal_another_tier_s_but_may_nest_in_one():
     document = covered(fakes={"folder": "checks/fakes", "for": ["service"]})
     document["tiers"]["guard"] = {"folder": "checks"}
     document["tiers"]["other"] = {"folder": "checks/x"}
+    document["tiers"]["same"] = {"folder": "checks/x"}
     assert problems(document) == [
         "layered.yaml: tiers: the folder 'checks' of tier 'guard' overlaps the fakes' folder 'checks/fakes': give each "
         "its own folder",
-        "layered.yaml: tiers: the folder 'checks/x' of tier 'other' overlaps the folder 'checks' of tier 'guard': give "
+        "layered.yaml: tiers: the folder 'checks/x' of tier 'same' overlaps the folder 'checks/x' of tier 'other': give "
         "each its own folder"]
+
+
+def test_a_tier_folder_nested_in_another_tier_s_loads():
+    document = covered()
+    document["tiers"]["guard"] = {"folder": "checks"}
+    document["tiers"]["meta"] = {"folder": "checks/meta"}
+    assert [tier.folder for tier in parsed(document).tiers if tier.folder] == [("checks",), ("checks", "meta")]
 
 
 def test_the_example_of_a_tier_with_a_folder_may_lie_in_it():

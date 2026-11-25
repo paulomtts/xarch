@@ -211,6 +211,17 @@ A test may import the fakes (`fakes.folder`) when its tier's subject holds a par
 [<tier>, ...]` (default none) lets the tests of the tiers it lists import them too, a tier with no such part, such as
 one placed by its `folder`, and `stand-ins` then holds their mocks as well. A tier the profile does not have is
 refused; nothing else opens the fakes to a tier (its `imports.may` never does).
+A tier's `folder` holds the tests below it that mirror no part (`tiers: {unit: {folder: unit, imports: {may:
+[...]}}}`): they import of the app what its `imports.may` allows, and test code from their own folder, the top folder
+below the tests root. A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`), never be the same one:
+a test has the tier of the deepest folder holding it, that folder is its own folder, and the outer tier's own folder
+leaves it out.
+A part's `untested: <reason>` says that no tier covers the part through tests that mirror its folder, the only link
+`check` draws between a part and its tests; it does not say that the part has no tests. A suite laid out tier first
+(`tests/<tier>/...`, each tier placed by its `folder`, helpers shared through `testing.shared` and the fakes opened
+through `fakes.tiers`) therefore gets tier-level checks only: what each tier's tests import, and that every test lies
+in a tier, with no coverage per part. Each part keeps an `untested:` reason (such as `its tests lie tier first`), and
+`scenario-coverage` and `guards.dead-code.untested`, which read the tests of the tier that covers a part, stay off.
 That the table forms and the call form are neutral to a language is proved without a TypeScript reader: a test-only
 framework (`tests/fakes/frameworks/stub.yaml`, a function form and a call form of a test, a loop form and a call form of
 a table with literal rows) is checked on hand-built facts and worded by the `writing` of the test-only language

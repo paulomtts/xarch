@@ -12,6 +12,8 @@ All notable changes to this project are written here. The format follows
   folder is refused.
 - `fakes.tiers: [<tier>, ...]` lets the tests of the tiers it lists import the fakes besides those of a tier that
   tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
+- A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
+  holding it, which is its own folder; only two tiers with the same folder are still refused.
 
 ### Fixed
 

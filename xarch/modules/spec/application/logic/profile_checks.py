@@ -335,15 +335,19 @@ def tier_folder(value: Any, parts: dict[str, Part], where: str, problems: list[s
 
 
 def folder_clashes(tiers: tuple[Tier, ...], fakes: Fakes | None) -> list[str]:
-    """The folders of tiers that lie inside, or hold, the fakes' folder or another tier's."""
+    """The folders of tiers that lie inside, or hold, the fakes' folder, or that are another tier's; a tier's folder
+    may lie inside another tier's, and a test then has the tier of the deepest folder holding it."""
     problems: list[str] = []
-    taken = [(f"the fakes' folder '{'/'.join(fakes.folder)}'", fakes.folder)] if fakes is not None else []
+    fake = [(f"the fakes' folder '{'/'.join(fakes.folder)}'", fakes.folder)] if fakes is not None else []
+    taken: list[tuple[str, tuple[str, ...]]] = []
     for tier in tiers:
         if tier.folder is None:
             continue
         shown = "/".join(tier.folder)
         problems += [f"tiers: the folder '{shown}' of tier '{tier.name}' overlaps {owner}: give each its own folder"
-                     for owner, other in taken if _overlap(tier.folder, other)]
+                     for owner, other in fake if _overlap(tier.folder, other)]
+        problems += [f"tiers: the folder '{shown}' of tier '{tier.name}' overlaps {owner}: give each its own folder"
+                     for owner, other in taken if tier.folder == other]
         taken.append((f"the folder '{shown}' of tier '{tier.name}'", tier.folder))
     return problems
 

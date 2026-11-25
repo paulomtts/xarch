@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 from xarch.kernel.logic.placement import module_steps, name_matches, reaches
 from xarch.modules.rules.application.logic.places import allowed
-from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes
+from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes, nested_folders
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import MAY_NOT, MAY_ONLY, Facts, Found, Match
 
@@ -102,7 +102,10 @@ def _test_code(found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] 
         return None
     if any(target[:len(steps)] == steps for steps in _shared_code(profile)):
         return target
-    return target if read.own and target[:len(read.own)] == read.own else None
+    if not read.own or target[:len(read.own)] != read.own:
+        return None
+    inner = (f for f in nested_folders(profile) if len(f) > len(read.own) and f[:len(read.own)] == read.own)
+    return None if any(target[:len(f)] == f for f in inner) else target
 
 
 def _shared_code(profile: Profile) -> tuple[tuple[str, ...], ...]:

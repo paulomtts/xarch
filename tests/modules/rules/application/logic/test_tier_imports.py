@@ -19,7 +19,7 @@ APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modul
                            "modules/other/domain/doc.py", "platform/sql.py", "web/routes.py", "scripts/seed.py"]]
 HELPERS = [in_tests(p) for p in ["modules/docs/builders.py", "modules/other/builders.py", "web/conftest.py",
                                  "fakes/repo.py", "helpers.py", "conftest.py", "support/__init__.py",
-                                 "support/clock.py"]]
+                                 "support/clock.py", "architecture/rules.py", "architecture/meta/edges.py"]]
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
 DOMAIN_TEST = "modules/docs/domain/test_doc.py"
 
@@ -344,3 +344,27 @@ def test_a_test_beside_the_code_imports_what_its_part_may_and_is_named_by_its_ap
 def test_a_mirrored_test_with_no_tier_keeps_its_text_under_beside():
     found = [str(v) for v in violations([in_tests("scripts/test_x.py"), *HELPERS], APP, NEAR, "app", "tests")]
     assert found == [f"tests/scripts/test_x.py: {NO_TIER}"]
+
+
+NESTED = profile(tiers=(UNIT, INTEGRATION, GUARD, Tier("meta", (), ("architecture", "meta"),
+                                                        imports_may=(Target("kernel"),))))
+"""PROFILE with a tier meta whose folder, architecture/meta, lies inside the guard tier's."""
+
+
+@pytest.mark.parametrize("path, imports, expected", [
+    pytest.param("architecture/meta/test_edges.py", [imp(1, "app.kernel", "ids"), imp(2, "tests.architecture.meta", "edges")],
+                 [], id="a test of the nested tier imports what its tier allows and its own folder's code"),
+    pytest.param("architecture/meta/test_edges.py", [imp(1, "tests.architecture", "rules")],
+                 ["1: a test may import test code only from its own folder tests/architecture/meta/ "
+                  "(tests.architecture.rules)"],
+                 id="the outer folder's code is not its own"),
+    pytest.param("architecture/test_rules.py", [imp(1, "app.kernel", "ids"), imp(2, "tests.architecture", "rules")],
+                 ["1: a guard test may not import kernel/ (app.kernel.ids)"],
+                 id="a test of the outer tier keeps its own allowance and its own folder"),
+    pytest.param("architecture/test_rules.py", [imp(1, "tests.architecture.meta", "edges")],
+                 ["1: a test may import test code only from its own folder tests/architecture/ "
+                  "(tests.architecture.meta.edges)"],
+                 id="the nested tier's folder is no part of the outer one's own folder"),
+])
+def test_a_nested_tier_folder_is_its_own_tier_and_its_own_folder(path, imports, expected):
+    assert problems(path, *imports, checked=NESTED) == expected

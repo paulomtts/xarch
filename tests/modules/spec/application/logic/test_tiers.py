@@ -382,13 +382,18 @@ def test_the_example_of_a_tier_with_a_folder_lies_in_it(example, expected):
     pytest.param("checks", "checks", "fakes",
                  ["layered.yaml: tiers: the folder 'checks' of tier 'integration' overlaps the folder 'checks' of "
                   "tier 'unit': give each its own folder"], id="two tiers with the same folder are refused"),
-    pytest.param("checks", "checks/rules", "fakes",
-                 ["layered.yaml: tiers: the folder 'checks/rules' of tier 'integration' overlaps the folder 'checks' "
-                  "of tier 'unit': give each its own folder"], id="a folder inside another tier's is refused"),
+    pytest.param("checks", "checks/rules", "fakes", [], id="a folder inside another tier's is fine: the deeper one wins"),
+    pytest.param("checks/rules", "checks", "fakes", [], id="so is one holding another tier's"),
+    pytest.param("checks/rules", "checks", "checks/rules/fakes",
+                 ["layered.yaml: tiers: the folder 'checks/rules' of tier 'unit' overlaps the fakes' folder "
+                  "'checks/rules/fakes': give each its own folder",
+                  "layered.yaml: tiers: the folder 'checks' of tier 'integration' overlaps the fakes' folder "
+                  "'checks/rules/fakes': give each its own folder"],
+                 id="nested tier folders still may not overlap the fakes"),
     pytest.param("checks", "other", "fakes", [], id="folders that do not overlap are fine"),
     pytest.param("checks", "chec", "fakes", [], id="a folder that only starts like another is not inside it"),
 ])
-def test_the_folders_of_tiers_overlap_neither_the_fakes_nor_each_other(first, second, fakes, expected):
+def test_the_folders_of_tiers_overlap_neither_the_fakes_nor_equal_each_other(first, second, fakes, expected):
     document = covered(fakes={"folder": fakes, "for": ["store"]})
     document["tiers"]["unit"]["folder"] = first
     document["tiers"]["integration"]["folder"] = second

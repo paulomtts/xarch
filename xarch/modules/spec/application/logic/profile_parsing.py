@@ -45,7 +45,8 @@ key_catalogue); the shape:
     layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
     tiers: {<tier>: {proves, litmus, uses, plain_tables, folder, imports: {may, also, must, types_only}, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
-                               the tests folder says in `imports.may` what the tests there may import; `imports.also`
+                               the tests folder (one may lie inside another's, the deepest holding a test being its
+                               tier) says in `imports.may` what the tests there may import; `imports.also`
                                what each of its tests may import beyond that or what the part it mirrors may;
                                `imports.must` the parts (`parts.<part>`) one of which each of its test files reaches;
                                `imports.types_only` the parts (`parts.<part>`) its tests may import only as types;

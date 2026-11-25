@@ -4,7 +4,8 @@ A file at tests/<path> mirrors the app's <path>. Its tier is, in order:
 1. the first tier whose subject holds the part that claims <path> (below the subject's sub-path, if it names one);
 2. else, when its folder is the folder of parts that are files (such as an application controller), the tier of those parts,
    if they share one;
-3. else, the first tier whose `folder` holds it: the file lies in that folder or below it.
+3. else, the tier whose `folder` holds it, the deepest when the folder of one lies inside another's: the file lies in
+   that folder or below it.
 A file under the fakes' folder is a fake, which no tier holds. A file in none of these has no tier.
 
 A test beside the code (testing.beside) lies at <path> below the app root and is placed by 1. and 2. alone: a tier's
@@ -13,9 +14,10 @@ A test beside the code (testing.beside) lies at <path> below the app root and is
 Its subject is the part its folder mirrors (1.), or the file parts of its folder (2.); a file placed by its tier's
 folder (3.) mirrors no part and has none.
 
-Its own folder is the instance of the repeating folder it mirrors (tests/<its root>/<name>/), else the top folder below
-the tests root: the folder whose helpers it may import; for a test beside the code, the same folders below the app
-root.
+Its own folder is the instance of the repeating folder it mirrors (tests/<its root>/<name>/), else the folder of a
+tier nested inside another tier's folder that holds it (the deepest), else the top folder below the tests root: the
+folder whose helpers it may import, less the folders of the tiers nested in it; for a test beside the code, the same
+folders below the app root, where no tier's folder lies.
 """
 from __future__ import annotations
 
@@ -60,8 +62,8 @@ def tested(profile: Profile, path: tuple[str, ...], beside: bool) -> Tested:
     root."""
     fake = not beside and profile.fakes is not None and path[:len(profile.fakes.folder)] == profile.fakes.folder
     tier, instance, parts = (None, None, ()) if fake else _tier(profile, path, beside)
-    return Tested(tier, instance or _instance(profile, path), _own(profile, path), is_test_file(profile, path), fake,
-                  parts)
+    return Tested(tier, instance or _instance(profile, path), _own(profile, path, beside), is_test_file(profile, path),
+                  fake, parts)
 
 
 def _tier(profile: Profile, path: tuple[str, ...],
@@ -81,7 +83,19 @@ def _tier(profile: Profile, path: tuple[str, ...],
         return next(iter(tiers.values())), instance, tuple(file_parts)
     if beside:
         return None, None, ()
-    return _first(profile, lambda t: bool(t.folder) and folder[:len(t.folder)] == t.folder), None, ()
+    return _deepest(profile, folder), None, ()
+
+
+def _deepest(profile: Profile, folder: tuple[str, ...]) -> CheckedTier | None:
+    """The tier whose `folder` holds the folder, the deepest of them; None when none does."""
+    holding = [t for t in profile.tiers if t.folder and folder[:len(t.folder)] == t.folder]
+    return max(holding, key=lambda t: len(t.folder or ()), default=None)
+
+
+def nested_folders(profile: Profile) -> tuple[tuple[str, ...], ...]:
+    """The folders of tiers that lie inside another tier's folder."""
+    folders = [t.folder for t in profile.tiers if t.folder]
+    return tuple(f for f in folders if any(len(o) < len(f) and f[:len(o)] == o for o in folders))
 
 
 def _tests(tier: CheckedTier, part: str) -> bool:
@@ -98,11 +112,15 @@ def _instance(profile: Profile, path: tuple[str, ...]) -> str | None:
     return folder[-1] if folder is not None else None
 
 
-def _own(profile: Profile, path: tuple[str, ...]) -> tuple[str, ...]:
-    """The folder a test file's own code is in: its instance's folder, else its top folder."""
+def _own(profile: Profile, path: tuple[str, ...], beside: bool) -> tuple[str, ...]:
+    """The folder a test file's own code is in: its instance's folder, else the deepest folder of a nested tier that
+    holds it, else its top folder."""
     folder = instance_root(profile.repeats, path[:-1])
     if folder is not None:
         return folder
+    nested = [] if beside else [f for f in nested_folders(profile) if path[:-1][:len(f)] == f]
+    if nested:
+        return max(nested, key=len)
     return path[:1] if len(path) > 1 else ()
 
 

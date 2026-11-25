@@ -212,7 +212,8 @@ keys:
       a map {<tier>: {...}}; with tiers, every part names the tier that `tests` it or says why it is `untested`;
       needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
-      mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
+      mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it, the deepest one when a tier's
+      `folder` lies inside another's). A test imports only the part
       its folder mirrors and what that may import, a `<word>.<part>` reference meaning the instance it mirrors, then
       what its tier's `imports.also` adds, and other test code only from its own folder; a test in no tier is a
       violation. Every folder below tests/<a repeating folder>/ mirrors a folder of the app
@@ -599,7 +600,10 @@ keys:
       <<tiered-part>>
   tiers.<tier>.folder:
     meaning: a folder of tests that mirror no part
-    accepts: a folder below the tests folder, for a tier whose tests mirror no part of the app
+    accepts: >-
+      a folder below the tests folder, for a tier whose tests mirror no part of the app; it may lie inside another
+      tier's folder (never be the same, nor overlap the fakes'), and a test then has the tier of the deepest folder
+      holding it, whose folder is its own folder, the outer tier's own folder leaving it out
     example: |
       <<testing>>
       tiers:
