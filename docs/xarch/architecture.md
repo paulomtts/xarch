@@ -174,7 +174,7 @@ def build_controllers() -> Controllers:
     return Controllers(rules, spec)
 ```
 
-`xarch check` reports every cycle of modules, each wrapping the next one's controller, with the imports that close it.
+`xarch check` reports each group of modules that depend on each other once, each wrapping another's controller, with the dependencies to cut to break the group's cycles and the imports that make them.
 
 ## 7. Placement order
 

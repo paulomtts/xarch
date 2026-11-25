@@ -151,8 +151,8 @@ def test_instances_of_the_two_folders_that_import_each_other_form_a_cycle():
           f"from app.plugins.seo import manifest\nfrom app.modules.billing.contract import TOTAL\n\n\n{WORK}")
     code, found = check()
     assert code == 1 and len(found) == 1
-    assert found[0].startswith("app/modules/billing/adapters/db.py:1: modules/billing → plugins/seo → modules/billing "
-                               "import each other in a cycle")
+    assert found[0].startswith("app/plugins/seo/hooks/run.py:2: modules/billing and plugins/seo import each other in "
+                               "a cycle")
 
 
 def test_a_missing_part_is_found_in_each_repeating_folder_by_its_own_parts():

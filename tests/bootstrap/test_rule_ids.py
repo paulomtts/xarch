@@ -43,8 +43,8 @@ CASES = [
                                "(rendering tests may touch: a fake controller, injected; the real controller's class "
                                "only as a type, never called)", id="types-only"),
     pytest.param(MODULES, {}, "cycles",
-                 "break the cycle: remove the import of app.modules.mod.contract at "
-                 "app/modules/docs/adapters/mod_review.py:1, or move what it needs to a part that both may import",
+                 "break the cycle: remove the imports of modules/mod → modules/docs the message lists, or move what "
+                 "they need to a part that both may import",
                  id="cycles"),
     pytest.param({"modules/docs/domain/document.py": TWIN, "modules/docs/contract/views.py": TWIN.replace("Doc", "DocView")},
                  {}, "no-twins", "keep one of the two and import it from a part both may import, or give DocView the "

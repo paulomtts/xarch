@@ -106,7 +106,7 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
         "annotate with it, and never calls it.",
         "- `test tree`: every folder below `tests/modules/` mirrors a folder of the app.",
         "- `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; "
-        "each cycle is reported once, with the imports that close it.",
+        "each group of them that import each other is reported once, with the dependencies to cut and their imports.",
         "- `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside "
         "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
         "are exempt.",

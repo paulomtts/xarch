@@ -241,7 +241,7 @@ class ModerationContentReview:
 > The adapter translates the provider's `Result` into the consumer's outcome, and the service turns it into a domain error, so no provider type reaches the consumer's service, controller or domain. The adapter types the provider's controller with its own small `Protocol`, so it imports only `contract/`, and the type checker verifies the match where `bootstrap/` passes the real controller in.
 
 > [!WARNING]
-> `contract/` is the only real contract between modules. If the provider changes it, every adapter that wraps its controller changes with it, and that change stays inside those adapters. Two modules may not depend on each other, directly or through others: `xarch check` reports every cycle of modules, each wrapping the next one's controller, with the imports that close it.
+> `contract/` is the only real contract between modules. If the provider changes it, every adapter that wraps its controller changes with it, and that change stays inside those adapters. Two modules may not depend on each other, directly or through others: `xarch check` reports each group of modules that depend on each other once, each wrapping another's controller, with the dependencies to cut to break the group's cycles and the imports that make them.
 
 ## 7. Placement order
 

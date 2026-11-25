@@ -15,6 +15,16 @@ All notable changes to this project are written here. The format follows
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
   holding it, which is its own folder; only two tiers with the same folder are still refused.
 
+### Changed
+
+- `cycles` reports one finding per group of instances that all reach each other (a strongly connected group),
+  however many elementary cycles run through it, instead of one per elementary cycle: the message names the group's
+  instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per
+  file and line), and the finding is reported at the first import of the first of them. The dependencies to cut are
+  those that go back in a greedy order of the group that leaves few imports going back (each dependency weighing as
+  many imports as make it), so cutting them all leaves the group with no cycle. A project whose instances share a few
+  back edges sees one finding per group, not one per path through them.
+
 ### Fixed
 
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
