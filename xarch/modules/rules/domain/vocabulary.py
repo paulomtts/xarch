@@ -188,6 +188,8 @@ FIELDS: dict[str, str] = {
     "unreadable": "whether a file could not be read as text at all",
     "doc": "whether a comment is a doc comment",
     "public": "whether the name is for other files to use, as the language decides it",
+    "bases": "the classes a class derives from, however far: each base it names, read through the import that binds "
+             "it or as a class of its own file, then the bases of each the project defines, each a dotted name",
 }
 """Every field a kind of fact may carry, and what it is."""
 
@@ -234,11 +236,11 @@ KINDS: tuple[Kind, ...] = (
     Kind("comment", "each comment, its text as written", ("line", "text", "marker", "doc"), needs=("comment",),
          field_needs={"doc": ("comment.doc",)}),
     Kind("class", "each class defined at the top level of a file", ("line", "name", "mentions", "exception", "record",
-                                                                    "interface", "immutable", "public"),
+                                                                    "interface", "immutable", "public", "bases"),
          needs=("class",), field_needs={"mentions": ("class.named",), "exception": _CLASS_EXCEPTION,
                                         "record": ("class.record",),
                                         "interface": ("class.interface",), "immutable": ("class.immutable",),
-                                        "public": ("public",)}),
+                                        "public": ("public",), "bases": ("class.bases",)}),
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
          ("line", "name", "top-level", "forwards", "public"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
@@ -295,6 +297,9 @@ FILTERS: tuple[Filter, ...] = (
            ("returned",)),
     Filter("exception", "the class is an exception: it derives from one of the language's exceptions, or from a class "
                         "of the app that is one, however far", FACT, ("exception",)),
+    Filter("extends", "the class derives from a class whose name matches the pattern, `*` standing for any text: one of "
+                      "its bases, or a base of a class the project defines that it derives from, however far, each "
+                      "read through the import that binds it", FACT, ("bases",), value=PATTERN),
     Filter("record", "the class is a record, as the language's reader decides", FACT, ("record",)),
     Filter("interface", "the class is an interface: the language marks it as one", FACT, ("interface",)),
     Filter("immutable", "the class is an immutable record: one of its bases, or one of its decorators called with the "

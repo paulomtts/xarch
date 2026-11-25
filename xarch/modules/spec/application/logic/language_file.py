@@ -63,6 +63,9 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
                    positional argument at a place, and type_argument, by the type argument at a place, each
                    {callee}, {before} and {value}. Left out, the language writes no template, and a profile whose
                    table forms or mock specs need one is refused
+    worked         how the code of the checks written for the explanation is written, a map of one-line templates,
+                   each optional: subclass, a class that derives from a base, {name} and {base}. Left out, the
+                   token of that code is left as written
 
 and the facts its reader supplies (see capabilities), each graded:
 
@@ -92,12 +95,13 @@ from xarch.profile_values.language import (
     InterfaceMark,
     RecordMark,
     SpecWriting,
+    Worked,
     Writing,
 )
 
 KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "dynamic_attributes", "namespace", "cache", "standard", "name",
         "package", "member", "private", "special", "call", "nothing", "unannotated", "comments", "directives", "shebang",
-        "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions", "writing")
+        "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions", "writing", "worked")
 REQUIRED = ("title", "extensions", "namespace", "standard")
 JOINED = ("name", "package", "member")
 """The keys that say how an outside name is written: given together or not at all."""
@@ -148,6 +152,12 @@ _SPEC_TEMPLATES = {"keyword": ("{callee}", "{keyword}", "{value}"), "position": 
 _SPEC_HOLDING = {"keyword": "{callee}, {keyword} and {value}", "position": "{callee}, {before} and {value}",
                  "type_argument": "{callee}, {before} and {value}"}
 """What a problem says each template of `writing.specs` must hold."""
+WORKED = "worked: must be a mapping {subclass}: how the code of the checks written for the explanation is written"
+"""What the loader says of a value of `worked` that is not a mapping, once for the key."""
+_WORKED_TEMPLATES = {"subclass": ("{name}", "{base}")}
+"""The templates of `worked`, in the order a problem lists them, each with the placeholders it must hold."""
+_WORKED_HOLDING = {"subclass": "{name} and {base}"}
+"""What a problem says each template of `worked` must hold."""
 
 
 def language_of(name: str, document: Any) -> Language:
@@ -191,6 +201,7 @@ def language_of(name: str, document: Any) -> Language:
         supplies = (*supplies, Supply(PACKAGE_FACT, EXACT))
     immutable = _marks(document, problems, joins, namespace)
     writing = _writing(document, problems)
+    worked = _worked(document, problems)
     if problems:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title=title, extensions=extensions or (), package_files=package_files,
@@ -200,7 +211,7 @@ def language_of(name: str, document: Any) -> Language:
                               shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
                               importing=importing, immutable=immutable, branching_expressions=expressions,
                               names=names, package=package, member=member, unannotated=unannotated,
-                              writing=writing)
+                              writing=writing, worked=worked)
     return Language(name, checked, namespace, standard, cache, names)
 
 
@@ -491,6 +502,18 @@ def _writing(document: Mapping[Any, Any], problems: list[str]) -> Writing:
     found = _templates(value, "writing", _TEMPLATES, _HOLDING, ("specs",), problems)
     specs = _spec_templates(value["specs"], problems) if "specs" in value else SpecWriting()
     return Writing(**found, specs=specs)
+
+
+def _worked(document: Mapping[Any, Any], problems: list[str]) -> Worked:
+    """How the code of the checks written for the explanation is written; empty templates when the key is left out or
+    refused. Each template is a one-line text holding every placeholder of its own."""
+    if "worked" not in document:
+        return Worked()
+    value = document["worked"]
+    if not isinstance(value, Mapping):
+        problems.append(WORKED)
+        return Worked()
+    return Worked(**_templates(value, "worked", _WORKED_TEMPLATES, _WORKED_HOLDING, (), problems))
 
 
 def _spec_templates(value: Any, problems: list[str]) -> SpecWriting:

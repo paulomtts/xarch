@@ -240,8 +240,16 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
     assert tuple(replace(c, named=frozenset()) for c in parsed(tmp_path, text).classes) == (
         Class(4, "Repo", (("typing", "Protocol"),),
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
-               Method(8, "later", "None")), ("size",), fields=("size",), types=("int",)),
-        Class(10, "Typed", (("typing", "Protocol"), None), ()))
+               Method(8, "later", "None")), ("size",), fields=("size",), types=("int",), base_names=("Protocol",)),
+        Class(10, "Typed", (("typing", "Protocol"), None), (), base_names=("Protocol", "Base")))
+
+
+def test_a_class_names_each_base_by_its_last_name_as_written_and_by_nothing_when_it_is_no_name(tmp_path):
+    text = ("import abc\n\nclass Base: ...\nclass Mid(Base): ...\nclass Low(abc.ABC, Mid, make()): ...\n"
+            "class Bare: ...\n")
+    assert [(c.name, c.bases, c.base_names) for c in parsed(tmp_path, text).classes] == [
+        ("Base", (), ()), ("Mid", (None,), ("Base",)), ("Low", (("abc", "ABC"), None, None), ("ABC", "Mid", "")),
+        ("Bare", (), ())]
 
 
 MARKS = (RecordMark(base=("typing", "NamedTuple")),

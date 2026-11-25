@@ -456,8 +456,9 @@ class Fact(NamedTuple):
     it names (what an import imports, the name a use reaches, the callee of a call), a name it carries (a name an
     import takes, a method called, a parameter), the traits the reader recorded of it by name (relative, standard,
     held, receiver, annotated-callable), how many steps of its path the import binding it bound, for an import into
-    the app or the tests, the file or package it reaches below that root and where that sits, a text it says, and the
-    names it mentions (a class's or a file's). A run holds a fact for every import, name read and call of every file,
+    the app or the tests, the file or package it reaches below that root and where that sits, a text it says, the
+    names it mentions (a class's or a file's), and the classes a class derives from, however far, each as a dotted
+    path. A run holds a fact for every import, name read and call of every file,
     so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
@@ -469,6 +470,7 @@ class Fact(NamedTuple):
     at: Place | None = None
     text: str = ""
     names: frozenset[str] = frozenset()
+    bases: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -517,12 +519,16 @@ class Defined:
     """What the app defines, as the facts derived from it read it: the root package; where the file of each class it
     defines at the top level of a file sits, by the class's dotted path (the root first); the names each file, by its
     steps below the root, binds to a function alone; its classes that are exceptions, as (their file's steps, their
-    name); and its classes that are records, by their dotted path (the root first)."""
+    name); its classes that are records, by their dotted path (the root first); and the bases of every class the
+    project defines at the top level of a file, of the app or of the tests, by its dotted path (its side's root first),
+    each base as a dotted path: through the import that binds it, a class of its own file below that root, else its
+    name alone."""
     root: str
     classes: dict[tuple[str, ...], Place | None]
     functions: dict[tuple[str, ...], frozenset[str]]
     exceptions: frozenset[tuple[tuple[str, ...], str]] = frozenset()
     records: frozenset[tuple[str, ...]] = frozenset()
+    bases: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = field(default_factory=dict)
 
 
 class Found(NamedTuple):

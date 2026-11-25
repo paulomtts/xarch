@@ -7,6 +7,13 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The filter `extends: <pattern>` of a check of your own: a class derives from a class whose name the pattern matches,
+  one of its bases or, however far, a base of a class the project defines (of the app or of the tests) that it derives
+  from, each read through the import that binds it or as a class of its own file. The kind `class` carries the new
+  field `bases`, which the new fact `class.bases` supplies (Python's reader: exact, naming each base by its last step
+  as written, so that a class of the same file is followed too). A language's data file may give `worked`, the
+  templates the code of the checks `profile explain` shows is written with (`subclass`, a class deriving from a base),
+  so that the example of `filters.extends` is written in the language. The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

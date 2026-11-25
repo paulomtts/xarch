@@ -21,6 +21,7 @@ from xarch.profile_values.language import (
     InterfaceMark,
     RecordMark,
     SpecWriting,
+    Worked,
     Writing,
 )
 
@@ -43,7 +44,7 @@ LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
 KEYS_USED = ("branching, branching_expressions, cache, call, comments, directives, dynamic, dynamic_attributes, encoding, extensions, "
              "immutable, importing, interface, member, name, namespace, nothing, package, package_files, private, "
-             "shebang, special, standard, supplies, title, unannotated, writing")
+             "shebang, special, standard, supplies, title, unannotated, worked, writing")
 """The keys of a data file, as the unknown-key text lists them."""
 COMMENTS = "comments: each form is {line: <marker>}, {block: [<open>, <close>]} or {doc: [<open>, <close>]}"
 EXTENSIONS = "extensions: must be a non-empty list of endings, each starting with a dot"
@@ -623,3 +624,26 @@ def test_the_spec_templates_a_data_file_writes_are_read_each_under_its_form():
              "type_argument": "{callee}<{before}{value}>()"}
     assert language_of("pascal", DOCUMENT | {"writing": {"specs": specs}}).checked.writing == Writing(
         specs=SpecWriting(**specs))
+
+
+WORKED_MAPPING = ("worked: must be a mapping {subclass}: how the code of the checks written for the explanation is "
+                  "written")
+SUBCLASS = "worked.subclass: must be a line holding {name} and {base}"
+
+
+def test_python_writes_how_the_checks_written_for_the_explanation_declare_a_class_with_a_base():
+    assert PYTHON_LANGUAGE.checked.worked == Worked(subclass="class {name}({base}): ...")
+
+
+def test_a_language_whose_file_writes_no_worked_templates_loads_with_empty_ones():
+    assert language_of("pascal", DOCUMENT).checked.worked == Worked()
+
+
+@pytest.mark.parametrize("worked, expected", [
+    pytest.param("class {name}({base})", [WORKED_MAPPING], id="a text is no mapping"),
+    pytest.param({"klass": "x"}, ["worked: unknown key 'klass': use subclass"], id="an unknown key"),
+    pytest.param({"subclass": "class {name}"}, [SUBCLASS], id="a subclass template without its base"),
+    pytest.param({"subclass": "class {name}(\n{base})"}, [SUBCLASS], id="a subclass template over two lines"),
+])
+def test_a_bad_worked_is_refused(worked, expected):
+    assert refused(DOCUMENT | {"worked": worked}) == expected

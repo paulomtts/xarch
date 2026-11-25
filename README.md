@@ -182,7 +182,9 @@ comment being one `no-comments` keeps) and the comments its tools read after the
 encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
 (`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
 `{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
-"True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
+"True"}}`), and how the code of the checks `profile explain` shows as examples is written (`worked`: one-line
+templates, `subclass` a class deriving from a base, `class {name}({base}): ...` for Python; a token whose template
+the file leaves out stays as written). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
 reader supplies, which `holds`, its kind `records` and the filter `record` read. Whether a function is defined at the
 top level of its file, in no class, is the fact `function.top_level` a reader supplies, which the kinds `functions` and
 `records` of `holds`, `guards.dead-code.tests_only` and the filter `top-level` read; `holds` itself reads it only when
@@ -364,7 +366,13 @@ once for each value of its variables; `per_line` says the findings of one line t
 one, each written as its values joined by `, `). An import made only for the type checker, never when the code
 runs, carries the field `type-only` (the fact `import.type_only`; Python's reader sets it on each import in the body of
 an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import` or
-`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A check carries `examples`: code it
+`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A class carries its
+`bases` (the fact `class.bases`): each base it names, read through the import that binds it (an alias by the name it
+was imported as) or as a class of its own file, then the bases of each class the project defines, in the app or in
+the tests, however far; the filter `extends: <pattern>` holds of a class one of those matches by its name, so
+`keep: [{named: "*Page"}, {extends: Reactive}]` finds a page that derives from `Reactive` through any number of classes
+between, and `except: [{extends: "*Port"}]` excuses a fake that derives from a port. A base taken from a package file
+that only re-exports it is followed no further than its name. A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

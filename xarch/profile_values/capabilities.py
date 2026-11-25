@@ -40,6 +40,8 @@ FACTS: dict[str, str] = {
     "class.types": "the annotation of each field a class declares, as written",
     "class.exception": "whether a class derives from one of the language's builtin exceptions",
     "class.named": "every name a class's bases and body mention",
+    "class.bases": "each base a class names, followed through the import that binds it, or named as written when no "
+                   "import binds it, so that a class of its own file is found",
     "class.immutable": "whether a class is an immutable record, by the marks of the language's data file",
     "class.interface": "whether a class is an interface, by the marks of the language's data file",
     "file.package": "a file stands for the folder that holds it",

@@ -17,7 +17,7 @@ and variable can name a fact by its file and line: PROFILE's app (package `app`)
     app/platform/broken.py                    a file that does not parse
     tests/modules/docs/domain/test_doc.py     a unit test of domain: imports of the app, a helper, a fake, a test
     tests/modules/docs/builders.py            a helper that is no test
-    tests/fakes/repo.py                       the fakes: FakeRepo, and Fake itself
+    tests/fakes/repo.py                       the fakes: FakeRepo, deriving from Repo, and Fake itself
     tests/architecture/test_rules.py          a guard test, placed by its tier's folder
 """
 from __future__ import annotations
@@ -84,7 +84,9 @@ TESTS = [
              imp(2, "tests.modules.docs", "builders"), imp(3, "tests.fakes", "repo"),
              imp(4, "tests.architecture", "test_rules"), imp(5, "app.platform", "db")),
     in_tests("modules/docs/builders.py"),
-    in_tests("fakes/repo.py", classes=(Class(1, "FakeRepo"), Class(2, "Fake"))),
+    in_tests("fakes/repo.py", imp(1, "app.modules.docs.application.ports.repo", "Repo"),
+             classes=(Class(1, "FakeRepo", (("app", "modules", "docs", "application", "ports", "repo", "Repo"),),
+                            base_names=("Repo",)), Class(2, "Fake"))),
     in_tests("architecture/test_rules.py", imp(1, "app.kernel", "ids"))]
 
 FACTS = facts_of(APP, TESTS, PROFILE, "app", "tests")

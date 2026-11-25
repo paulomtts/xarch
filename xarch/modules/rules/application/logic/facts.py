@@ -30,7 +30,7 @@ turns its language's imports and names into such paths, and a fact into the app 
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
     class               each class defined at the top level, name its name, names those its bases and body mention;
                         exception, record, interface and immutable when it is one (below); public when the reader
-                        says it is public
+                        says it is public; bases every class it derives from, however far (below)
     function            each function defined at the top level or in a class of the top level, name its name, path
                         its class and its name; top-level when it is in no class; public when the reader says it is
                         public; forwards when it is a method the reader says only forwards, text the callee it
@@ -55,6 +55,10 @@ and the facts derived from them over the whole app:
     interface           a class the reader says is an interface, by the marks of the language's data file, the last
                         of its name in its file
     immutable           a class the reader says is an immutable record, by the marks of the language's data file
+    bases               of a class, each base it names: where the import that binds it leads, the class of its own
+                        file it names, else the name it is written with alone; then, for each base that is a class of
+                        the app or of the tests defined at the top level of a file, that class's bases, however far,
+                        each once (a class never derives from itself)
 """
 from __future__ import annotations
 
@@ -108,7 +112,10 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                              for c in f.classes},
                       {steps: frozenset(f.module_functions) for f, steps in parsed},
                       frozenset(_exceptions(parsed, root)),
-                      frozenset((root, *steps, c.name) for f, steps in parsed for c in f.classes if c.record))
+                      frozenset((root, *steps, c.name) for f, steps in parsed for c in f.classes if c.record),
+                      _bases([*((f, steps, root) for f, steps in parsed),
+                              *((f, steps, root if f.beside else tests_root) for f, steps, _ in tests
+                                if f.error is None)]))
     covered = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
     placed = [_covered(Read(file, steps, package, False, _placed(profile, cache, steps)), covered)
               for file, steps, package in app]
@@ -180,8 +187,10 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                               text=c.text) for c in file.comments)
         case "class":
             ports = {c.name: c for c in file.classes if c.interface}
+            side = root if not read.in_tests or file.beside else facts.tests_root
             return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, read, defined, ports),
-                              names=c.named) for c in file.classes)
+                              names=c.named, bases=_lineage((side, *read.steps, c.name), defined.bases))
+                         for c in file.classes)
         case "function":
             return tuple(_function(f) for f in file.functions)
         case "callback":
@@ -310,6 +319,34 @@ def _exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) 
                 found.add(key)
                 grown = True
     return found
+
+
+def _bases(files: Iterable[tuple[SourceFile, tuple[str, ...], str]]) -> dict[tuple[str, ...], tuple[tuple[str, ...], ...]]:
+    """The bases of every class of the files, each file with its steps below the root and that root, by the class's
+    dotted path: a base an import binds by where it leads, one written as the name of a class of the same file by that
+    class's path, any other by the name it is written with, alone; a base that is no name is none."""
+    found: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = {}
+    for file, steps, root in files:
+        local = {c.name for c in file.classes}
+        for cls in file.classes:
+            written = cls.base_names or ("",) * len(cls.bases)
+            found[(root, *steps, cls.name)] = tuple(
+                base if base is not None else (root, *steps, name) if name in local else (name,)
+                for base, name in zip(cls.bases, written) if base is not None or name)
+    return found
+
+
+def _lineage(path: tuple[str, ...], bases: dict[tuple[str, ...], tuple[tuple[str, ...], ...]]) -> tuple[tuple[str, ...], ...]:
+    """Every class the class at path derives from, however far: its own bases first, then theirs when the project
+    defines them, each once, the class itself never."""
+    found: list[tuple[str, ...]] = []
+    pending = list(bases.get(path, ()))
+    while pending:
+        base = pending.pop(0)
+        if base not in found and base != path:
+            found.append(base)
+            pending += bases.get(base, ())
+    return tuple(found)
 
 
 def _imported(file: SourceFile) -> Iterator[Fact]:

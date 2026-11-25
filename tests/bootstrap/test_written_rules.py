@@ -34,6 +34,9 @@ HAND_WRITTEN = {"cycles", "stand-ins", "scenario-coverage", "no-duplicates", "no
 """The rule ids of the checks that are no rule of the engine: hand-written, or with no key (syntax)."""
 KEY = re.compile(r"\b(?:parts|tiers|guards|checks)\.[\w.<>-]+")
 EXAMPLES = {"flagged": {"x.py": ""}, "clean": {"y.py": ""}}
+NEW_WORDS = {"filters.extends": "pages-never-reactive"}
+"""The words no bundled profile uses, each by its address, with the id of the check written for the explanation that
+shows it."""
 
 
 @pytest.fixture(autouse=True)
@@ -99,7 +102,7 @@ def test_every_rule_of_a_bundled_profile_written_as_a_check_finds_what_the_key_f
 
 
 def test_the_checks_written_for_the_explanation_load_and_behave_as_their_examples_say(tmp_path):
-    shown = [ask(address) for address in ("checks", "targets.text", "variables.type_only_fix")]
+    shown = [ask(address) for address in ("checks", "targets.text", "variables.type_only_fix", *NEW_WORDS)]
     written = {}
     for item in shown:
         written |= yaml.safe_load(item["example"]["check"])["checks"]
@@ -110,7 +113,7 @@ def test_the_checks_written_for_the_explanation_load_and_behave_as_their_example
     (tmp_path / "worked.yaml").write_text(yaml.safe_dump(profile, sort_keys=False))
     checked = runner.invoke(app, ["profile", "check", "worked.yaml"])
     assert checked.exit_code == 0, checked.output
-    assert set(written) == {"no-todo", "no-todo-in-tests", "types-stay-types"}
+    assert set(written) == {"no-todo", "no-todo-in-tests", "types-stay-types", *NEW_WORDS.values()}
 
 
 def test_every_word_of_every_category_has_an_example():

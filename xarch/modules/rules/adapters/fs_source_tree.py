@@ -49,6 +49,9 @@ marked as its receiver, unless the function is decorated `staticmethod`, and a p
 `Callable` (of typing or collections.abc, read through the import that binds it; alone, subscripted, in a `|` union,
 inside `Optional[...]`, or as the text of a string annotation) is marked as annotated callable.
 
+A class also names each of its bases by the name it is written with, its last step (a subscripted base by what it
+subscripts, "" for any other expression), so that a base no import binds, a class of its own file, is still named.
+
 A class is an exception when one of its bases is the bare name of a builtin exception that the module does not bind
 (and the file holds no star import), or a class defined before it in the file that is one.
 
@@ -1210,8 +1213,16 @@ def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Func
                                tuple(_annotation(child.annotation) or "" for child in declared),
                                _immutable(node, bases, scope, marks), _interface(bases, interface),
                                not is_private_name(node.name, private),
-                               record=_record(node.name, methods, functions, special)))
+                               record=_record(node.name, methods, functions, special),
+                               base_names=tuple(_base_name(b) for b in node.bases)))
     return found
+
+
+def _base_name(node: ast.expr) -> str:
+    """The name a base is written with, its last step: a subscripted base by what it subscripts; "" for one that is
+    no name or chain of attributes."""
+    node = node.value if isinstance(node, ast.Subscript) else node
+    return node.id if isinstance(node, ast.Name) else node.attr if isinstance(node, ast.Attribute) else ""
 
 
 def _record(name: str, methods: tuple[Method, ...], functions: tuple[Function, ...], special: str) -> bool:

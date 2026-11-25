@@ -131,7 +131,9 @@ class Class:
     as written (a string annotation by its text); immutable: it is an immutable record, as the reader was told one is
     marked (see RecordMark); interface: it is an interface, as the reader was told one is marked (see
     InterfaceMark); public: it is for other files to use, as the language's reader says; record: it is a record, as the
-    language's reader says."""
+    language's reader says; base_names: each of its bases by the name it is written with, its last step ("" for a base
+    that is no name), in the order of bases, so that a base no import binds, such as a class of its own file, is still
+    named."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -145,6 +147,7 @@ class Class:
     interface: bool = False
     public: bool = True
     record: bool = False
+    base_names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
