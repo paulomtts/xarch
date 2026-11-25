@@ -31,7 +31,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
                            note after it, in parentheses)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
-                           `libraries`), what each part may not use (with `forbidden`), the tiers (with `tiers`), types-only
+                           `libraries`), what each part may not use (with `uses.never`), the tiers (with `tiers`), types-only
                            (one line per tier with `types_only`), the test tree and the cycles (with a repeating folder),
                            then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
@@ -400,7 +400,7 @@ def _quoted(names: list[str]) -> str:
 
 def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
     lines = [_structure_line(architecture),
-             "`rules`: every import between parts is one that the `may_import` of the importing part allows "
+             "`may-import`: every import between parts is one that the `may_import` of the importing part allows "
              "(architecture.md, section 5)."]
     if architecture.libraries is not None:
         listed = "; ".join(f"`{docs_name(architecture, architecture.parts[name])}`: {_packages(packages)}"
@@ -409,8 +409,8 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         but = f" but what `reserved` names ({reserved})" if reserved else ""
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
                      f"library is always allowed{but}, and tests are not checked.")
-    if architecture.forbidden:
-        lines.append(_forbidden_line(architecture))
+    if architecture.uses_never:
+        lines.append(_never_use_line(architecture))
     if architecture.tiers:
         fakes = ""
         if architecture.fakes is not None:
@@ -447,20 +447,20 @@ def _packages(packages: tuple[str, ...]) -> str:
     return "any outside package" if EVERYTHING in packages else ", ".join(packages)
 
 
-def _forbidden_line(architecture: Architecture) -> str:
+def _never_use_line(architecture: Architecture) -> str:
     """The parts that share a list are named together, in the order the file lists them."""
     groups: dict[tuple[tuple[str, ...], ...], list[str]] = {}
-    for name, names in architecture.forbidden.items():
+    for name, names in architecture.uses_never.items():
         groups.setdefault(names, []).append(f"`{docs_name(architecture, architecture.parts[name])}`")
     listed = "; ".join(f"{_and(parts)}: {_ticked(tuple('.'.join(n) for n in names))}" for names, parts in groups.items())
-    tiers = [tier.name for tier in architecture.tiers if tier.forbidden]
+    tiers = [tier.name for tier in architecture.tiers if tier.apply_never]
     tests = f", and neither do the {_and(tiers)} tests of those parts" if tiers else ""
     methods = any(not entry[0] for names in groups for entry in names)
     seen = (", and a method written `.name()` called on anything but the object itself and what it holds;" if methods
             else ",")
-    return (f"`forbidden`: a part neither imports nor uses by name what is listed for it ({listed}){tests}. It "
-            f"catches what is written in the part's own files, through their imports and aliases{seen} not a name "
-            "reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
+    return (f"`never-use`: a part neither imports nor uses by name what its `uses.never` list names ({listed})"
+            f"{tests}. It catches what is written in the part's own files, through their imports and aliases{seen} "
+            "not a name reached through a variable or `getattr`, nor I/O done on the part's behalf elsewhere.")
 
 
 def _structure_line(architecture: Architecture) -> str:

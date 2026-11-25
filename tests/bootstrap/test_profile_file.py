@@ -14,20 +14,20 @@ PROFILE = """\
 name: small
 language: python
 testing: pytest
-forbidden:
+never:
   pure: [builtins.print]
 parts:
   core:
     path: core
     role: the rules
-    forbidden: pure
-    tier: unit
+    uses: {never: pure}
+    tests: unit
   cli:
     path: cli
     role: commands and output
     may_import: [core]
     libraries: [typer]
-    tier: unit
+    tests: unit
 tiers:
   unit: {}
 """
@@ -35,8 +35,8 @@ PRESET_PROFILE = """\
 name: preset
 testing: pytest
 parts:
-  results: {path: modules/<module>/results, role: the results, tier: unit}
-  ports: {path: modules/<module>/ports, role: the ports, tier: unit}
+  results: {path: modules/<module>/results, role: the results, tests: unit}
+  ports: {path: modules/<module>/ports, role: the ports, tests: unit}
 tiers:
   unit: {}
 fakes: {folder: fakes, for: [ports], prefix: Fake}
@@ -79,7 +79,7 @@ def test_libraries_are_strict_by_default(tmp_path):
 
 def test_the_names_a_part_forbids_are_enforced(tmp_path):
     assert check(tmp_path, {"core/rules.py": "print(1)\n"}) == [
-        "app/core/rules.py:1: core/ may not use builtins.print (parts.core.forbidden)"]
+        "app/core/rules.py:1: core/ may not use builtins.print (parts.core.uses.never)"]
 
 
 def test_the_preset_is_read_from_the_data_file_beside_the_bundled_profiles(tmp_path):
@@ -101,7 +101,7 @@ def test_a_version_line_is_refused_as_an_unknown_key(tmp_path):
         load_architecture(profile_in(tmp_path, "xarch: 2\n" + PROFILE))
     assert caught.value.problems == (
         f"{tmp_path / 'small.yaml'}: unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, "
-        "forbidden, guards, hints, language, layers, name, parts, reserved, review, testing, tiers",)
+        "guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers",)
 
 
 def test_a_bundled_profile_may_not_be_a_preset():

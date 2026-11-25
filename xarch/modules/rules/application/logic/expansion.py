@@ -12,7 +12,7 @@ from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
 from xarch.profile_values.checks import ALL, APP, STRUCTURE, TESTS, Condition, Saying, Scope
 
-FORBIDDEN_FIX = "do what needs {hit} outside {scope_part}/, and hand {scope_part}/ the result"
+NEVER_USE_FIX = "do what needs {hit} outside {scope_part}/, and hand {scope_part}/ the result"
 _of = condition
 
 
@@ -46,24 +46,24 @@ def _libraries(profile: Profile) -> tuple[Rule, ...]:
                                       (_all("not relative", "reserved"), _all("app-package"))))
 
 
-def _forbidden(profile: Profile) -> tuple[Rule, ...]:
-    """A file of a part with a `forbidden` list neither imports what it names, nor uses a name it lists, nor calls a
-    method it lists on anything but what its object holds; a test of a tier that applies the lists is held to the
-    list of each part it mirrors. One finding per line and name."""
-    if not profile.forbidden:
+def _never_use(profile: Profile) -> tuple[Rule, ...]:
+    """A file of a part with a `uses.never` list neither imports what it names, nor uses a name it lists, nor calls a
+    method it lists on anything but what its object holds; a test of a tier that applies the lists
+    (`uses.apply_never`) is held to the list of each part it mirrors. One finding per line and name."""
+    if not profile.uses_never:
         return ()
     facts = ("imported-name", "use", "method-call")
     keep, exempt = _all("not relative", "not on-own-object"), _all("reported-at-import")
     fakes = (_of(f"not below {'/'.join(profile.fakes.folder)}"),) if profile.fakes is not None else ()
-    found = [Rule("forbidden", Scope(APP, part), facts, MAY_NOT, (Match("path", names=names),),
-                  (Saying("{where} may not {verb} {hit} ({key})", FORBIDDEN_FIX, once=("line", "hit")),),
-                  keep=keep, exempt=exempt, key=f"parts.{part}.forbidden")
-             for part, names in profile.forbidden.items()]
-    found += [Rule("forbidden", Scope(TESTS, part, tier.name, fakes), facts, MAY_NOT, (Match("path", names=names),),
-                   (Saying("a test of {scope_part}/ ({tier} tier) may not {verb} {hit} ({key})", FORBIDDEN_FIX,
+    found = [Rule("never-use", Scope(APP, part), facts, MAY_NOT, (Match("path", names=names),),
+                  (Saying("{where} may not {verb} {hit} ({key})", NEVER_USE_FIX, once=("line", "hit")),),
+                  keep=keep, exempt=exempt, key=f"parts.{part}.uses.never")
+             for part, names in profile.uses_never.items()]
+    found += [Rule("never-use", Scope(TESTS, part, tier.name, fakes), facts, MAY_NOT, (Match("path", names=names),),
+                   (Saying("a test of {scope_part}/ ({tier} tier) may not {verb} {hit} ({key})", NEVER_USE_FIX,
                            once=("line", "hit")),),
-                   keep=keep, exempt=exempt, key=f"parts.{part}.forbidden; tiers.{tier.name}.apply_forbidden")
-              for tier in profile.tiers if tier.forbidden for part, names in profile.forbidden.items()]
+                   keep=keep, exempt=exempt, key=f"parts.{part}.uses.never; tiers.{tier.name}.uses.apply_never")
+              for tier in profile.tiers if tier.apply_never for part, names in profile.uses_never.items()]
     return tuple(found)
 
 
@@ -111,10 +111,10 @@ def _rules(profile: Profile) -> tuple[Rule, ...]:
                       "import from {target_part} only names that match {allowed_names} ({key}), or move what "
                       "needs the rest to a part that may import it", _all("names-restricted"))
     plain = "{where} may not import {target_part} ({target})"
-    found = [Rule("rules", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
+    found = [Rule("may-import", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                   (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}")),
                   keep=_all("target-placed"), key=f"parts.{part}.may_import") for part in profile.parts]
-    return (*found, Rule("rules", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
+    return (*found, Rule("may-import", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
                          (Saying(plain, "drop the import of {target_part}, or {move_fix}"),), keep=_all("target-placed")))
 
 
@@ -351,8 +351,8 @@ def _pass_through(profile: Profile) -> tuple[Rule, ...]:
                  for part in profile.pass_through)
 
 
-KEYS = ("parts.may_import", "parts.libraries", "parts.forbidden", "tiers.apply_forbidden", "tiers", "tiers.may_also_import",
-        "tiers.types_only",
+KEYS = ("parts.may_import", "parts.libraries", "parts.uses.never", "tiers.uses.apply_never", "tiers",
+        "tiers.may_also_import", "tiers.types_only",
         "parts.package_only", "parts.types_only", "parts.no_callbacks", "parts.names", "parts.built_by",
         "guards.private-imports", "guards.no-comments", "guards.closed-tree", "parts.holds", "parts.immutable",
         "parts.must_import", "tiers.must_import", "guards.dead-code", "guards.dead-code.untested",
@@ -363,8 +363,8 @@ order of the book: a key the engine expands to rules when a profile sets it."""
 
 def book(profile: Profile) -> dict[str, tuple[Rule, ...]]:
     """Every check the engine runs, by the name of its group, each the rules its keys expand to."""
-    return {"syntax": _syntax(profile), "rules": _rules(profile), "libraries": _libraries(profile),
-            "forbidden": _forbidden(profile), "tiers": _tiers(profile), "types-only tiers": _types_only_tiers(profile),
+    return {"syntax": _syntax(profile), "may-import": _rules(profile), "libraries": _libraries(profile),
+            "never-use": _never_use(profile), "tiers": _tiers(profile), "types-only tiers": _types_only_tiers(profile),
             "package-only": _package_only(profile), "types-only parts": _types_only_parts(profile),
             "no-callbacks": _no_callbacks(profile), "names": _names(profile), "built-by": _built_by(profile),
             "private-imports": _private_imports(profile), "no-comments": _no_comments(profile),

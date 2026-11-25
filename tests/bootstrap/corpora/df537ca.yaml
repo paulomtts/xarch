@@ -9,27 +9,27 @@ parts:
     path: modules/<module>/domain
     role: "entities, values, errors: invariants only"
     may_import: [kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   logic:
     path: modules/<module>/application/logic
     role: pure functions over the module's domain objects
     may_import: [domain, kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
     no_callbacks: true
-    tier: unit
+    tests: unit
 
   ports:
     path: modules/<module>/application/ports
     role: Protocols for what the module needs from the outside
     may_import: [domain, kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
-    tier: integration
+    tests: integration
 
   services:
     path: modules/<module>/application/services
@@ -38,9 +38,9 @@ parts:
     types_only: [contract]
     holds: classes
     names: "*Service"
-    forbidden: ambient
+    uses: {never: ambient}
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   controller:
     path: modules/<module>/application/controller.py
@@ -48,9 +48,9 @@ parts:
     may_import: [services, logic, domain, ports, contract, kernel]
     holds: classes
     names: "*Controller"
-    forbidden: ambient
+    uses: {never: ambient}
     built_by: [bootstrap]
-    tier: integration
+    tests: integration
 
   adapters:
     path: modules/<module>/adapters
@@ -60,30 +60,30 @@ parts:
     libraries: [ast, tokenize]
     holds: classes
     built_by: [bootstrap]
-    tier: unit
+    tests: unit
 
   platform:
     path: platform
     role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
     may_import: [kernel]
     libraries: [yaml]
-    tier: unit
+    tests: unit
 
   cli:
     path: cli
     role: the only place for commands and terminal output
     may_import: [reports, controller@any, contract@any, kernel]
     libraries: [typer]
-    tier: wired
+    tests: wired
     folders: [commands]
 
   reports:
     path: cli/reports
     role: formatting of Results into text and JSON
     may_import: [contract@any, kernel]
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
-    tier: unit
+    tests: unit
 
   main:
     path: __main__.py
@@ -98,25 +98,25 @@ parts:
     path: bootstrap
     role: "composition root: binds ports to adapters, hands controllers to cli/"
     may_import: everything
-    tier: wired
+    tests: wired
     folders: [migrations]
 
   contract:
     path: modules/<module>/contract
     role: "the module's published language: commands, Results"
     may_import: ["domain/values:*Id", kernel]
-    forbidden: pure
-    tier: integration
+    uses: {never: pure}
+    tests: integration
     package_only: true
 
   kernel:
     path: kernel
     role: pure primitives and the rules two modules share
-    forbidden: pure
-    tier: unit
+    uses: {never: pure}
+    tests: unit
     folders: [logic]
 
-forbidden:
+never:
   pure: [datetime.datetime.now, datetime.datetime.utcnow, datetime.datetime.today, datetime.date.today, time.time,
          time.time_ns, time.monotonic, time.perf_counter, builtins.open, builtins.print, builtins.input, sys.stdin,
          sys.stdout, sys.stderr, os.environ, os.getenv, socket, subprocess, sqlite3, urllib, http, shutil,
@@ -134,7 +134,7 @@ tiers:
   unit:
     proves: a pure rule of the kernel or a module, or an adapter's translation
     litmus: Does it call one part's own code directly, with nothing wired, and check its answer?
-    apply_forbidden: true
+    uses: {apply_never: true}
     docs:
       may_touch: what the part it mirrors may import; an adapter, temporary folders
 

@@ -61,18 +61,18 @@ SHAPE = (
     Shown('parts.built_by', 1, 'the only parts that may build its classes', False, True),
     Shown('parts.shared', 1, 'the part is there to be shared, by at least this many users', False, True),
     Shown('parts.libraries', 1, 'the outside packages the part may import', False, True),
-    Shown('parts.forbidden', 1, 'the list of names the part may not use', False, True),
-    Shown('parts.tier', 1, 'the tier whose tests cover the part', False, True),
+    Shown('parts.uses', 1, "what the part's code uses", False, True),
+    Shown('parts.tests', 1, 'the tier whose tests cover the part', False, True),
     Shown('parts.untested', 1, 'why no tier tests the part', False, True),
     Shown('parts.package_only', 1, 'the part is imported only as a package', False, True),
     Shown('parts.folders', 1, 'the folders below the part that the layout shows', False, True),
-    Shown('forbidden', 0, 'named lists of names a part may not use', False, True),
+    Shown('never', 0, 'named lists of names a part never uses', False, True),
     Shown('reserved', 0, 'standard-library names only some parts may import', False, True),
     Shown('layers', 0, 'chains of parts from the inside out', False, True),
     Shown('tiers', 0, 'the kinds of test, in the order their litmus tests run', False, True),
     Shown('tiers.proves', 1, 'what its tests prove, in one line', False, False),
     Shown('tiers.litmus', 1, 'the question that tells a test belongs to the tier', False, False),
-    Shown('tiers.apply_forbidden', 1, 'its tests keep to the forbidden list of the part they mirror', False, True),
+    Shown('tiers.uses', 1, 'what its tests keep to of the part they mirror', False, True),
     Shown('tiers.plain_tables', 1, 'its table tests hold no branch', False, True),
     Shown('tiers.types_only', 1, 'the parts its tests may import only as types', False, True),
     Shown('tiers.must_import', 1, 'what each of its test files has to reach', False, True),
@@ -149,7 +149,7 @@ def test_the_whole_format_is_the_keys_of_the_file_their_symbols_and_the_smallest
 def test_a_key_says_what_it_accepts_whether_check_enforces_it_through_which_rule_and_what_it_holds():
     key = explained("parts.may_import")
     assert (key.key, key.where, key.required, key.enforced, key.rules) == (
-        "parts.may_import", "parts.<part>", False, True, ("rules",))
+        "parts.may_import", "parts.<part>", False, True, ("may-import",))
     assert "@any" in key.accepts and "may_import: [core]" in key.example and key.keys == ()
     assert [(held_key.key, held_key.required) for held_key in explained("fakes").keys] == [
         ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False)]
@@ -179,3 +179,76 @@ def test_a_fact_the_default_language_does_not_grade_is_said_to_be_absent():
     assert (found.short, found.holder, found.name) == (
         (Shortfall("parts.names", "class", "nested classes are not read"),), "part", "names")
     assert spec.explain(Explain("parts.no_callbacks")).needs == (Need("callback", FACTS["callback"]),)
+
+
+def test_the_part_key_of_the_tier_that_covers_it_is_tests_and_its_example_writes_it():
+    spec, _ = spec_controller(**BUNDLED)
+    found = spec.explain(Explain("parts.<part>.tests"))
+    assert isinstance(found, KeyExplained)
+    assert (found.key, found.name, found.meaning, found.rules) == (
+        "parts.tests", "tests", "the tier whose tests cover the part", ("tiers",))
+    assert "`tests`" in found.accepts and "`tier`" not in found.accepts
+    assert found.example.endswith("    role: the documents\n    tests: unit\n") and "tier:" not in found.example
+
+
+def test_the_part_key_xarch_renamed_is_refused_with_the_fixed_text_however_it_is_typed():
+    spec, _ = spec_controller(**BUNDLED)
+    for address in ("parts.tier", "parts.<part>.tier"):
+        found = spec.explain(Explain(address))
+        assert isinstance(found, UnknownKey)
+        assert (found.key, found.retired) == ("parts.tier", "renamed in 0.3.0: write tests")
+
+
+def test_the_tier_of_scenario_coverage_is_still_a_key_of_the_format():
+    spec, _ = spec_controller(**BUNDLED)
+    found = spec.explain(Explain("guards.scenario-coverage.tier"))
+    assert isinstance(found, KeyExplained) and found.key == "guards.scenario-coverage.tier"
+
+
+def test_the_lists_a_part_never_uses_are_the_top_level_never_and_the_key_never_of_its_uses():
+    block, group, held = (explained(address) for address in ("never", "parts.uses", "parts.<part>.uses.never"))
+    assert (block.key, block.meaning) == ("never", "named lists of names a part never uses")
+    assert "`uses: {never: <list>}`" in block.accepts and block.example.endswith("    uses: {never: pure}\n")
+    assert (group.key, group.where, [shown.key for shown in group.keys]) == (
+        "parts.uses", "parts.<part>", ["parts.uses.never"])
+    assert (held.key, held.where, held.meaning) == (
+        "parts.uses.never", "parts.<part>.uses", "the list of names the part never uses")
+    assert "the built-in form of a check `may_not` over names used" in held.accepts
+
+
+def test_a_tier_s_uses_holds_the_switch_that_applies_the_part_s_never_list_to_its_tests():
+    group, switch = (explained(address) for address in ("tiers.uses", "tiers.<tier>.uses.apply_never"))
+    assert (group.key, [shown.key for shown in group.keys]) == ("tiers.uses", ["tiers.uses.apply_never"])
+    assert (switch.key, switch.where, switch.meaning) == (
+        "tiers.uses.apply_never", "tiers.<tier>.uses", "its tests keep to the never list of the part they mirror")
+    assert switch.accepts.startswith("true or false, a switch and not a list") and '"never apply"' in switch.accepts
+    assert "uses: {apply_never: true}" in switch.example
+
+
+def test_review_never_and_the_top_level_never_each_name_the_other_as_another_list():
+    assert "`review.never`" in explained("never").accepts
+    assert "the top-level `never`" in explained("review.never").accepts
+
+
+def test_the_keys_of_never_feed_the_rule_never_use():
+    assert [explained(address).rules for address in ("never", "parts.uses.never", "tiers.uses.apply_never")] == [
+        ("never-use",)] * 3
+
+
+@pytest.mark.parametrize("address, key, text", [
+    pytest.param("forbidden", "forbidden", "renamed in 0.3.0: write never", id="the old block"),
+    pytest.param("parts.forbidden", "parts.forbidden", "moved in 0.3.0: write uses: {never: <list>}",
+                 id="the old part key"),
+    pytest.param("parts.<part>.forbidden", "parts.forbidden", "moved in 0.3.0: write uses: {never: <list>}",
+                 id="the old part key with its placeholder"),
+    pytest.param("tiers.apply_forbidden", "tiers.apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}",
+                 id="the old tier key"),
+    pytest.param("tiers.<tier>.apply_forbidden", "tiers.apply_forbidden",
+                 "moved in 0.3.0: write uses: {apply_never: true}", id="the old tier key with its placeholder"),
+    pytest.param("parts.never", "parts.never", "a key of uses: write uses: {never: <list>}", id="never on a part"),
+    pytest.param("tiers.apply_never", "tiers.apply_never", "a key of uses: write uses: {apply_never: true}",
+                 id="apply_never on a tier"),
+])
+def test_an_old_or_misplaced_name_of_never_is_refused_with_its_fixed_text(address, key, text):
+    found = explained(address)
+    assert (type(found), found.key, found.retired) == (UnknownKey, key, text)

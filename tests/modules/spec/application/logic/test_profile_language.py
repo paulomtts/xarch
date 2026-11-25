@@ -45,9 +45,9 @@ def test_the_standard_library_and_the_builtins_are_those_of_the_language():
                     languages=BOTH) == [
         "layered.yaml: parts.shared.libraries: 'strutils' is in the standard library, which every part may import "
         "unless `reserved` names it"]
-    assert problems(layered(forbidden={"pure": ["writeln"]}, parts={
-        **layered()["parts"], "shared": {"path": "shared", "role": "r", "forbidden": "pure"}}), languages=BOTH) == [
-        "layered.yaml: forbidden.pure: 'writeln' is a Pascal builtin, which a bare name does not ban: write system.writeln"]
+    assert problems(layered(never={"pure": ["writeln"]}, parts={
+        **layered()["parts"], "shared": {"path": "shared", "role": "r", "uses": {"never": "pure"}}}), languages=BOTH) == [
+        "layered.yaml: never.pure: 'writeln' is a Pascal builtin, which a bare name does not ban: write system.writeln"]
 
 
 @pytest.mark.parametrize("language, name", [(PASCAL, "unit.pas"), (PYTHON, "__init__.py")])

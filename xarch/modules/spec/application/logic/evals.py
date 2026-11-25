@@ -3,7 +3,7 @@ acts on it, though a value written wrong makes the profile invalid for every com
 eval, the line of each part below which a file reads as doubtful there
 (`evals.placement.lines`), the groups of parts one file cannot tell apart, each read on the sum of its parts'
 probabilities (`evals.placement.alike`: each a part, two or more to a group, a part in one group at most, the parts of a
-group alike in what `check` holds them to by `forbidden`, `holds` and `immutable`) and the examples placement is held to
+group alike in what `check` holds them to by `uses.never`, `holds` and `immutable`) and the examples placement is held to
 besides the docs' (`evals.placement.examples`); under any other id, an eval of the profile's own:
 
     <id>:                 lowercase words joined by `-`, never `placement`
@@ -58,7 +58,7 @@ Examples = tuple[tuple[str, str], ...]
 """Example files, each by its path below the app with its code."""
 Groups = tuple[tuple[str, ...], ...]
 """The groups of parts placement reads alike, each its parts by name in the order written."""
-_RULED = ("forbidden", "holds", "immutable")
+_RULED = ("uses.never", "holds", "immutable")
 """The keys of a part by which `check` tells parts apart, so that parts that differ in one are not alike."""
 
 
@@ -149,7 +149,7 @@ def unlike(alike: Groups, ruled: Mapping[str, tuple[Any, ...]]) -> list[str]:
             if differ:
                 found.append(f"evals.{BUILT_IN}.alike[{i}]: {first} and {other} differ in {_and(differ)}: check tells "
                              "them apart by rule, so one file is not all that tells them apart: write the same "
-                             "forbidden, holds and immutable for each, or drop the group")
+                             "uses.never, holds and immutable for each, or drop the group")
     return found
 
 

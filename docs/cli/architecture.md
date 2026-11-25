@@ -365,7 +365,7 @@ class Document:
 ```
 
 > [!TIP]
-> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors the module's rules raise, each named for the module's thing; the bases they subclass, which name no module's thing, are `kernel/`'s. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it an invariant of one of this module's entities or values (a state transition or a validation) that can run with no database and no clock? If yes, it goes here, on that entity or value. An id that names one of the module's things is defined here too, in `domain/values.py`, and `contract/` re-exports it; so are the errors the module's rules raise, each named for the module's thing; the bases they subclass, which name no module's thing, are `kernel/`'s. If it is a value the module hands out as it is, with nothing to reshape, it goes in `domain/published.py`, which `contract/` re-exports. If it is a pure rule that is not one entity's invariant, it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
 
 ### 8.3 application/controller.py
 
@@ -476,7 +476,7 @@ from app.modules.documents.application.logic.staleness import is_stale
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it a pure function over this module's domain objects, not one entity's invariant, with no port and no I/O? If yes, it goes here, in a file named for the rule. If it holds one entity's invariant, it belongs in that entity in `domain/`. If another module needs it too, it belongs in `kernel/logic/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
 
 ### 8.6 application/ports/
 
@@ -496,7 +496,7 @@ class DocumentRepo(Protocol):
 ```
 
 > [!TIP]
-> **Litmus test.** Is it something the application needs from outside itself (storage, search, email, or another module's rule) that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it something the application needs from outside itself (storage, search, email, or another module's rule) that can be declared as a `Protocol` with no implementation, in the module's own vocabulary and not in SQL or vendor terms? If yes, it goes here. If it is a generic primitive with no business meaning (such as `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
 
 ### 8.7 adapters/
 
@@ -598,10 +598,10 @@ def shortened(text: str, limit: int) -> str:
 ```
 
 > [!TIP]
-> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing carriers, the `Clock` protocol, but no class that implements it)? If yes, it goes here. A function that works a result out of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real time, it belongs in `platform/`. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it a primitive with no business meaning, one that could be lifted unchanged into an unrelated system: a base type, a protocol with no body, or a helper that makes a new id (base errors, lifecycle fields, tracing carriers, the `Clock` protocol, but no class that implements it)? If yes, it goes here. A function that works a result out of its arguments is not a primitive: when two or more modules need it, it goes in `kernel/logic/`. If only one module needs it, or it names one module's thing, such as a concrete id like `DocumentId` or an error like `DocumentNotFound`, it belongs in the owning module. If it wraps a technology or reads the real time, it belongs in `platform/`. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
 
 > [!TIP]
-> **Litmus test.** Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `forbidden` list: no clock and no I/O by name.
+> **Litmus test.** Is it a pure function with no port and no I/O, over `kernel/` primitives or plain values, that two or more modules need? If yes, it goes here, in a file named for the rule. If only one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than a function, it belongs in `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
 
 ### 9.2 platform/
 

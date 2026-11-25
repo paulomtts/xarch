@@ -18,13 +18,15 @@ from xarch.profile_values.capabilities import FACTS, Shortfall
 def _configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iterator[tuple[str, Key]]:
     """Each key the document sets that needs facts, with its address in the file, in the order of the file's scopes:
     the file, its parts, its tiers, its testing (a preset by what the preset holds), its guards, each with the keys of
-    its own map that need facts and are set."""
+    its own map that need facts and are set, a part's and a tier's then those of each group one of its keys opens
+    (`uses`)."""
     yield from _set(document, keys_of(PROFILE), "")
     for scope, held in ((PART, "parts"), (TIER, "tiers")):
         entries = document.get(held)
         for name, value in entries.items() if isinstance(entries, Mapping) else ():
             if isinstance(value, Mapping):
                 yield from _set(value, keys_of(scope), f"{held}.{name}.")
+                yield from _grouped(value, keys_of(scope), f"{held}.{name}.")
     testing = document.get("testing")
     testing = presets.get(testing) if isinstance(testing, str) else testing
     if isinstance(testing, Mapping):
@@ -47,6 +49,15 @@ def _set(mapping: Mapping[Any, Any], keys: tuple[Key, ...], prefix: str) -> Iter
     for key in keys:
         if key.needs and key.name in mapping and mapping[key.name] is not False:
             yield f"{prefix}{key.name}", key
+
+
+def _grouped(mapping: Mapping[Any, Any], keys: tuple[Key, ...], prefix: str) -> Iterator[tuple[str, Key]]:
+    """The keys that need facts set in each group a key of the mapping opens, one level down, such as a part's
+    `uses`; a group that is no mapping sets none."""
+    for key in keys:
+        group = mapping.get(key.name)
+        if key.opens and isinstance(group, Mapping):
+            yield from _set(group, keys_of(key.opens), f"{prefix}{key.name}.")
 
 
 def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Language) -> list[Shortfall]:

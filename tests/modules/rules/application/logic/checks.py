@@ -27,8 +27,8 @@ def libraries(files: Iterable[SourceFile], profile: Profile, root: str) -> list[
     return checked(expansion.book(profile)["libraries"], profile, files, root=root)
 
 
-def forbidden(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
-    return checked(expansion.book(profile)["forbidden"], profile, app, tests)
+def never_use(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile) -> list[Violation | Weak]:
+    return checked(expansion.book(profile)["never-use"], profile, app, tests)
 
 
 def package_only(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile,
@@ -46,7 +46,7 @@ def built_by(app: Iterable[SourceFile], profile: Profile, root: str) -> list[Vio
 
 
 def rules(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation | Weak]:
-    return checked(expansion.book(profile)["rules"], profile, files, root=root)
+    return checked(expansion.book(profile)["may-import"], profile, files, root=root)
 
 
 def types_only(tests: Iterable[SourceFile], app: Iterable[SourceFile], profile: Profile,

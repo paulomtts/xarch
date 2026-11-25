@@ -3,7 +3,7 @@ files written as the parser would hand them over, each argument defaulted so a t
 
 PROFILE's app is the package `app`, its tests the package `tests`; its repeating folder is modules/<module>/, holding
 domain/, contract/, application/{controller.py, services/, logic/, ports/} and adapters/, beside kernel/, platform/,
-web/ (the entry) and bootstrap/. Its tiers are unit (kernel, domain, logic, adapters; held to `forbidden`),
+web/ (the entry) and bootstrap/. Its tiers are unit (kernel, domain, logic, adapters; held to `uses.never`),
 integration (controller, services, ports, contract), rendering (web; the controller as a type only) and guard (by
 its folder, architecture/).
 """
@@ -67,7 +67,7 @@ FOLDERS = ((), ("bootstrap",), ("kernel",), ("kernel", "logic"), ("modules",), (
                                                   ("application", "ports"), ("adapters",)]),
            ("platform",), ("web",), ("web", "routes"))
 UNIT = CheckedTier("unit", (Target("kernel"), *own("domain", "logic", "adapters")), ("modules", "docs", "domain"),
-                forbidden=True)
+                apply_never=True)
 INTEGRATION = CheckedTier("integration", own("controller", "services", "ports", "contract"),
                        ("modules", "docs", "application"))
 RENDERING = CheckedTier("rendering", (Target("web"),), ("web",), types_only=("controller",))
@@ -86,7 +86,7 @@ PROFILE = Profile(
     stand_ins=StandIns((MOCK, ("unittest", "mock", "MagicMock")), (AUTOSPEC,), ("spec", "spec_set"),
                        (Fixture("mocker", ("Mock", "MagicMock"), ("create_autospec",)),), 0),
     framework=Framework(("test_*.py", "*_test.py"), "test_*"),
-    forbidden={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, default_tests="tests")
+    uses_never={"domain": (NOW, ("builtins", "open"), ("socket",))}, language=PYTHON, default_tests="tests")
 
 
 PLUGINS = Repeat("plugin", ("plugins",))

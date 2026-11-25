@@ -24,6 +24,7 @@ from xarch.modules.spec.domain.profile_keys import (
     NO_TWINS,
     PAGE,
     PART,
+    PART_USES,
     PASS_THROUGH,
     PLACEMENT,
     PROFILE,
@@ -41,10 +42,10 @@ from xarch.modules.spec.domain.profile_keys import (
 RENAMED = "renamed in 0.3.0: write tier"
 MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
-PART_USE = ("built_by, folders, forbidden, holds, immutable, libraries, litmus, may_import, must_import, names, "
-            "no_callbacks, package_only, path, role, shared, tier, types_only, untested")
-TIER_USE = "apply_forbidden, docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only"
-PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, language, layers, name, "
+PART_USE = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+            "package_only, path, role, shared, tests, types_only, untested, uses")
+TIER_USE = "docs, folder, litmus, may_also_import, may_import, must_import, plain_tables, proves, types_only, uses"
+PROFILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, testing, tiers")
 GUARD_USE = ("closed-tree, dead-code, no-comments, no-duplicates, no-twins, pass-through, private-imports, "
              "scenario-coverage, stand-ins")
@@ -82,8 +83,53 @@ def test_the_lookup_gives_the_text_of_the_entry_for_a_scope_and_a_name_or_nothin
         == (RENAMED, "", "", "")
 
 
-def test_the_shipped_table_gives_nothing():
-    assert (retired(PART, "tier"), retired_at("parts.tier")) == ("", "")
+TESTS = "renamed in 0.3.0: write tests"
+LIST_MOVED = "moved in 0.3.0: write uses: {never: <list>}"
+SWITCH_MOVED = "moved in 0.3.0: write uses: {apply_never: true}"
+BLOCK = "renamed in 0.3.0: write never"
+RULE = "renamed in 0.3.0: write never-use"
+IMPORT_RULE = "renamed in 0.3.0: write may-import"
+LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"
+SWITCH_OUTSIDE = "a key of uses: write uses: {apply_never: true}"
+
+
+@pytest.mark.parametrize("scope, name, text", [
+    pytest.param(PART, "tier", TESTS, id="the part key tier"),
+    pytest.param(PART, "forbidden", LIST_MOVED, id="the part key forbidden"),
+    pytest.param(TIER, "apply_forbidden", SWITCH_MOVED, id="the tier key apply_forbidden"),
+    pytest.param(PROFILE, "forbidden", BLOCK, id="the block forbidden"),
+    pytest.param(RULE_ID, "forbidden", RULE, id="the rule id forbidden"),
+    pytest.param(RULE_ID, "rules", IMPORT_RULE, id="the rule id rules"),
+    pytest.param(RULE_ID, "may-import", "", id="the rule id may-import, which xarch has"),
+    pytest.param(PART, "never", LIST_OUTSIDE, id="never on a part"),
+    pytest.param(TIER, "apply_never", SWITCH_OUTSIDE, id="apply_never on a tier"),
+    pytest.param(PART_USES, "never", "", id="never under a part's uses, a key"),
+    pytest.param(TIER, "forbidden", "", id="forbidden under a tier, only unknown"),
+    pytest.param(TIER, "tier", "", id="tier under a tier"),
+    pytest.param(SCENARIO_COVERAGE, "tier", "", id="the tier of scenario-coverage"),
+    pytest.param(PART, "tests", "", id="the part key tests"),
+])
+def test_the_shipped_table_answers_each_name_in_its_scope(scope, name, text):
+    assert retired(scope, name) == text
+
+
+@pytest.mark.parametrize("address, text", [
+    pytest.param("parts.tier", TESTS, id="parts.tier"),
+    pytest.param("parts.<part>.tier", TESTS, id="parts.<part>.tier"),
+    pytest.param("forbidden", BLOCK, id="forbidden"),
+    pytest.param("parts.forbidden", LIST_MOVED, id="parts.forbidden"),
+    pytest.param("parts.<part>.forbidden", LIST_MOVED, id="parts.<part>.forbidden"),
+    pytest.param("tiers.apply_forbidden", SWITCH_MOVED, id="tiers.apply_forbidden"),
+    pytest.param("tiers.<tier>.apply_forbidden", SWITCH_MOVED, id="tiers.<tier>.apply_forbidden"),
+    pytest.param("parts.never", LIST_OUTSIDE, id="parts.never"),
+    pytest.param("tiers.apply_never", SWITCH_OUTSIDE, id="tiers.apply_never"),
+    pytest.param("parts.uses.never", "", id="parts.uses.never"),
+    pytest.param("tiers.uses.apply_never", "", id="tiers.uses.apply_never"),
+    pytest.param("never", "", id="never"),
+    pytest.param("review.never", "", id="review.never"),
+])
+def test_the_shipped_table_answers_each_address_profile_explain_is_typed_with(address, text):
+    assert retired_at(address) == text
 
 
 @pytest.mark.parametrize("entry, address", [

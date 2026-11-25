@@ -36,3 +36,8 @@ def test_a_field_carried_only_sometimes_is_guarded_by_a_filter_that_exists():
 @pytest.mark.parametrize("word", [*FILTERS, *TARGETS, *VARIABLES], ids=lambda word: word.name)
 def test_every_word_applies_to_some_kind_of_fact(word):
     assert any(word.applies_to(kind) for kind in KINDS)
+
+
+def test_the_variable_key_is_shown_with_a_key_of_the_profile_as_a_profile_writes_it_now():
+    key = next(variable for variable in VARIABLES if variable.name == "key")
+    assert key.meaning == "the key of the profile the check comes from: parts.store.uses.never, checks.<id>"

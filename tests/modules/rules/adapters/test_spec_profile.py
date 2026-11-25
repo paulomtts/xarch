@@ -42,7 +42,7 @@ from xarch.profile_values.tiers import CheckedTier
 
 TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id")
 VIEW = ProfileView(
-    parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", forbidden=(("socket",),),
+    parts=(PartView("core", ("core",), (), "the rules", "Is it a rule?", "core/", uses_never=(("socket",),),
                     holds="functions", no_callbacks=True, shared=2, immutable=True),
            PartView("api", ("src", "*", "api"), (Target("core"),), "handlers", shown="api/ of src/<module>",
                     untested="it only wires", must_import=(Target("core"),), types_only=("core",), names=("*Api",),
@@ -58,7 +58,7 @@ VIEW = ProfileView(
                       no_twins_translated=("api",), dead_code=True, untested=True, tests_only=True,
                       tests_only_known=("api/x.py:run",), pass_through=("api",), private_imports=True),
     fakes=Fakes(("fakes",), ("api",), "Fake"), framework=Framework(("test_*.py",), "test_*", (("skip",),)),
-    excluded=(Excluded(("vendor",), "not ours"),), hints={"rules": "ask first"},
+    excluded=(Excluded(("vendor",), "not ours"),), hints={"may-import": "ask first"},
     checks={"no-print": WrittenCheck(("call",), Scope(), Quantified("may_not", (WrittenTarget("path", ("builtins.print",)),)),
                                      (Saying("{where} prints", "log it"),))})
 
@@ -112,7 +112,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
                             CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id"), "test_{name}.py"),
         no_comments=True, stand_ins=StandIns((("m", "Mock"),), (), ("spec",), (Fixture("mocker", ("Mock",)),)),
         closed_tree=True, framework=Framework(("test_*.py",), "test_*", (("skip",),)),
-        forbidden={"core": (("socket",),)},
+        uses_never={"core": (("socket",),)},
         info={"core": PartInfo("the rules", "Is it a rule?", "core/"),
               "api": PartInfo("handlers", "", "api/ of src/<module>", "it only wires")},
         excluded=(Excluded(("vendor",), "not ours"),), must_import={"api": (Target("core"),)}, no_duplicates=4, no_twins=3,
@@ -120,7 +120,7 @@ def test_the_profile_view_becomes_the_profile_the_checks_see():
         dead_code=True, pass_through=("api",), untested=True, tests_only=True, tests_only_known=("api/x.py:run",),
         holds={"core": "functions"}, immutable=("core",),
         types_only={"api": ("core",)}, no_callbacks=("core",), names={"api": ("*Api",)}, built_by={"api": ("core",)},
-        shared={"core": 2}, private_imports=True, hints={"rules": "ask first"}, written=VIEW.checks, default_tests="tests")
+        shared={"core": 2}, private_imports=True, hints={"may-import": "ask first"}, written=VIEW.checks, default_tests="tests")
 
 
 def test_the_standing_keeps_the_guards_left_off_and_those_the_baseline_leaves_off_too():

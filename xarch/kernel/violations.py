@@ -7,7 +7,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-RULES = ("rules", "libraries", "forbidden", "tiers", "types-only", "cycles", "package-only", "scenario-coverage",
+RULES = ("may-import", "libraries", "never-use", "tiers", "types-only", "cycles", "package-only", "scenario-coverage",
          "no-comments", "stand-ins", "closed-tree", "must-import", "no-duplicates", "no-twins", "dead-code",
          "pass-through", "holds", "immutable", "no-callbacks", "names", "built-by", "private-imports", "shared", "structure", "test-tree",
          "syntax")

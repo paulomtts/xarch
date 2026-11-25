@@ -36,9 +36,15 @@ def test_a_key_is_explained_with_what_it_accepts_whether_check_enforces_it_throu
     result = runner.invoke(app, ["profile", "explain", "parts.may_import"])
     assert result.exit_code == 0, result.output
     assert result.output.splitlines()[0] == "parts.may_import"
-    for expected in ("in: parts.<part>", "accepts:", "required: no", "enforced: yes, by the rule `rules`", "example:",
+    for expected in ("in: parts.<part>", "accepts:", "required: no", "enforced: yes, by the rule `may-import`", "example:",
                      "may_import: [core]", "keys: none"):
         assert expected in result.output
+
+
+def test_the_example_of_hints_gives_advice_for_the_rule_may_import():
+    result = runner.invoke(app, ["profile", "explain", "hints"])
+    assert result.exit_code == 0, result.output
+    assert "      may-import: Ask the maintainer before adding an import." in result.output.splitlines()
 
 
 def test_a_key_that_holds_keys_lists_them_and_a_guard_is_explained_by_its_name():
@@ -78,7 +84,7 @@ def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key
     assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("name: documents-app")
     assert "xarch profile explain parts.may_import" in whole["deeper"]
     key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
-    assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["rules"]
+    assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["may-import"]
     assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "read_by", "rules",
                         "example", "choices", "keys", "needs", "language"}
     assert key["read_by"] is None
@@ -208,9 +214,62 @@ def test_an_address_with_no_entry_is_refused_as_today_with_retired_null_in_json(
     assert found.exit_code == 2 and json.loads(found.output)["retired"] is None
 
 
+@pytest.mark.parametrize("address", [pytest.param("rules", id="the bare rule id"),
+                                     pytest.param("hints.rules", id="the rule id under hints")])
+def test_the_rule_id_rules_has_no_address_and_is_refused_as_any_unknown_key(address):
+    text = runner.invoke(app, ["profile", "explain", address])
+    assert text.exit_code == 2 and f"error: no key `{address}` in the format: the nearest are " in text.output
+    assert "may-import" not in text.output
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] is None
+
+
 def test_an_address_xarch_retired_in_a_project_whose_profile_does_not_load_is_refused_with_why(tmp_path, monkeypatch):
     retiring(monkeypatch, PART, "tested_by", RENAMED)
     (tmp_path / "pyproject.toml").write_text("[tool.xarch\n")
     refused = runner.invoke(app, ["profile", "explain", "parts.tested_by"])
     assert refused.exit_code == 2 and "cannot read" in refused.output and "pyproject.toml" in refused.output
     assert RENAMED not in refused.output
+
+
+SHIPPED = "renamed in 0.3.0: write tests"
+
+
+def test_the_part_key_tier_is_refused_with_the_rename_in_text_and_in_json():
+    text = runner.invoke(app, ["profile", "explain", "parts.tier"])
+    assert text.exit_code == 2
+    assert f"error: no key `parts.tier` in the format: {SHIPPED}; the nearest are " in text.output
+    found = runner.invoke(app, ["profile", "explain", "parts.<part>.tier", "--format", "json"])
+    assert found.exit_code == 2
+    document = json.loads(found.output)
+    assert (document["ok"], document["key"], document["retired"]) == (False, "parts.tier", SHIPPED)
+
+
+def test_the_part_key_tests_and_the_tier_of_scenario_coverage_are_explained():
+    tests = runner.invoke(app, ["profile", "explain", "parts.tests"])
+    assert (tests.exit_code, tests.output.splitlines()[0]) == (0, "parts.tests")
+    guard = runner.invoke(app, ["profile", "explain", "guards.scenario-coverage.tier"])
+    assert (guard.exit_code, guard.output.splitlines()[0]) == (0, "guards.scenario-coverage.tier")
+    assert SHIPPED not in tests.output + guard.output
+
+
+@pytest.mark.parametrize("address", ["never", "parts.uses", "parts.uses.never", "tiers.uses", "tiers.uses.apply_never",
+                                     "review.never"])
+def test_never_its_groups_and_review_never_are_explained(address):
+    found = runner.invoke(app, ["profile", "explain", address])
+    assert (found.exit_code, found.output.splitlines()[0]) == (0, address)
+
+
+@pytest.mark.parametrize("address, text", [
+    pytest.param("forbidden", "renamed in 0.3.0: write never", id="the old block"),
+    pytest.param("parts.forbidden", "moved in 0.3.0: write uses: {never: <list>}", id="the old part key"),
+    pytest.param("tiers.apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}", id="the old tier key"),
+    pytest.param("parts.never", "a key of uses: write uses: {never: <list>}", id="never on a part"),
+    pytest.param("tiers.apply_never", "a key of uses: write uses: {apply_never: true}", id="apply_never on a tier"),
+])
+def test_an_old_name_of_never_is_refused_with_its_text_exit_2_and_retired_in_json(address, text):
+    said = runner.invoke(app, ["profile", "explain", address])
+    assert said.exit_code == 2
+    assert f"error: no key `{address}` in the format: {text}; the nearest are " in said.output
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] == text

@@ -35,11 +35,11 @@ parts:
     path: "src/<module>/api"
     role: handlers
     may_import: [store]
-    tier: driver
+    tests: driver
   store:
     path: "src/<module>/store"
     role: database access
-    tier: unit
+    tests: unit
   shared: {path: shared, role: helpers, untested: reached through the parts that use it}
 tiers:
   unit:

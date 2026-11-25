@@ -13,8 +13,10 @@ from dataclasses import dataclass, field
 
 PROFILE = "profile"
 PART = "part"
+PART_USES = "part.uses"
 TIER = "tier"
 TIER_DOCS = "tier.docs"
+TIER_USES = "tier.uses"
 TESTING = "testing"
 TABLE = "testing.table"
 MOCKS = "testing.mocks"
@@ -38,8 +40,10 @@ EVAL = "evals.<id>"
 SCOPES = {
     PROFILE: "the file",
     PART: "parts.<part>",
+    PART_USES: "parts.<part>.uses",
     TIER: "tiers.<tier>",
     TIER_DOCS: "tiers.<tier>.docs",
+    TIER_USES: "tiers.<tier>.uses",
     TESTING: "testing",
     TABLE: "testing.table",
     MOCKS: "testing.mocks",
@@ -151,5 +155,14 @@ class Retired:
     text: str
 
 
-RETIRED: tuple[Retired, ...] = ()
+RETIRED: tuple[Retired, ...] = (
+    Retired(PART, "tier", "renamed in 0.3.0: write tests"),
+    Retired(PART, "forbidden", "moved in 0.3.0: write uses: {never: <list>}"),
+    Retired(TIER, "apply_forbidden", "moved in 0.3.0: write uses: {apply_never: true}"),
+    Retired(PROFILE, "forbidden", "renamed in 0.3.0: write never"),
+    Retired(RULE_ID, "forbidden", "renamed in 0.3.0: write never-use"),
+    Retired(PART, "never", "a key of uses: write uses: {never: <list>}"),
+    Retired(TIER, "apply_never", "a key of uses: write uses: {apply_never: true}"),
+    Retired(RULE_ID, "rules", "renamed in 0.3.0: write may-import"),
+)
 """Every key, guard and rule id xarch has retired: a profile writing one is refused with the entry's text."""

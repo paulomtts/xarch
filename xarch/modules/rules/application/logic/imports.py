@@ -1,6 +1,6 @@
 """What an import reaches: a file's dotted path below the root, and the file or package below the root each import
 into the root package names, read as a file when it is one. The checks read it through the facts (see facts); the
-rules of what a part may import are rules as data (the "rules" rules of expansion.book)."""
+rules of what a part may import are rules as data (the "may-import" rules of expansion.book)."""
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator

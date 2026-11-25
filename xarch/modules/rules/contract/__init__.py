@@ -185,7 +185,7 @@ class InPart:
     may_import: tuple[ReachView, ...]
     may_import_text: str
     libraries: tuple[str, ...] | None
-    forbidden: tuple[str, ...]
+    uses_never: tuple[str, ...]
     tested: CoveringTest | Untested | None
 
 
@@ -224,7 +224,7 @@ class InTests:
     may_import: tuple[ReachView, ...]
     may_import_text: str
     types_only: tuple[str, ...]
-    forbidden: tuple[str, ...]
+    uses_never: tuple[str, ...]
     tier: TierInfoView | None
     may_use_fakes: bool
     fakes_path: str

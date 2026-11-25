@@ -169,6 +169,6 @@ def test_a_part_redefined_without_the_litmus_its_base_gives_it_fails_strict_as_s
 
 def test_the_weak_findings_listed_are_those_found_then_the_untested_ones_when_there_are_tests():
     found, untested = Weak("holds", "a.py", 1, "m", "f"), Weak("dead-code", "b.py", 2, "m", "f")
-    violation = Violation("c.py", 3, "m", "rules", "f")
+    violation = Violation("c.py", 3, "m", "may-import", "f")
     assert weak_of([found, violation], [untested], True) == [found, untested]
     assert weak_of([found], [untested], False) == [found]

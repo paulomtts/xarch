@@ -125,12 +125,12 @@ def test_what_only_fills_the_docs_sits_under_docs_and_loads_into_the_same_fields
 
 
 def test_the_tests_of_a_tier_are_held_to_forbidden_and_may_use_parts_as_types_only_when_it_says_so():
-    document = covered(forbidden={"pure": ["socket"]})
-    document["parts"]["service"]["forbidden"] = "pure"
-    document["tiers"]["unit"]["apply_forbidden"] = True
+    document = covered(never={"pure": ["socket"]})
+    document["parts"]["service"]["uses"] = {"never": "pure"}
+    document["tiers"]["unit"]["uses"] = {"apply_never": True}
     document["tiers"]["integration"]["types_only"] = ["service", "store"]
     tiers = parsed(document).tiers
-    assert [(t.forbidden, t.types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
+    assert [(t.apply_never, t.types_only) for t in tiers] == [(True, ()), (False, ("service", "store"))]
 
 
 def test_a_tier_with_a_folder_of_its_own_says_what_its_tests_may_import_there():
@@ -169,18 +169,18 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
 
 
 @pytest.mark.parametrize("tier, expected", [
-    pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use apply_forbidden, docs, folder, "
-                                "litmus, may_also_import, may_import, must_import, plain_tables, proves, "
-                                "types_only", id="an unknown key"),
+    pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use docs, folder, litmus, "
+                                "may_also_import, may_import, must_import, plain_tables, proves, types_only, "
+                                "uses", id="an unknown key"),
     pytest.param({"plain_tables": "yes"}, "layered.yaml: tiers.unit.plain_tables: must be true or false: whether "
                                           "every table test of the tier holds no branch in its body",
                  id="plain_tables that is no boolean"),
     pytest.param({"proves": "a\nb"}, "layered.yaml: tiers.unit.proves: must be one line of text", id="proves of two lines"),
     pytest.param({"litmus": 3}, "layered.yaml: tiers.unit.litmus: must be text: the question that tells a test "
                                 "belongs to the tier", id="a litmus that is no text"),
-    pytest.param({"apply_forbidden": "yes"}, "layered.yaml: tiers.unit.apply_forbidden: must be true or false: "
-                                             "whether its tests are held to the `forbidden` list of the part they "
-                                             "mirror", id="apply_forbidden that is no boolean"),
+    pytest.param({"uses": {"apply_never": "yes"}}, "layered.yaml: tiers.unit.uses.apply_never: must be true or false: "
+                                                   "whether its tests are held to the `uses.never` list of the part "
+                                                   "they mirror", id="apply_never that is no boolean"),
     pytest.param({"types_only": ["repo"]}, "layered.yaml: tiers.unit.types_only: no part named 'repo'", id="types_only of no part"),
     pytest.param({"may_import": ["shared"]}, "layered.yaml: tiers.unit.may_import: only a tier with a `folder` has an "
                                              "allowance of its own: without one, its tests import what the part "
@@ -275,26 +275,121 @@ def test_the_example_and_helpers_of_a_tier_must_be_files_of_an_example_project()
 def test_a_part_names_its_tier_or_says_why_it_has_none_when_the_profile_has_tiers():
     document = covered()
     document["parts"]["shared"].pop("untested")
-    document["parts"]["store"].pop("tier")
+    document["parts"]["store"].pop("tests")
     document["parts"]["api"]["untested"] = "no need"
-    document["parts"]["service"]["tier"] = "nope"
+    document["parts"]["service"]["tests"] = "nope"
     assert problems(document) == [
-        "layered.yaml: parts.api: has a `tier` and is `untested`: drop one",
-        "layered.yaml: parts.service.tier: no tier named 'nope': use unit, integration",
-        "layered.yaml: parts.store: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`",
-        "layered.yaml: parts.shared: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`"]
+        "layered.yaml: parts.api: has `tests` and is `untested`: drop one",
+        "layered.yaml: parts.service.tests: no tier named 'nope': use unit, integration",
+        "layered.yaml: parts.store: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`",
+        "layered.yaml: parts.shared: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"]
 
 
 def test_a_part_naming_a_tier_in_a_profile_with_no_tiers_is_refused():
     document = layered()
-    document["parts"]["api"]["tier"] = "unit"
-    assert problems(document) == ["layered.yaml: parts.api.tier: the profile has no `tiers`: add them, or drop the key"]
+    document["parts"]["api"]["tests"] = "unit"
+    assert problems(document) == [
+        "layered.yaml: parts.api.tests: the profile has no `tiers`: add them, or drop the key"]
 
 
 def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     document = covered()
-    document["parts"]["api"]["tier"] = 3
-    assert problems(document) == ["layered.yaml: parts.api.tier: must be the name of a tier: use unit, integration"]
+    document["parts"]["api"]["tests"] = 3
+    assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
+
+
+PART_KEYS = ("built_by, folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+             "package_only, path, role, shared, tests, types_only, untested, uses")
+RETIRED_TIER = f"unknown key 'tier': renamed in 0.3.0: write tests; use {PART_KEYS}"
+NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
+
+
+def test_a_part_still_writing_tier_is_refused_with_the_rename_and_is_tested_by_no_tier():
+    document = covered()
+    document["parts"]["store"].pop("tests")
+    document["parts"]["store"]["tier"] = "integration"
+    assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}", f"layered.yaml: parts.store: {NO_TIER}"]
+
+
+def test_a_part_writing_tier_beside_tests_is_refused_for_tier_alone():
+    document = covered()
+    document["parts"]["store"]["tier"] = "integration"
+    assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}"]
+
+
+def test_a_part_writing_tier_and_a_key_only_unknown_gets_the_retired_problem_first():
+    document = covered()
+    document["parts"]["store"]["tier"] = "integration"
+    document["parts"]["store"]["tierr"] = 1
+    assert problems(document) == [f"layered.yaml: parts.store: {RETIRED_TIER}",
+                                  f"layered.yaml: parts.store: unknown key 'tierr': use {PART_KEYS}"]
+
+
+def test_the_value_written_under_tier_is_in_no_problem():
+    document = covered()
+    document["parts"]["store"].pop("tests")
+    document["parts"]["store"]["tier"] = "secret-value"
+    found = problems(document)
+    assert found == [f"layered.yaml: parts.store: {RETIRED_TIER}", f"layered.yaml: parts.store: {NO_TIER}"]
+    assert not any("secret-value" in problem for problem in found)
+
+
+def test_a_part_writing_tier_in_a_profile_with_no_tiers_gets_the_retired_problem_alone():
+    document = layered()
+    document["parts"]["api"]["tier"] = "unit"
+    assert problems(document) == [f"layered.yaml: parts.api: {RETIRED_TIER}"]
+
+
+def test_tier_under_a_tier_is_only_unknown_with_the_plain_message():
+    document = covered()
+    document["tiers"]["unit"]["tier"] = "x"
+    assert problems(document) == [
+        "layered.yaml: tiers.unit: unknown key 'tier': use docs, folder, litmus, may_also_import, may_import, "
+        "must_import, plain_tables, proves, types_only, uses"]
+
+
+def test_a_path_written_for_tests_is_told_it_names_a_tier_not_a_folder():
+    document = covered()
+    document["parts"]["api"]["tests"] = "tests/units"
+    assert problems(document) == [
+        "layered.yaml: parts.api.tests: no tier named 'tests/units': it names a tier of `tiers`, not a folder: "
+        "use unit, integration"]
+
+
+FOLDER = ": it names a tier of `tiers`, not a folder"
+
+
+@pytest.mark.parametrize("value, clause", [
+    pytest.param("tests/units", FOLDER, id="a folder of the tests"),
+    pytest.param("a/b", FOLDER, id="any text holding a slash"),
+    pytest.param("unit/", FOLDER, id="a tier name with a trailing slash"),
+    pytest.param("units", "", id="no slash: the plain message"),
+    pytest.param("tests", "", id="the tests folder's name, with no slash"),
+    pytest.param("tests\\units", "", id="a backslash is no slash"),
+])
+def test_a_value_of_tests_that_is_no_tier_name(value, clause):
+    document = covered()
+    document["parts"]["api"]["tests"] = value
+    assert problems(document) == [
+        f"layered.yaml: parts.api.tests: no tier named {value!r}{clause}: use unit, integration"]
+
+
+def test_a_tier_whose_name_holds_a_slash_is_named_by_tests_with_no_problem():
+    document = covered()
+    document["tiers"]["a/b"] = {}
+    document["parts"]["api"]["tests"] = "a/b"
+    architecture = parsed(document)
+    assert [subject.part for tier in architecture.tiers if tier.name == "a/b" for subject in tier.subject] == ["api"]
+
+
+@pytest.mark.parametrize("value", [
+    pytest.param(None, id="null"),
+    pytest.param(["tests/units"], id="a list holding a path"),
+])
+def test_a_value_of_tests_that_is_no_string_must_be_the_name_of_a_tier(value):
+    document = covered()
+    document["parts"]["api"]["tests"] = value
+    assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
 def test_tiers_need_the_framework_to_tell_a_test_from_a_helper():

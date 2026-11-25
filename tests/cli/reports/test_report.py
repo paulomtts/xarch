@@ -22,8 +22,8 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.spec.contract import Loosened, Origin
 
-A = Violation("app/a.py", 3, "a problem", "rules", "do this")
-B = Violation("app/a.py", 7, "another", "rules", "do that")
+A = Violation("app/a.py", 3, "a problem", "may-import", "do this")
+B = Violation("app/a.py", 7, "another", "may-import", "do that")
 C = Violation("app/b.py", 1, "a third", "tiers", "do the other")
 WHOLE = Violation("app/a.py", 0, "missing x/", "structure", "create x/")
 WEB = ["enforcement", "  profile:     web (bundled)"]
@@ -46,7 +46,7 @@ def lines(found=(), hints=None, state: EnforcementView = EnforcementView(), orig
         id="each finding is followed by its fix, and the summary counts the violations and their files"),
     pytest.param([WHOLE], {}, ["app/a.py: missing x/", "    fix: create x/", "1 violation(s) in 1 file(s)", *WEB],
                  id="a finding of a whole file shows no line"),
-    pytest.param([A, B], {"rules": "see docs/rules.md"}, [
+    pytest.param([A, B], {"may-import": "see docs/rules.md"}, [
         "app/a.py:3: a problem", "    fix: do this", "    hint: see docs/rules.md",
         "app/a.py:7: another", "    fix: do that", "    hint: see docs/rules.md", "2 violation(s) in 1 file(s)", *WEB],
         id="the hint of the rule follows the fix of each of its findings"),
@@ -77,10 +77,10 @@ def test_a_line_of_skips_names_five_places_then_counts_the_rest(skipped, line):
 
 
 def test_the_json_document_gives_each_violation_its_fix_and_the_hint_of_its_rule_as_keys_of_their_own():
-    checked = AppChecked((A, C), EnforcementView(), {"rules": "see the docs"}, False)
+    checked = AppChecked((A, C), EnforcementView(), {"may-import": "see the docs"}, False)
     document = json.loads(json_document("web", Origin("web"), checked, False))
     assert document["violations"] == [
-        {"rule": "rules", "file": "app/a.py", "line": 3, "message": "a problem", "fix": "do this",
+        {"rule": "may-import", "file": "app/a.py", "line": 3, "message": "a problem", "fix": "do this",
          "hint": "see the docs"},
         {"rule": "tiers", "file": "app/b.py", "line": 1, "message": "a third", "fix": "do the other", "hint": None}]
 

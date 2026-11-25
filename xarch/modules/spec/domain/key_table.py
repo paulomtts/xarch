@@ -23,6 +23,7 @@ from xarch.modules.spec.domain.profile_keys import (
     NO_TWINS,
     PAGE,
     PART,
+    PART_USES,
     PASS_THROUGH,
     PLACEMENT,
     PROFILE,
@@ -33,6 +34,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TESTING,
     TIER,
     TIER_DOCS,
+    TIER_USES,
     Key,
 )
 
@@ -49,8 +51,8 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "based_on", False, False, choices=CHOICE_BUNDLED),
     Key(PROFILE, "language", choices=CHOICE_LANGUAGES),
     Key(PROFILE, "testing", rules=("tiers", "test-tree"), opens=TESTING, choices=CHOICE_PRESETS),
-    Key(PROFILE, "parts", True, rules=("structure", "rules"), opens=PART),
-    Key(PROFILE, "forbidden", rules=("forbidden",)),
+    Key(PROFILE, "parts", True, rules=("structure", "may-import"), opens=PART),
+    Key(PROFILE, "never", rules=("never-use",)),
     Key(PROFILE, "reserved", rules=("libraries",)),
     Key(PROFILE, "layers"),
     Key(PROFILE, "tiers", rules=("tiers", "test-tree"), opens=TIER),
@@ -64,10 +66,10 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "review", False, False, opens=REVIEW, read_by=READ_BY_REVIEW),
     Key(PROFILE, "evals", False, False, opens=EVALS, read_by=READ_BY_REVIEW),
 
-    Key(PART, "path", True, rules=("structure", "rules")),
+    Key(PART, "path", True, rules=("structure", "may-import")),
     Key(PART, "role", True, False),
     Key(PART, "litmus", False, False),
-    Key(PART, "may_import", rules=("rules",)),
+    Key(PART, "may_import", rules=("may-import",)),
     Key(PART, "must_import", rules=("must-import",)),
     Key(PART, "types_only", rules=("types-only",)),
     Key(PART, "holds", rules=("holds",)),
@@ -77,15 +79,17 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "built_by", rules=("built-by",)),
     Key(PART, "shared", rules=("shared",)),
     Key(PART, "libraries", rules=("libraries",)),
-    Key(PART, "forbidden", rules=("forbidden",)),
-    Key(PART, "tier", rules=("tiers",)),
+    Key(PART, "uses", opens=PART_USES),
+    Key(PART, "tests", rules=("tiers",)),
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
     Key(PART, "folders", rules=("structure",)),
 
+    Key(PART_USES, "never", rules=("never-use",)),
+
     Key(TIER, "proves", False, False),
     Key(TIER, "litmus", False, False),
-    Key(TIER, "apply_forbidden", rules=("forbidden",)),
+    Key(TIER, "uses", opens=TIER_USES),
     Key(TIER, "plain_tables", rules=("scenario-coverage",)),
     Key(TIER, "types_only", rules=("types-only",)),
     Key(TIER, "must_import", rules=("must-import",)),
@@ -101,6 +105,8 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER_DOCS, "data", False, False),
     Key(TIER_DOCS, "example", False, False),
     Key(TIER_DOCS, "helpers", False, False),
+
+    Key(TIER_USES, "apply_never", rules=("never-use",)),
 
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
     Key(TESTING, "functions", True, rules=("scenario-coverage", "stand-ins")),
@@ -183,7 +189,7 @@ _KEYS: tuple[Key, ...] = (
 )
 
 _IMPORTS = ("import", "import.relative")
-_FORBIDDEN = (*_IMPORTS, "use", "method_call")
+_NEVER_USE = (*_IMPORTS, "use", "method_call")
 _TYPES_ONLY = ("call", "use", "module_functions")
 NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.may_import": _IMPORTS,
@@ -197,11 +203,11 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
                             "module_functions", "constant"),
     "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
-    "parts.<part>.forbidden": _FORBIDDEN,
+    "parts.<part>.uses.never": _NEVER_USE,
     "parts.<part>.package_only": _IMPORTS,
     "reserved": (*_IMPORTS, "import.standard"),
     "tiers": (*_IMPORTS, "file"),
-    "tiers.<tier>.apply_forbidden": _FORBIDDEN,
+    "tiers.<tier>.uses.apply_never": _NEVER_USE,
     "tiers.<tier>.types_only": _TYPES_ONLY,
     "tiers.<tier>.must_import": (*_IMPORTS, "function.statements", "file"),
     "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),

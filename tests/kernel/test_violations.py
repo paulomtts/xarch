@@ -5,8 +5,8 @@ from xarch.kernel.violations import RULES, Violation
 
 
 def test_a_violation_prints_where_it_is_and_what_was_found_and_leaves_the_fix_to_the_report():
-    assert [str(Violation("app/a.py", 3, "a problem", "rules", "do this"),),
-            str(Violation("app/a.py", 0, "a problem", "rules", "do this"))] == [
+    assert [str(Violation("app/a.py", 3, "a problem", "may-import", "do this"),),
+            str(Violation("app/a.py", 0, "a problem", "may-import", "do this"))] == [
         "app/a.py:3: a problem", "app/a.py: a problem"]
 
 
@@ -17,13 +17,13 @@ def test_a_violation_prints_where_it_is_and_what_was_found_and_leaves_the_fix_to
 ])
 def test_a_violation_without_a_fix_cannot_be_made(fix):
     with pytest.raises(ValueError, match="has no fix") as caught:
-        Violation("app/a.py", 3, "a problem", "rules", fix)
-    assert str(caught.value) == "a violation of rule 'rules' at app/a.py:3 has no fix: say what to do about it"
+        Violation("app/a.py", 3, "a problem", "may-import", fix)
+    assert str(caught.value) == "a violation of rule 'may-import' at app/a.py:3 has no fix: say what to do about it"
 
 
 def test_a_violation_cannot_be_made_without_giving_a_fix_at_all():
     with pytest.raises(TypeError):
-        Violation("app/a.py", 3, "a problem", "rules")
+        Violation("app/a.py", 3, "a problem", "may-import")
 
 
 def test_a_violation_of_an_unknown_rule_cannot_be_made():
@@ -33,7 +33,15 @@ def test_a_violation_of_an_unknown_rule_cannot_be_made():
 
 
 def test_the_rule_ids_are_the_stable_ids_of_every_check():
-    assert sorted(RULES) == ["built-by", "closed-tree", "cycles", "dead-code", "forbidden", "holds", "immutable",
-                             "libraries", "must-import", "names", "no-callbacks", "no-comments", "no-duplicates",
-                             "no-twins", "package-only", "pass-through", "private-imports", "rules", "scenario-coverage",
-                             "shared", "stand-ins", "structure", "syntax", "test-tree", "tiers", "types-only"]
+    assert sorted(RULES) == ["built-by", "closed-tree", "cycles", "dead-code", "holds", "immutable", "libraries",
+                             "may-import", "must-import", "names", "never-use", "no-callbacks", "no-comments",
+                             "no-duplicates", "no-twins", "package-only", "pass-through", "private-imports",
+                             "scenario-coverage", "shared", "stand-ins", "structure", "syntax", "test-tree", "tiers",
+                             "types-only"]
+
+
+def test_the_import_rule_is_may_import_first_and_a_built_in_violation_of_rule_rules_cannot_be_made():
+    with pytest.raises(ValueError, match="unknown rule") as caught:
+        Violation("app/a.py", 3, "a problem", "rules", "do this")
+    assert str(caught.value) == "a violation names an unknown rule 'rules': use one of " + ", ".join(sorted(RULES))
+    assert (RULES[0], "rules" in RULES) == ("may-import", False)

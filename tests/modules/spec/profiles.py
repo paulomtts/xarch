@@ -56,7 +56,7 @@ def covered(**changes) -> dict:
                        tiers={"unit": {"proves": "a rule", "litmus": "Does it decide?\nIf yes, it is a unit test.\n"},
                               "integration": {"proves": "a request", "litmus": "Does it need the database?"}})
     for name, tier in (("api", "integration"), ("service", "unit"), ("store", "integration")):
-        document["parts"][name]["tier"] = tier
+        document["parts"][name]["tests"] = tier
     document["parts"]["shared"]["untested"] = "reached through the parts that use it"
     return document | changes
 

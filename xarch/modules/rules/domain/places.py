@@ -54,7 +54,7 @@ class PartPlace:
     reaches: tuple[PartAt, ...]
     may_import_text: str
     libraries: tuple[str, ...] | None
-    forbidden: tuple[str, ...]
+    uses_never: tuple[str, ...]
     tier: CheckedTier | None
     test_folder: str
     test_file: str
@@ -95,7 +95,7 @@ class SuitePlace:
     singular: str
     reaches: tuple[PartAt, ...]
     may_import_text: str
-    forbidden: tuple[str, ...]
+    uses_never: tuple[str, ...]
     may_use_fakes: bool
     fakes_path: str
     test_code_from: str

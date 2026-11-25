@@ -35,15 +35,15 @@ def test_the_smallest_profile_is_a_name_and_parts_and_checks_the_layout_and_the_
 def test_a_profile_says_what_it_does_not_have_by_leaving_it_out():
     architecture = parsed(layered())
     assert (architecture.docs, architecture.examples, architecture.notes, architecture.layers, architecture.placement,
-            architecture.naming, architecture.fakes, architecture.files, architecture.forbidden,
+            architecture.naming, architecture.fakes, architecture.files, architecture.uses_never,
             architecture.excluded, architecture.hints, architecture.based_on) == (
         (), {}, {}, {}, ("api", "service", "store", "shared"), (), None, (), {}, (), {}, "")
 
 
 def test_unknown_keys_are_refused_with_the_keys_that_exist_in_the_file():
     assert problems(layered(colour=1, extra=2)) == [
-        "layered.yaml: unknown keys 'colour', 'extra': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, "
-        "hints, language, layers, name, parts, reserved, review, testing, tiers"]
+        "layered.yaml: unknown keys 'colour', 'extra': use based_on, checks, docs, evals, excluded, fakes, files, guards, "
+        "hints, language, layers, name, never, parts, reserved, review, testing, tiers"]
 
 
 def test_every_unknown_key_message_reads_the_table_of_keys():
@@ -161,8 +161,8 @@ def test_a_folder_that_is_a_part_is_refused_since_its_note_is_its_role():
                  ["layered.yaml: parts.x.role: must be a string", "layered.yaml: parts.x.litmus: must be a string"],
                  id="texts that are no strings"),
     pytest.param({"x": {"path": "x", "role": "r", "colour": 1}},
-                 ["layered.yaml: parts.x: unknown key 'colour': use built_by, folders, forbidden, holds, immutable, libraries, litmus, "
-                  "may_import, must_import, names, no_callbacks, package_only, path, role, shared, tier, types_only, untested"],
+                 ["layered.yaml: parts.x: unknown key 'colour': use built_by, folders, holds, immutable, libraries, litmus, "
+                  "may_import, must_import, names, no_callbacks, package_only, path, role, shared, tests, types_only, untested, uses"],
                  id="an unknown key"),
     pytest.param({"x": {"path": "x", "role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),
@@ -386,40 +386,40 @@ def test_bad_libraries_are_refused(libraries, expected):
     assert problems(document) == [expected]
 
 
-def test_a_part_refers_to_a_list_of_forbidden_names_by_its_name():
-    document = layered(forbidden={"pure": ["datetime.datetime.now", "builtins.open", "socket"]})
-    document["parts"]["service"]["forbidden"] = "pure"
-    document["parts"]["shared"]["forbidden"] = "pure"
-    forbidden = parsed(document).forbidden
-    assert forbidden == {"service": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",)),
-                         "shared": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",))}
+def test_a_part_refers_to_a_list_under_never_by_its_name():
+    document = layered(never={"pure": ["datetime.datetime.now", "builtins.open", "socket"]})
+    document["parts"]["service"]["uses"] = {"never": "pure"}
+    document["parts"]["shared"]["uses"] = {"never": "pure"}
+    uses_never = parsed(document).uses_never
+    assert uses_never == {"service": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",)),
+                          "shared": (("datetime", "datetime", "now"), ("builtins", "open"), ("socket",))}
 
 
 def test_a_part_that_names_no_list_forbids_nothing():
-    assert parsed(layered(forbidden={"pure": ["socket"]})).forbidden == {}
+    assert parsed(layered(never={"pure": ["socket"]})).uses_never == {}
 
 
-@pytest.mark.parametrize("forbidden, part, expected", [
-    pytest.param(3, "pure", ["layered.yaml: forbidden: must be a mapping of list names to lists of dotted names, such "
+@pytest.mark.parametrize("never, part, expected", [
+    pytest.param(3, "pure", ["layered.yaml: never: must be a mapping of list names to lists of dotted names, such "
                              "as {pure: [datetime.datetime.now, socket]}"], id="not a mapping"),
-    pytest.param({"pure": []}, "pure", ["layered.yaml: forbidden.pure: must be a non-empty list of dotted names or "
+    pytest.param({"pure": []}, "pure", ["layered.yaml: never.pure: must be a non-empty list of dotted names or "
                                         "import names, such as [datetime.datetime.now, socket]"], id="an empty list"),
-    pytest.param({"pure": ["open"]}, "pure", ["layered.yaml: forbidden.pure: 'open' is a Python builtin, which a bare "
+    pytest.param({"pure": ["open"]}, "pure", ["layered.yaml: never.pure: 'open' is a Python builtin, which a bare "
                                               "name does not ban: write builtins.open"], id="a bare builtin"),
-    pytest.param({"pure": ["socket", "socket"]}, "pure", ["layered.yaml: forbidden.pure: 'socket' is listed twice"],
+    pytest.param({"pure": ["socket", "socket"]}, "pure", ["layered.yaml: never.pure: 'socket' is listed twice"],
                  id="a name twice"),
-    pytest.param({"a b": ["socket"]}, "pure", ["layered.yaml: forbidden: 'a b' is not a list name: use letters, "
+    pytest.param({"a b": ["socket"]}, "pure", ["layered.yaml: never: 'a b' is not a list name: use letters, "
                                                "digits, '_' and '-'",
-                                               "layered.yaml: parts.service.forbidden: no list named 'pure': write "
-                                               "it under `forbidden`"], id="a bad list name"),
-    pytest.param({"pure": ["socket"]}, "impure", ["layered.yaml: parts.service.forbidden: no list named 'impure': "
-                                                  "use pure, or write it under `forbidden`"], id="no such list"),
-    pytest.param({"pure": ["socket"]}, 3, ["layered.yaml: parts.service.forbidden: must be the name of a list under "
-                                           "`forbidden`"], id="a part naming no text"),
+                                               "layered.yaml: parts.service.uses.never: no list named 'pure': write "
+                                               "it under `never`"], id="a bad list name"),
+    pytest.param({"pure": ["socket"]}, "impure", ["layered.yaml: parts.service.uses.never: no list named 'impure': "
+                                                  "use pure, or write it under `never`"], id="no such list"),
+    pytest.param({"pure": ["socket"]}, 3, ["layered.yaml: parts.service.uses.never: must be the name of a list "
+                                           "under `never`"], id="a part naming no text"),
 ])
-def test_bad_forbidden_lists_are_refused(forbidden, part, expected):
-    document = layered(forbidden=forbidden)
-    document["parts"]["service"]["forbidden"] = part
+def test_bad_forbidden_lists_are_refused(never, part, expected):
+    document = layered(never=never)
+    document["parts"]["service"]["uses"] = {"never": part}
     assert problems(document) == expected
 
 
@@ -444,8 +444,8 @@ def test_every_problem_of_a_profile_is_reported_at_once():
     document = layered(colour=1, language="ruby", layout={})
     document["parts"]["store"]["may_import"] = ["repo"]
     assert problems(document) == [
-        "layered.yaml: unknown keys 'colour', 'layout': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, "
-        "guards, hints, language, layers, name, parts, reserved, review, testing, tiers",
+        "layered.yaml: unknown keys 'colour', 'layout': use based_on, checks, docs, evals, excluded, fakes, files, guards, "
+        "hints, language, layers, name, never, parts, reserved, review, testing, tiers",
         "layered.yaml: language: 'ruby' is not a language xarch reads: use python",
         "layered.yaml: parts.store.may_import: 'repo' names no part 'repo'"]
 

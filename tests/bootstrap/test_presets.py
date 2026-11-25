@@ -10,14 +10,14 @@ from xarch.modules.scaffold.contract import InitProject, NewInstance, Scaffolded
 
 PROFILE = """\
 name: presets
-forbidden:
+never:
   nothing_printed: [builtins.print]
 parts:
   kernel: {path: kernel, role: primitives}
   ui:
     path: web/ui
     role: pages
-    forbidden: nothing_printed
+    uses: {never: nothing_printed}
 files:
   "{{app}}/web/ui/design/": {from: presets/design/}
   "notes.txt": {from: presets/design/tokens.css, fill: false}
@@ -73,8 +73,8 @@ def test_the_python_file_of_a_preset_that_follows_its_part_passes_the_check(tmp_
 
 
 @pytest.mark.parametrize("palette, rule", [
-    pytest.param(b"print('loaded')\n", "forbidden", id="a name the part forbids"),
-    pytest.param(b"from shop.kernel import x\n", "rules", id="an import the part's rules do not allow"),
+    pytest.param(b"print('loaded')\n", "never-use", id="a name the part forbids"),
+    pytest.param(b"from shop.kernel import x\n", "may-import", id="an import the part's rules do not allow"),
 ])
 def test_the_python_file_of_a_preset_that_breaks_its_part_is_reported(tmp_path, palette, rule):
     profile = profile_in(tmp_path, palette)

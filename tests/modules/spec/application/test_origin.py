@@ -33,9 +33,9 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
     parts = {**PARTS, "core": {**PARTS["core"], "may_import": ["store"], "libraries": ["yaml"]},
              "store": {"path": "store", "role": "storage", "may_import": ["core"],
                        "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
-    custom = {**BASE, "parts": parts, "forbidden": {"pure": ["socket"]},
+    custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"apply_forbidden": False, "may_also_import": ["edge"]}},
+                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
               "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
@@ -47,19 +47,19 @@ def test_every_way_a_custom_profile_is_looser_than_the_bundled_one_it_resembles_
         Loosened("may_import", "core", "store", "core may also import store (parts.core.may_import)"),
         Loosened("libraries", "core", "yaml", "core may also import yaml (parts.core.libraries)"),
         Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)"),
-        Loosened("forbidden", "core", "time.time", "core no longer forbids time.time (parts.core.forbidden)"),
+        Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
         Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
         Loosened("may_also_import", "unit", "edge", "the unit tests may also import edge (tiers.unit.may_also_import)"),
-        Loosened("apply_forbidden", "unit", "",
-                 "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)"),
+        Loosened("uses.apply_never", "unit", "",
+                 "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail", "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),
         Loosened("files.pinned", "", "tests/test_rules.py", "tests/test_rules.py is no longer pinned (files.tests/test_rules.py.pinned)"))
 
 
 def test_a_stricter_custom_profile_lists_nothing_and_a_broader_ban_covers_a_narrower_one():
-    custom = {**BASE, "parts": part("store", may_import=[]) | part("core", forbidden="pure"),
-              "forbidden": {"pure": ["time", "socket"]}}
+    custom = {**BASE, "parts": part("store", may_import=[]) | part("core", uses={"never": "pure"}),
+              "never": {"pure": ["time", "socket"]}}
     assert controller(custom).origin("mine.yaml").looser == ()
 
 

@@ -13,13 +13,13 @@ testing:
   table: {decorator: cases.table, row: cases.row, id: name}
   mocks: {calls: [doubles.Double], spec_keywords: [of]}
 parts:
-  contract:   {path: modules/<module>/contract, role: results, tier: integration}
+  contract:   {path: modules/<module>/contract, role: results, tests: integration}
   controller:
     path: modules/<module>/application/controller.py
     role: maps
     may_import: [contract, ports]
-    tier: integration
-  ports:      {path: modules/<module>/application/ports, role: ports, tier: integration}
+    tests: integration
+  ports:      {path: modules/<module>/application/ports, role: ports, tests: integration}
 tiers:
   integration: {proves: a use case, litmus: "Does it drive a controller?"}
 fakes: {folder: fakes, for: [ports], prefix: Fake}

@@ -8,9 +8,9 @@ that no target of the bundled one covers (a target covers what lies below it: th
 start of the added one's, and no name pattern or the same one; so a name pattern added to a target, or a folder below
 it, narrows it, and is not looser); an outside package added to a part's `libraries`, or `libraries` dropped as a
 whole; a target added to a part's `must_import`, or the key dropped from a part that has it; a name the bundled
-`forbidden` list of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly
+`uses.never` list of a part holds that no entry of the custom list covers (`time` covers `time.time`); a part newly
 marked `untested`; a part dropped from a tier's `types_only`; a target added to a tier's `may_also_import` that no
-target of the bundled tier's covers; a tier no longer `apply_forbidden`; a name dropped from `testing.skips`; a `files`
+target of the bundled tier's covers; a tier no longer `uses.apply_never`; a name dropped from `testing.skips`; a `files`
 entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
 profile gives a `litmus` that the custom one redefines without one; a public name `guards.dead-code.known` accepts as
 only the tests' that the bundled profile's does not; a part `guards.no-twins.translated` lists that the bundled
@@ -31,8 +31,8 @@ from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
 """(key, part, what): one way a profile is looser, before it is said."""
-LOOSER = ("may_import", "libraries", "forbidden", "must_import", "untested", LITMUS, "types_only", "may_also_import",
-          "apply_forbidden", "testing.skips", "files.pinned", "reserved", "known", "translated", "review.never",
+LOOSER = ("may_import", "libraries", "uses.never", "must_import", "untested", LITMUS, "types_only", "may_also_import",
+          "uses.apply_never", "testing.skips", "files.pinned", "reserved", "known", "translated", "review.never",
           "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 
@@ -66,8 +66,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
             found += [("libraries", name, package) for name in shared for package in custom.libraries.get(name, ())
                       if package not in base.libraries.get(name, ())]
     for name in shared:
-        kept = custom.forbidden.get(name, ())
-        found += [("forbidden", name, ".".join(banned)) for banned in base.forbidden.get(name, ())
+        kept = custom.uses_never.get(name, ())
+        found += [("uses.never", name, ".".join(banned)) for banned in base.uses_never.get(name, ())
                   if not any(banned[:len(entry)] == entry for entry in kept)]
     for name in shared:
         before, now = base.parts[name].must_import, custom.parts[name].must_import
@@ -84,8 +84,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
             found += [("types_only", tier.name, part) for part in tier.types_only if part not in mine.types_only]
             found += [("may_also_import", tier.name, _shown(t)) for t in mine.may_also_import
                       if not any(_covers(b, t) for b in tier.may_also_import)]
-    found += [("apply_forbidden", tier.name, "") for tier in base.tiers
-              if tier.forbidden and tier.name in tiers and not tiers[tier.name].forbidden]
+    found += [("uses.apply_never", tier.name, "") for tier in base.tiers
+              if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     skips = custom.framework.skips if custom.framework is not None else ()
     if base.framework is not None:
         found += [("testing.skips", "", ".".join(name)) for name in base.framework.skips if name not in skips]
@@ -149,8 +149,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{part} may import any outside package (parts.{part}.libraries)"
         case "libraries":
             return f"{part} may also import {what} (parts.{part}.libraries)"
-        case "forbidden":
-            return f"{part} no longer forbids {what} (parts.{part}.forbidden)"
+        case "uses.never":
+            return f"{part} no longer forbids {what} (parts.{part}.uses.never)"
         case "must_import" if not what:
             return f"{part} no longer has to import anything (parts.{part}.must_import)"
         case "must_import":
@@ -163,8 +163,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tests may now call {what} (tiers.{part}.types_only)"
         case "may_also_import":
             return f"the {part} tests may also import {what} (tiers.{part}.may_also_import)"
-        case "apply_forbidden":
-            return f"the {part} tests are no longer held to their part's forbidden list (tiers.{part}.apply_forbidden)"
+        case "uses.apply_never":
+            return f"the {part} tests are no longer held to their part's never list (tiers.{part}.uses.apply_never)"
         case "testing.skips":
             return f"{what} is no longer counted as a skip (testing.skips)"
         case "files.pinned":

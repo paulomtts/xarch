@@ -19,7 +19,7 @@ parts:
     role: the rules
     may_import: [api]
     libraries: [yaml]
-    forbidden: pure
+    uses: {never: pure}
     package_only: true
     holds: functions
     immutable: true
@@ -27,20 +27,20 @@ parts:
     no_callbacks: true
     names: "*"
     must_import: [api]
-    tier: unit
+    tests: unit
   api:
     path: api
     role: the api
     built_by: [core]
     holds: classes
-    tier: unit
-forbidden:
+    tests: unit
+never:
   pure: [time.time]
 reserved:
   ast: only the reader reads the language
 tiers:
   unit:
-    apply_forbidden: true
+    uses: {apply_never: true}
     types_only: [api]
     must_import: [core]
     may_also_import: [api]

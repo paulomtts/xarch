@@ -61,10 +61,10 @@ def test_the_bundled_profiles_forbid_the_clock_and_io_in_the_pure_parts_and_thei
     ambient = tuple(tuple(n.split(".")) for n in AMBIENT)
     environment = tuple(tuple(n.split(".")) for n in ENVIRONMENT)
     published = tuple(tuple(n.split(".")) for n in PUBLISHED)
-    assert architecture.forbidden == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
-                                      "controller": ambient, "adapters": ambient, "platform": environment,
-                                      name: environment, "contract": published, "kernel": pure, "kernel-logic": pure}
-    assert [tier.name for tier in architecture.tiers if tier.forbidden] == ["unit"]
+    assert architecture.uses_never == {"domain": pure, "logic": pure, "ports": pure, "services": ambient,
+                                       "controller": ambient, "adapters": ambient, "platform": environment,
+                                       name: environment, "contract": published, "kernel": pure, "kernel-logic": pure}
+    assert [tier.name for tier in architecture.tiers if tier.apply_never] == ["unit"]
 
 
 def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
@@ -72,12 +72,12 @@ def test_the_testing_doc_writes_a_line_per_derived_check_and_per_guard():
     section = testing.split("\n\n## 9. Guards\n\n", 1)[1].split("\n\n")[1]
     assert section == "\n".join([
         "- `structure`: every folder and file of the layout exists, in the app and in every `modules/<name>/`.",
-        "- `rules`: every import between parts is one that the `may_import` of the importing part allows "
+        "- `may-import`: every import between parts is one that the `may_import` of the importing part allows "
         "(architecture.md, section 5).",
         "- `libraries`: a part imports only the outside packages listed for it (`adapters/`: sqlmodel; "
         "`platform/`: sqlmodel; `web/`: fastapi; `bootstrap/`: sqlmodel, fastapi, uvicorn); the standard library "
         "is always allowed, and tests are not checked.",
-        "- `forbidden`: a part neither imports nor uses by name what is listed for it (`domain/`, "
+        "- `never-use`: a part neither imports nor uses by name what its `uses.never` list names (`domain/`, "
         "`application/logic/`, `application/ports/`, `kernel/logic/` and `kernel/`: "
         + ", ".join(f"`{n}`" for n in PURE) + "; `application/services/`, `application/controller.py` and `adapters/`: "
         + ", ".join(f"`{n}`" for n in AMBIENT) + "; `platform/` and `web/`: "

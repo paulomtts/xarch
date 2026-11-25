@@ -37,10 +37,10 @@ from xarch.profile_values.placement import Repeat, Target
 ROOT = Path("/src/pkg")
 PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},
                   {"kernel": (), "platform": (Target("kernel"),)}, ((), ("kernel",), ("platform",)),
-                  libraries={"kernel": (), "platform": ()}, hints={"rules": "ask first"})
+                  libraries={"kernel": (), "platform": ()}, hints={"may-import": "ask first"})
 BAD = {"kernel/x.py": [Import(1, ("pkg", "platform", "io"))], "platform/io.py": []}
 GOOD = {"kernel/x.py": [], "platform/io.py": [Import(1, ("pkg", "kernel", "x"))]}
-IMPORT = Violation("pkg/kernel/x.py", 1, "kernel/ may not import platform/ (pkg.platform.io)", "rules",
+IMPORT = Violation("pkg/kernel/x.py", 1, "kernel/ may not import platform/ (pkg.platform.io)", "may-import",
                    "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to a part that may "
                    "import platform/")
 MISSING = Violation("pkg", 0, "missing kernel/logic/", "structure", "create pkg/kernel/logic/")
@@ -57,16 +57,16 @@ def check(files: dict, when: CheckApp, structure: list[Violation] | None = None,
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(dict(files=GOOD), CheckApp(ROOT, "cli", ROOT.parent),
-                 AppChecked((), EnforcementView(), {"rules": "ask first"}, True),
+                 AppChecked((), EnforcementView(), {"may-import": "ask first"}, True),
                  id="an app with nothing wrong passes, with the profile's hints"),
     pytest.param(dict(files=BAD, structure=[MISSING]), CheckApp(ROOT, "cli", ROOT.parent),
-                 AppChecked((MISSING, IMPORT), EnforcementView(), {"rules": "ask first"}, False),
+                 AppChecked((MISSING, IMPORT), EnforcementView(), {"may-import": "ask first"}, False),
                  id="the source's and the structure's violations come in order of file, line and rule, and the check "
                     "fails"),
     pytest.param(dict(files={**GOOD, "stray.py": []}), CheckApp(ROOT, "cli", ROOT.parent, strict=True),
                  AppChecked((), EnforcementView(ungoverned=("pkg/stray.py",), ungoverned_folders=("pkg/stray.py",),
                                             strict=(FindingView("ungoverned", "pkg/stray.py"),)),
-                            {"rules": "ask first"}, False),
+                            {"may-import": "ask first"}, False),
                  id="under strict a finding of the enforcement fails the check too"),
     pytest.param(dict(files=GOOD), CheckApp(Path("/elsewhere"), "cli", ROOT.parent), NotADirectory(Path("/elsewhere")),
                  id="an app folder that is no folder is refused"),

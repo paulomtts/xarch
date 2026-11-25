@@ -140,9 +140,9 @@ def test_a_file_that_lies_where_a_docs_page_is_written_is_refused_naming_the_pag
 
 
 def test_excluded_folders_and_hints_are_as_they_were():
-    architecture = parsed(layered(excluded={"vendor": "copied code"}, hints={"rules": "see the docs"}))
+    architecture = parsed(layered(excluded={"vendor": "copied code"}, hints={"may-import": "see the docs"}))
     assert architecture.excluded == (Excluded(("vendor",), "copied code"),)
-    assert architecture.hints == {"rules": "see the docs"}
+    assert architecture.hints == {"may-import": "see the docs"}
     assert problems(layered(excluded={"shared": "no", "../x": "no"}, hints={"nope": "x"})) == [
         "layered.yaml: excluded.shared: 'shared' is a folder of the layout: it is source, not excluded",
         "layered.yaml: excluded: '../x' is not a folder below the app, such as vendor/generated",

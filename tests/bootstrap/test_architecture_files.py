@@ -142,13 +142,13 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('[]', [MUST_BE_A_MAPPING], id='a list'),
     pytest.param('3', [MUST_BE_A_MAPPING], id='a number'),
     pytest.param('just a string', [MUST_BE_A_MAPPING], id='a string'),
-    pytest.param('xarch: 2', ["unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, "
-                              "guards, hints, language, layers, name, parts, reserved, review, testing, tiers",
+    pytest.param('xarch: 2', ["unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, guards, "
+                              "hints, language, layers, name, never, parts, reserved, review, testing, tiers",
                               'missing `name`', 'missing `parts`'], id='a version line is an unknown key'),
-    pytest.param('name: [a]\nparts: [1]\nforbidden: x\nlayers: 3\ntiers: 4\nfakes: 5\nguards: 6\n'
+    pytest.param('name: [a]\nparts: [1]\nnever: x\nlayers: 3\ntiers: 4\nfakes: 5\nguards: 6\n'
                  'excluded: 7\nhints: 8\nfiles: 9\ndocs: 10\n',
                  ['`name` must be a non-empty string',
-                  'forbidden: must be a mapping of list names to lists of dotted names, such as '
+                  'never: must be a mapping of list names to lists of dotted names, such as '
                   '{pure: [datetime.datetime.now, socket]}',
                   'parts: must be a mapping of part names to {path, role, ...}',
                   'layers: must be a mapping of names to lists of parts, from the inside out',
@@ -162,7 +162,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'files: must be a mapping of paths to {from}, such as {tests/rules.py: {from: guard.py}}',
                   'excluded: must be a mapping of folders below the app to the reason each is not its source, such as '
                   '{vendor: copied code}',
-                  'hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}'],
+                  'hints: must be a mapping of rule ids to one line of text, such as {may-import: see the docs}'],
                  id='every top-level value of the wrong type'),
     pytest.param('name: n\nparts: {a: {path: a/<x>/<y>, role: r}}\n',
                  ["parts.a.path: 'a/<x>/<y>' has two repeating steps, <x> and <y>: a repeating folder cannot sit inside "
@@ -180,9 +180,9 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('name: n\nparts: {a: {path: a, role: r, may_import: [a]}}\n',
                  ["parts.a.may_import: 'a' is implied: a part may always import itself; remove it"],
                  id='a may_import that only says a part may import itself'),
-    pytest.param('name: n\nparts: {a: {path: a, role: r, forbidden: l}}\nforbidden: {l: [open]}\n',
-                 ["forbidden.l: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],
-                 id='a bare builtin in a forbidden list'),
+    pytest.param('name: n\nparts: {a: {path: a, role: r, uses: {never: l}}}\nnever: {l: [open]}\n',
+                 ["never.l: 'open' is a Python builtin, which a bare name does not ban: write builtins.open"],
+                 id='a bare builtin in a never list'),
     pytest.param('name: n\nparts: {a: {path: a, role: r, untested: 3, litmus: 4}}\n'
                  'docs: {entry: 1, pages: 2, naming: 3, examples: 4}\n',
                  ['parts.a.litmus: must be a string',
@@ -210,7 +210,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                  id='the entries of the optional keys of the wrong type'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\n'
                  'tiers: {unit: 3, 1: {}, integ: {proves: 1, litmus: [], docs: {example: 3, helpers: x, subject: 1}}}\n',
-                 ["parts.a: no tier tests it: give it `tier: <tier>`, or `untested: <reason>`",
+                 ["parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`",
                   'tiers.unit: must be a mapping, {} if it takes nothing',
                   'tiers: 1 is not a tier name: one line of text',
                   'tiers.integ.proves: must be one line of text',
@@ -227,9 +227,20 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   "files.y: unknown key 'z': use fill, from, pinned",
                   'files.y: missing `from`, the template file'],
                  id='files of the wrong shape'),
+    pytest.param('name: n\ntesting: pytest\ntiers: {unit: {}}\nparts: {a: {path: a, role: r, tier: secret-value}}\n',
+                 ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use built_by, folders, holds, "
+                  "immutable, libraries, litmus, may_import, must_import, names, no_callbacks, package_only, path, "
+                  "role, shared, tests, types_only, untested, uses",
+                  "parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"],
+                 id='a part still writing tier'),
+    pytest.param('name: n\nnever: {pure: [socket]}\nparts: {a: {path: a, role: r, forbidden: secret-list}}\n',
+                 ["parts.a: unknown key 'forbidden': moved in 0.3.0: write uses: {never: <list>}; use built_by, "
+                  "folders, holds, immutable, libraries, litmus, may_import, must_import, names, no_callbacks, "
+                  "package_only, path, role, shared, tests, types_only, untested, uses"],
+                 id='a part still writing forbidden'),
     pytest.param('name: n\nparts: {a: {path: a, role: r}}\nxarch2: 1\nrules: {a: []}\n',
-                 ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, forbidden, guards, hints, "
-                  "language, layers, name, parts, reserved, review, testing, tiers"],
+                 ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, guards, hints, "
+                  "language, layers, name, never, parts, reserved, review, testing, tiers"],
                  id='two keys that are nowhere'),
     pytest.param('name: n\n  bad: indentation\n',
                  ['not valid YAML: line 2, column 6: mapping values are not allowed here'],

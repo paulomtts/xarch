@@ -24,7 +24,7 @@ fragments:
         may_import: [core]
   tiered-part: |
     <<part>>
-        tier: unit
+        tests: unit
   testing: |
     testing:
       files: [check_*%extension%]
@@ -52,11 +52,11 @@ fragments:
       documents:
         path: units/<unit>/documents
         role: the documents
-        tier: integration
+        tests: integration
       results:
         path: units/<unit>/results
         role: the result unions
-        tier: integration
+        tests: integration
   coverage-guard: |
     <<coverage>>
     guards:
@@ -151,10 +151,10 @@ keys:
       paths and `folders`
     example: |
       <<two>>
-  forbidden:
-    meaning: named lists of names a part may not use
+  never:
+    meaning: named lists of names a part never uses
     accepts: >-
-      a map {<list>: [<dotted name>, ...]}; a part points to one list with `forbidden: <list>`. An entry is a dotted
+      a map {<list>: [<dotted name>, ...]}; a part points to one list with `uses: {never: <list>}`. An entry is a dotted
       name as an absolute import binds it (`datetime.datetime.now`; a builtin as `%namespace%.open`, a bare `open` is
       refused), a whole package (`socket`), or a method written with a leading dot and parentheses (`.absolute()`). A
       file may not import a listed package or anything below it, nor use a listed name, called or not, as the file
@@ -163,13 +163,14 @@ keys:
       object and what it holds (`self.paths.resolve()`: a port's or its own). A method entry matches any object with a
       method of that name, so it belongs only in a list of parts that never call one legitimately. Silent on a name
       reached through a variable or `getattr`, a method of an object the list does not name, an annotation, and what a
-      helper in another file does: a ban list, not a proof of purity
+      helper in another file does: a ban list, not a proof of purity. Not `review.never`, the files review never sends,
+      which is another list
     example: |
-      forbidden:
+      never:
         pure: [time.time, socket]
         ambient: [pathlib.Path.cwd, .absolute()]
       <<part>>
-          forbidden: pure
+          uses: {never: pure}
   reserved:
     meaning: standard-library names only some parts may import
     accepts: >-
@@ -193,7 +194,8 @@ keys:
   tiers:
     meaning: the kinds of test, in the order their litmus tests run
     accepts: >-
-      a map {<tier>: {...}}; with tiers, every part names its `tier` or says why it is `untested`; needs `testing`.
+      a map {<tier>: {...}}; with tiers, every part names the tier that `tests` it or says why it is `untested`;
+      needs `testing`.
       Tests mirror the app: tests/<path> for the app's <path>, and a test file has the tier of the part its folder
       mirrors (a folder that mirrors no part belongs to the tier whose `folder` holds it). A test imports only the part
       its folder mirrors and what that may import, a bare name meaning the instance it mirrors, then what its tier's
@@ -235,7 +237,7 @@ keys:
       output and `hint` in the JSON; an id that is no rule of `check` is refused when the profile loads
     example: |
       hints:
-        rules: Ask the maintainer before adding an import.
+        may-import: Ask the maintainer before adding an import.
   checks:
     meaning: checks of your own, beside the keys
     accepts: >-
@@ -417,17 +419,17 @@ keys:
     example: |
       <<part>>
           libraries: [yaml]
-  parts.<part>.forbidden:
-    meaning: the list of names the part may not use
-    accepts: the name of a top-level `forbidden` list
+  parts.<part>.uses:
+    meaning: what the part's code uses
+    accepts: "a map {never}: `never` names the list under the top-level `never` of what the part's code never uses"
     example: |
-      forbidden:
+      never:
         pure: [time.time, socket]
       <<part>>
-          forbidden: pure
-  parts.<part>.tier:
+          uses: {never: pure}
+  parts.<part>.tests:
     meaning: the tier whose tests cover the part
-    accepts: the name of a tier; one tier per part; with `tiers`, a part names its `tier` or is `untested`
+    accepts: the name of a tier; one tier per part; with `tiers`, a part names the tier that `tests` it or is `untested`
     example: |
       <<testing>>
       tiers:
@@ -452,6 +454,17 @@ keys:
       <<part>>
           folders:
             schemas: the table definitions
+  parts.<part>.uses.never:
+    meaning: the list of names the part never uses
+    accepts: >-
+      the name of one list under the top-level `never`: no file of the part uses a name the list holds, by an import or
+      in its code, a module, a dotted name or a method; the built-in form of a check `may_not` over names used. It names
+      code, not the parts the part may import, which `may_import` says
+    example: |
+      never:
+        pure: [time.time, socket]
+      <<part>>
+          uses: {never: pure}
   tiers.<tier>.proves:
     meaning: what its tests prove, in one line
     accepts: one line of text
@@ -470,14 +483,14 @@ keys:
         unit:
           litmus: Does it call one rule directly and check its answer?
       <<tiered-part>>
-  tiers.<tier>.apply_forbidden:
-    meaning: its tests keep to the forbidden list of the part they mirror
-    accepts: true or false
+  tiers.<tier>.uses:
+    meaning: what its tests keep to of the part they mirror
+    accepts: "a map {apply_never}: `apply_never: true` holds its tests to the `uses.never` list of the part they mirror"
     example: |
       <<testing>>
       tiers:
         unit:
-          apply_forbidden: true
+          uses: {apply_never: true}
       <<tiered-part>>
   tiers.<tier>.plain_tables:
     meaning: its table tests hold no branch
@@ -554,11 +567,11 @@ keys:
         core:
           path: core
           role: the rules of the documents
-          tier: unit
+          tests: unit
         documents:
           path: documents
           role: the documents
-          tier: unit
+          tests: unit
   tiers.<tier>.docs:
     meaning: what only fills the generated docs
     accepts: a map {subject, may_touch, one_file_per, cases_from, data, example, helpers}
@@ -642,6 +655,18 @@ keys:
         unit:
           docs:
             helpers: [tests/documents/builders%extension%]
+      <<tiered-part>>
+  tiers.<tier>.uses.apply_never:
+    meaning: its tests keep to the never list of the part they mirror
+    accepts: >-
+      true or false, a switch and not a list: true holds the tier's tests to the `uses.never` list of the part they
+      mirror (it applies the part's never list to them as well; it does not read as "never apply"); false is the same as
+      leaving it out
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          uses: {apply_never: true}
       <<tiered-part>>
   testing.files:
     meaning: patterns of a test file's name
@@ -858,11 +883,10 @@ keys:
       `fakes.for` names) is named by another file of the app, in code or an annotation, and every fake (a top-level
       class of the fakes folder whose name starts with `prefix`) is named by a test outside that folder or by a fake
       that is itself used. The port's own file, package files and the wiring (a part that may import `everything`) do
-      not count; names are compared by their last step. With `untested: true`, every file of a part that has a `tier`
-      that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
+      not count; names are compared by their last step. With `untested: true`, every file of a part whose `tests` names
+      a tier that no test of that tier reaches is also listed as `weak`, failing `check --strict` only (see
       guards.dead-code.untested); with `tests_only: true`, every public name only the tests use, but those `known`
-      accepts, which the enforcement section names instead (see guards.dead-code.tests_only and
-      guards.dead-code.known)
+      accepts, which the enforcement section names instead (see guards.dead-code.tests_only and guards.dead-code.known)
     example: |
       <<two>>
       <<fakes>>
@@ -972,11 +996,11 @@ keys:
   guards.dead-code.untested:
     meaning: also list the files no test of their tier reaches
     accepts: >-
-      true or false: every file of a part that has a `tier`, which no test code of that tier (a file below the tests
-      folder that the tier holds, test or not) imports, directly or through files of parts of that same tier that it
-      reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a package file,
-      and a file with no function or method holding a real statement (types, constants, %interface% stubs). Read only
-      with a tests folder
+      true or false: every file of a part whose `tests` names a tier, which no test code of that tier (a file below the
+      tests folder that the tier holds, test or not) imports, directly or through files of parts of that same tier that
+      it reaches, is listed as `weak` in the enforcement section and fails `check --strict` only. Exempt: a package
+      file, and a file with no function or method holding a real statement (types, constants, %interface% stubs). Read
+      only with a tests folder
     example: |
       <<two>>
       <<fakes>>
@@ -1136,7 +1160,7 @@ keys:
       %fewest_examples% of a kind is not held. Refused: a path that starts with `/` or has an empty,
       `.` or `..` step, `**` inside a longer step, a path of nothing but `*` and `**` (it would hold back every file),
       the same path twice. `profile check` lists a path the profile it is compared with holds that this one does not as
-      looser
+      looser. Not the top-level `never`, the names a part never uses, which is another list
     example: |
       review:
         never: [documents/drafts, "**/secrets"]
@@ -1189,7 +1213,7 @@ keys:
       group's sum, an example of one part reading at or above the line of another part of its group crosses nothing,
       and an example of a part outside the group is held below a part's line on the group's sum; a record of
       placement held under other groups is stale. Refused: a name that is no part, a group of fewer than two parts or
-      naming a part twice, a part in two groups, and parts that differ in `forbidden`, `holds` or `immutable`
+      naming a part twice, a part in two groups, and parts that differ in `uses.never`, `holds` or `immutable`
       (`check` tells those apart by rule, so they are not alike). Name only parts that truly cannot be told apart
       from one file: a group hides every doubt between its parts
     example: |

@@ -2,122 +2,122 @@
 "findings": [
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/layout/application/services/structure_check.py",
 28,
-"services/ of modules/layout may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/layout may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/app_check.py",
 24,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/app_check.py",
 24,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/locate.py",
 19,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/locate.py",
 19,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/locate.py",
 20,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/locate.py",
 20,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 66,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 66,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 87,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 87,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 95,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 95,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 102,
-"services/ of modules/rules may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/rules may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/rules/application/services/source_check.py",
 102,
-"services/ of modules/rules may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/rules may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
@@ -218,34 +218,34 @@
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/scaffold/application/services/scaffolding.py",
 28,
-"services/ of modules/scaffold may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/scaffold may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/scaffold/application/services/scaffolding.py",
 29,
-"services/ of modules/scaffold may not call .resolve() (parts.services.forbidden)",
+"services/ of modules/scaffold may not call .resolve() (parts.services.uses.never)",
 "do what needs .resolve() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/scaffold/application/services/scaffolding.py",
 58,
-"services/ of modules/scaffold may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/scaffold may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/scaffold/application/services/scaffolding.py",
 61,
-"services/ of modules/scaffold may not use pathlib.Path.cwd (parts.services.forbidden)",
+"services/ of modules/scaffold may not use pathlib.Path.cwd (parts.services.uses.never)",
 "do what needs pathlib.Path.cwd outside services/, and hand services/ the result"
 ],
 [
@@ -258,18 +258,18 @@
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/spec/application/services/profile_creation.py",
 56,
-"services/ of modules/spec may not use pathlib.Path.cwd (parts.services.forbidden)",
+"services/ of modules/spec may not use pathlib.Path.cwd (parts.services.uses.never)",
 "do what needs pathlib.Path.cwd outside services/, and hand services/ the result"
 ],
 [
 "V",
-"forbidden",
+"never-use",
 "xarch/modules/spec/application/services/profile_selection.py",
 45,
-"services/ of modules/spec may not call .absolute() (parts.services.forbidden)",
+"services/ of modules/spec may not call .absolute() (parts.services.uses.never)",
 "do what needs .absolute() outside services/, and hand services/ the result"
 ],
 [

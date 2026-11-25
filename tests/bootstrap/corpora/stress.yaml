@@ -8,10 +8,10 @@ parts:
     role: 'entities, values, errors: invariants only'
     may_import:
     - kernel
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
     no_callbacks: true
-    tier: unit
+    tests: unit
     package_only: true
     built_by:
     - bootstrap
@@ -22,10 +22,10 @@ parts:
     may_import:
     - domain
     - kernel
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
     no_callbacks: true
-    tier: unit
+    tests: unit
     package_only: true
   ports:
     path: modules/<module>/application/ports
@@ -33,9 +33,9 @@ parts:
     may_import:
     - domain
     - kernel
-    forbidden: pure
+    uses: {never: pure}
     holds: classes
-    tier: integration
+    tests: integration
     package_only: true
   services:
     path: modules/<module>/application/services
@@ -50,10 +50,10 @@ parts:
     - contract
     holds: classes
     names: '*Service'
-    forbidden: ambient
+    uses: {never: ambient}
     built_by:
     - bootstrap
-    tier: integration
+    tests: integration
     must_import:
     - ports
     no_callbacks: true
@@ -69,10 +69,10 @@ parts:
     - kernel
     holds: classes
     names: '*Controller'
-    forbidden: ambient
+    uses: {never: ambient}
     built_by:
     - bootstrap
-    tier: integration
+    tests: integration
     no_callbacks: true
   adapters:
     path: modules/<module>/adapters
@@ -92,11 +92,11 @@ parts:
     holds: classes
     built_by:
     - bootstrap
-    tier: unit
+    tests: unit
     names: Fs*
     types_only:
     - domain
-    forbidden: pure
+    uses: {never: pure}
   platform:
     path: platform
     role: the filesystem, the package data, the TOML and YAML readers and the YAML writer
@@ -104,7 +104,7 @@ parts:
     - kernel
     libraries:
     - yaml
-    tier: unit
+    tests: unit
     names: '*Reader'
     holds: functions
   cli:
@@ -118,19 +118,19 @@ parts:
     libraries:
     - typer
     - json
-    tier: wired
+    tests: wired
     folders:
     - commands
-    forbidden: ambient
+    uses: {never: ambient}
   reports:
     path: cli/reports
     role: formatting of Results into text and JSON
     may_import:
     - contract@any
     - kernel
-    forbidden: pure
+    uses: {never: pure}
     holds: functions
-    tier: unit
+    tests: unit
     libraries: []
   main:
     path: __main__.py
@@ -143,7 +143,7 @@ parts:
     path: bootstrap
     role: 'composition root: binds ports to adapters, hands controllers to cli/'
     may_import: everything
-    tier: wired
+    tests: wired
     folders:
     - migrations
   contract:
@@ -152,18 +152,18 @@ parts:
     may_import:
     - domain/values:*Id
     - kernel
-    forbidden: pure
-    tier: integration
+    uses: {never: pure}
+    tests: integration
     package_only: true
   kernel:
     path: kernel
     role: pure primitives and the rules two modules share
-    forbidden: pure
-    tier: unit
+    uses: {never: pure}
+    tests: unit
     folders:
     - logic
     holds: classes
-forbidden:
+never:
   pure:
   - datetime.datetime.now
   - datetime.datetime.utcnow
@@ -222,7 +222,7 @@ tiers:
   unit:
     proves: a pure rule of the kernel or a module, or an adapter's translation
     litmus: Does it call one part's own code directly, with nothing wired, and check its answer?
-    apply_forbidden: true
+    uses: {apply_never: true}
     docs:
       may_touch: what the part it mirrors may import; an adapter, temporary folders
     types_only:
@@ -238,7 +238,7 @@ tiers:
     - controller
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
-    apply_forbidden: true
+    uses: {apply_never: true}
   wired:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
     litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
@@ -254,7 +254,7 @@ tiers:
     - bootstrap
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
-    apply_forbidden: true
+    uses: {apply_never: true}
   guard:
     proves: xarch follows the architecture it enforces
     litmus: Does it run the wired check on xarch's own source?

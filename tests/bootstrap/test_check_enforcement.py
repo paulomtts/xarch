@@ -130,6 +130,17 @@ def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_
          "sentence": "kernel may also import platform (parts.kernel.may_import)"}]
 
 
+def test_a_custom_profile_whose_tier_no_longer_applies_the_never_lists_is_looser_under_uses_apply_never(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text()
+    assert text.count("    uses: {apply_never: true}\n") == 1
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("    uses: {apply_never: true}\n", ""))
+    document = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)
+    assert document["enforcement"]["profile"]["looser"] == [
+        {"key": "uses.apply_never", "part": "unit", "what": "",
+         "sentence": "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"}]
+
+
 def test_an_excluded_folder_is_never_read_is_listed_and_does_not_fail_strict(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text() + "\nexcluded:\n  scripts: example scripts the docs show\n"

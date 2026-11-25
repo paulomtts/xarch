@@ -27,7 +27,7 @@ from xarch.profile_values.testing import CaseTable, Fakes, Fixture, Framework
 PART_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 """What a profile calls a part: letters, digits, `_` and `-`, not starting with a digit or `-`."""
 CALLED = "()"
-"""How a method in a `forbidden` list, called on anything, ends: `.absolute()`."""
+"""How a method in a `never` list, called on anything, ends: `.absolute()`."""
 
 
 def is_name(text: str, language: Language) -> bool:
@@ -42,7 +42,7 @@ def _is_dotted(text: str, language: Language, least: int = 1) -> bool:
 
 
 def _method_name(item: str, language: Language) -> str | None:
-    """The name of the method an item of a `forbidden` list names, `.<name>()`; None when it names none."""
+    """The name of the method an item of a `never` list names, `.<name>()`; None when it names none."""
     name = item[1:-len(CALLED)] if item.startswith(".") and item.endswith(CALLED) else ""
     return name if is_name(name, language) else None
 
@@ -330,7 +330,7 @@ def excluded_folders(value: Any, layout: Layout, problems: list[str]) -> tuple[E
 def rule_hints(value: Any, problems: list[str], own: Collection[str] = ()) -> dict[str, str]:
     """The project's own advice for a rule id, by rule id: a check xarch has, or one of the profile's own (own)."""
     if not isinstance(value, Mapping):
-        problems.append("hints: must be a mapping of rule ids to one line of text, such as {rules: see the docs}")
+        problems.append("hints: must be a mapping of rule ids to one line of text, such as {may-import: see the docs}")
         return {}
     found: dict[str, str] = {}
     for rule, text in value.items():
@@ -606,8 +606,8 @@ def package_names(value: Any, where: str, problems: list[str], language: Languag
     return tuple(found)
 
 
-def forbidden_names(value: Any, where: str, problems: list[str],
-                    language: Language) -> tuple[tuple[str, ...], ...] | None:
+def never_names(value: Any, where: str, problems: list[str],
+                language: Language) -> tuple[tuple[str, ...], ...] | None:
     """The names a part may not use: dotted names, or modules by their import name; a builtin is written in the
     language's namespace for them, <namespace>.<name>. A method called on anything is written `.<name>()` and kept as
     written, split at its dot: ("", "<name>()")."""

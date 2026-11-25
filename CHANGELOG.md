@@ -13,7 +13,27 @@ All notable changes to this project are written here. The format follows
 - A key, a guard or a rule id that xarch has retired is refused with a fixed hint naming what to write instead, one
   problem per retired name ahead of the keys that are only unknown, read from one table that
   `xarch profile explain <old key>` also answers from (the hint in its error, `retired` in its JSON, `null` for an
-  address with no entry); no name is retired yet.
+  address with no entry).
+
+- The part key `tier` is renamed `tests`: a part writes `tests: <tier>` or `untested: <reason>`. A profile still
+  writing `tier` on a part is refused with "renamed in 0.3.0: write tests", which `xarch profile explain parts.tier`
+  also gives, and a value of `tests` holding a `/` is told it names a tier of `tiers`, not a folder. Nothing else a
+  profile writes or xarch reports changes.
+
+- The part key `forbidden` is now `uses: {never: <list>}`, the top-level block `forbidden` is `never`, and a tier's
+  `apply_forbidden: true` is `uses: {apply_never: true}`. The rule id is `never-use`, in findings, in JSON and under
+  `hints`, and a finding's message ends with the new key, such as `(parts.domain.uses.never)`; `where` prints
+  `never uses:` and its JSON field is `never_uses`; the `Loosened` keys are `uses.never` and `uses.apply_never`. Each
+  old name is refused with its new form, which `xarch profile explain <old address>` also gives, and `never:` on a
+  part or `apply_never:` on a tier is told it is a key of `uses`. Finding and fix texts are otherwise unchanged.
+
+- The rule id `rules` is renamed `may-import`, in findings, in JSON and under `hints`. A profile writing `hints.rules`
+  is refused with "renamed in 0.3.0: write may-import", and a check of the profile's own may now take the id `rules`.
+  On a line with findings of both, the `may-import` findings now come before the `package-only` ones. Finding and fix
+  texts are unchanged.
+
+- Internal names follow the 0.3.0 key names: the fields and functions that read `uses.never` and `uses.apply_never`
+  say `uses_never`, `apply_never` and `never_lists` in place of `forbidden`; no output changes.
 
 ## [0.2.0] - 2026-11-18
 

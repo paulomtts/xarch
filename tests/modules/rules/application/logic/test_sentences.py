@@ -28,7 +28,7 @@ from xarch.modules.rules.domain.vocabulary import VARIABLES
 from xarch.profile_values.checks import Scope
 from xarch.profile_values.placement import Target
 
-KEYED = replace(RULE, key="parts.domain.forbidden", scope=Scope(part="domain"))
+KEYED = replace(RULE, key="parts.domain.uses.never", scope=Scope(part="domain"))
 TARGETED = replace(RULE, facts=("import", "import-into-app"), targets=(Match("place", places=(Target("kernel"), Target("kernel", "any"))),
                                   Match("outside")))
 NAMED = replace(RULE, facts=("class",), targets=(Match("name", words=("*Repo", "*Store")),))
@@ -39,7 +39,7 @@ ALSO = replace(PROFILE, tiers=tuple(replace(tier, may_also_import=(Target("web")
 @pytest.mark.parametrize("name, file, kind, rule, profile, hit, printed", [
     pytest.param("hit", DOMAIN, "use", RULE, PROFILE, ("datetime", "datetime"), ["datetime.datetime", "datetime.datetime"],
                  id="hit"),
-    pytest.param("key", DOMAIN, "file", KEYED, PROFILE, None, ["parts.domain.forbidden"], id="key"),
+    pytest.param("key", DOMAIN, "file", KEYED, PROFILE, None, ["parts.domain.uses.never"], id="key"),
     pytest.param("scope_part", DOMAIN, "file", KEYED, PROFILE, None, ["domain"], id="scope_part"),
     pytest.param("targets", DOMAIN, "file", TARGETED, PROFILE, None, ["kernel/"], id="targets: places as their parts, once"),
     pytest.param("targets", DOMAIN, "file", NAMED, PROFILE, None, ["*Repo or *Store"], id="targets: patterns as written"),

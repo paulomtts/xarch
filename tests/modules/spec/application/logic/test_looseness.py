@@ -62,21 +62,21 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
     parts = {**PARTS, "core": {**PARTS["core"], "may_import": ["store"], "libraries": ["yaml"]},
              "store": {"path": "store", "role": "storage", "may_import": ["core"],
                        "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
-    custom = {**BASE, "parts": parts, "forbidden": {"pure": ["socket"]},
+    custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
               "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"apply_forbidden": False, "may_also_import": ["edge"]}},
+                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     assert loosened(parsed(custom), parsed(BASE)) == (
         Loosened("may_import", "core", "store", "core may also import store (parts.core.may_import)"),
         Loosened("libraries", "core", "yaml", "core may also import yaml (parts.core.libraries)"),
         Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)"),
-        Loosened("forbidden", "core", "time.time", "core no longer forbids time.time (parts.core.forbidden)"),
+        Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
         Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
         Loosened("may_also_import", "unit", "edge", "the unit tests may also import edge (tiers.unit.may_also_import)"),
-        Loosened("apply_forbidden", "unit", "",
-                 "the unit tests are no longer held to their part's forbidden list (tiers.unit.apply_forbidden)"),
+        Loosened("uses.apply_never", "unit", "",
+                 "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail",
                  "pytest.mark.xfail is no longer counted as a skip (testing.skips)"),
         Loosened("files.pinned", "", "tests/test_rules.py",
@@ -161,12 +161,12 @@ def test_a_part_whose_line_is_below_the_one_the_base_gives_it_is_looser_and_a_hi
 
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
-    store = {key: value for key, value in PARTS["store"].items() if key != "tier"}
+    store = {key: value for key, value in PARTS["store"].items() if key != "tests"}
     every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me", "libraries": ["sqlmodel", "requests"]},
                                "core": {**PARTS["core"], "may_import": ["store"]}},
-             "forbidden": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
+             "never": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                       | {"apply_forbidden": False, "may_also_import": ["edge"]}},
+                       | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
              "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     litmus = layered()
     litmus["parts"]["api"]["litmus"] = "Does it answer a request?"
