@@ -122,17 +122,21 @@ def _narrower(profile: Profile, part: str) -> tuple[str, ...]:
 
 def _rules(profile: Profile) -> tuple[Rule, ...]:
     """Every import between places the profile governs is allowed by the rules of the importing file's part: a part
-    may import itself and its `imports.may`, where a target with a name pattern allows only the names it matches;
+    may import itself and its `imports.may`, where a target with a name pattern allows only the names it matches
+    (the findings of one import line are one, listing the names, or the targets, it may not import);
     the structure may import nothing the profile governs."""
     narrowed = Saying("{where} may import only {allowed_names} from {target_part}, {disallowed_name} ({target_name})",
                       "import from {target_part} only names that match {allowed_names} ({key}), or move what "
-                      "needs the rest to a part that may import it", _all("names-restricted"))
+                      "needs the rest to a part that may import it", _all("names-restricted"),
+                      per_line=("disallowed_name", "target_name"))
     plain = "{where} may not import {target_part} ({target})"
     found = [Rule("may-import", Scope(APP, part), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
-                  (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}")),
+                  (narrowed, Saying(plain, "import only {importable_parts} in {where} ({key}), or {move_fix}",
+                                    per_line=("target",))),
                   keep=_all("target-placed"), key=f"parts.{part}.imports.may") for part in profile.parts]
     return (*found, Rule("may-import", Scope(APP, STRUCTURE), ("import-into-app",), MAY_ONLY, (Match("permitted"),),
-                         (Saying(plain, "drop the import of {target_part}, or {move_fix}"),), keep=_all("target-placed")))
+                         (Saying(plain, "drop the import of {target_part}, or {move_fix}", per_line=("target",)),),
+                         keep=_all("target-placed")))
 
 
 def _types_only_tiers(profile: Profile) -> tuple[Rule, ...]:

@@ -127,7 +127,7 @@ guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
-                  once_per, cases, examples*}}
+                  once_per, per_line, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
 evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
@@ -326,7 +326,9 @@ Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `
 same words under `checks`: each reads the facts of a kind (`read`) in some files (`in`), keeps those its filters pass
 (`keep`), and says that a kept fact may not match its targets (`may_not`), may only match them (`may_only`), or that a
 file must reach a target (`must_reach`) or a fact be reached from some files (`must_be_reached`); an exception
-(`except`) excuses a finding, and `message` and `fix` say it, with `{variable}`s. A check carries `examples`: code it
+(`except`) excuses a finding, and `message` and `fix` say it, with `{variable}`s (`once_per` says a file's findings
+once for each value of its variables; `per_line` says the findings of one line that differ only in its variables as
+one, each written as its values joined by `, `). A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml
@@ -371,7 +373,7 @@ that switches or configures each (`-` for none: the rule is always on):
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts`, `parts.name` |
-| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match | `parts.imports.may` |
+| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match; the findings of one import line are one, listing what it may not take (the names the pattern does not match, or the places it may not import) | `parts.imports.may` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared`, `fakes.tiers` |
@@ -466,7 +468,9 @@ how many facts it read in the project.
   `must-import`, `no-duplicates`, `no-twins`, `dead-code`, `pass-through`, `holds`, `immutable` (these three never a
   violation, only a weak item), `no-callbacks`, `names`, `built-by`, `private-imports`, `shared`, `structure`,
   `test-tree`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
-  profile writes itself.
+  profile writes itself. An import line that takes several names a part may not import is one `may-import`
+  violation, its `message` listing them (or the places it may not import), so the violations count lines, not
+  names.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
   `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,

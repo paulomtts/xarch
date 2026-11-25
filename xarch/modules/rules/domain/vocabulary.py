@@ -456,8 +456,11 @@ SLOTS: tuple[Slot, ...] = (
     Slot("fix", "what to do about it", "an imperative sentence with {<variable>}s", "variables"),
     Slot("once_per", "say one finding of a file for each value of these variables, the first", "[<variable>, ...]",
          "variables"),
+    Slot("per_line", "say the findings of a file on one line that differ only in these variables as one, the first, "
+                     "each of them written as its values in the order found, joined by `, `", "[<variable>, ...]",
+         "variables"),
     Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
-                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per}, ...]",
+                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per, per_line}, ...]",
          "filters"),
     Slot("examples", "code the check must find something in (flagged), and code it must find nothing in (clean), each "
                      "a small project; `xarch profile check` runs them, and fails when either does not behave so",

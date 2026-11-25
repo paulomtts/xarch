@@ -69,6 +69,13 @@ APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "platf
                   "(app.modules.docs)"],
                  id="imports into ungoverned places are ignored, into the structure not"),
     pytest.param(source("scripts/seed.py", imp(1, "app.platform", "sql")), [], id="an ungoverned file is not checked"),
+    pytest.param(source("modules/docs/domain/values.py", imp(3, "app.platform.sql", "connect", "Row", "Table")),
+                 ["app/modules/docs/domain/values.py:3: domain/ of modules/docs may not import platform/ "
+                  "(app.platform.sql)"], id="several names one line takes from a place it may not import are one finding"),
+    pytest.param(source("modules/docs/domain/values.py", imp(3, "app.platform", "sql", "http")),
+                 ["app/modules/docs/domain/values.py:3: domain/ of modules/docs may not import platform/ "
+                  "(app.platform.sql, app.platform)"],
+                 id="and several things of one place, listing them: a file, and a name of the package"),
 ])
 def test_violations(file, expected):
     assert [str(v) for v in violations([file, *APP], PROFILE, "app")] == expected
@@ -119,6 +126,17 @@ VALUES = source("modules/docs/domain/values.py")
                  ["app/modules/docs/contract/__init__.py:1: contract/ of modules/docs may import only *Id from "
                   "domain/ of modules/docs, not the file as a whole (app.modules.docs.domain.values)"],
                  id="a plain import of the file"),
+    pytest.param([imp(1, "app.modules.docs.domain.values", "Document", "DocumentId", "Owner")],
+                 ["app/modules/docs/contract/__init__.py:1: contract/ of modules/docs may import only *Id from "
+                  "domain/ of modules/docs, not Document, not Owner (app.modules.docs.domain.values.Document, "
+                  "app.modules.docs.domain.values.Owner)"],
+                 id="the names of one line that do not match are one finding, listing them"),
+    pytest.param([imp(1, "app.modules.docs.domain.values", "Document"), imp(2, "app.modules.docs.domain.values", "Owner")],
+                 ["app/modules/docs/contract/__init__.py:1: contract/ of modules/docs may import only *Id from "
+                  "domain/ of modules/docs, not Document (app.modules.docs.domain.values.Document)",
+                  "app/modules/docs/contract/__init__.py:2: contract/ of modules/docs may import only *Id from "
+                  "domain/ of modules/docs, not Owner (app.modules.docs.domain.values.Owner)"],
+                 id="but those of two lines are two"),
 ])
 def test_a_target_with_a_name_pattern_allows_only_the_names_it_matches(imports, expected):
     found = violations([source(CONTRACT, *imports), VALUES], NARROWED, "app")

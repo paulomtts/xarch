@@ -4,9 +4,9 @@ violations in order of file, line and rule, then the weak findings in the order 
 kept beside this test as data, its Python files, archived (`corpora/<commit>.tar.xz`, from `git archive <commit>`),
 with its profile beside the archive as plain yaml (`corpora/<commit>.yaml`).
 
-    7cc6111   its own profile: 90 violations and 111 weak findings
+    7cc6111   its own profile: 61 violations and 111 weak findings
     df537ca   its own profile: 48 violations and 6 weak findings
-    7cc6111 + corpora/stress.yaml, xarch's profile with most keys tightened and nothing excluded: 1734 findings
+    7cc6111 + corpora/stress.yaml, xarch's profile with most keys tightened and nothing excluded: 1705 findings
     examples  the example projects the bundled profiles ship, frozen as they were recorded (`corpora/examples.tar.xz`):
               the shared one with each entry's (cli, web) put together as an app and its tests, checked against that
               bundled profile

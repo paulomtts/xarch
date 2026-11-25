@@ -51,18 +51,20 @@ WHERE = {
 }
 """What `where` said of each part before the change: may_import_text and libraries."""
 RULES = {
-    ("cli", "may"): (12, "b5fb19f749264287"), ("cli", "must"): (1, "cb8bbbfa024c046c"),
+    ("cli", "may"): (12, "d1f8b82a5aad14d4"), ("cli", "must"): (1, "cb8bbbfa024c046c"),
     ("cli", "libraries"): (24, "ae1fba4a77503d1a"),
-    ("web", "may"): (12, "f06766b1dbdc51b7"), ("web", "must"): (1, "cb8bbbfa024c046c"),
+    ("web", "may"): (12, "f3ce8e2f0861c5a2"), ("web", "must"): (1, "cb8bbbfa024c046c"),
     ("web", "libraries"): (24, "058402903c045a47"),
-    ("architecture.yaml", "may"): (15, "0d94a54e9f44405d"), ("architecture.yaml", "must"): (1, "cb8bbbfa024c046c"),
+    ("architecture.yaml", "may"): (15, "8d51891e5aa618dc"), ("architecture.yaml", "must"): (1, "cb8bbbfa024c046c"),
     ("architecture.yaml", "libraries"): (30, "27ee07b82ce0c6a6"),
 }
 """For each profile and key of the group: how many rules it expands to, and the first 16 hex digits of the SHA-256 of
 their checks text before the change. The rules come in the order of the parts, which became the folder tree's reading
 order in 0.3.0 (`contract` after `adapters`, `kernel` before `kernel-logic`): the lines of `may` and `libraries` are the
 same as before, and only their order, so only their digests, moved. In 0.3.0 the places of `must` are written as
-references (`parts.<part>`), which moved only that digest."""
+references (`parts.<part>`), which moved only that digest. The rules of `may` then gained a `per_line` line in each
+saying (one finding per import line), and nothing else: with those lines left out, each digest of `may` is the
+one it was before."""
 TIER_KEYS = {"types_only": "tiers.imports.types_only", "must": "tiers.imports.must",
              "also": "tiers.imports.also", "tiers": "tiers"}
 """The address `profile explain` is asked for each key of a tier's group that rules are keyed by, and for `tiers`,

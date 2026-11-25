@@ -5,7 +5,9 @@ reads the facts of its kinds in order. A fact is read when it passes every condi
 with the rule's targets: under MAY_NOT it is a finding when it matches one (the target it matches is its hit), under
 MAY_ONLY when it matches none. A finding any of the rule's exemptions excuses is dropped. It is said by the first
 saying whose conditions hold of it, and a saying that keeps its findings once drops one whose variables it has said
-already in that file. A rule in FAIL mode makes violations, one in LIST mode weak findings. So every finding of a file
+already in that file; one that lists variables per line says the findings of one line that differ only in those
+variables as one, the first, each such variable written as its values in the order found, joined by `, ` (a value
+found again written once). A rule in FAIL mode makes violations, one in LIST mode weak findings. So every finding of a file
 comes before those of the next, and within a file those of a rule before those of the next.
 
 A rule of reach is worked out over every file first. Under MUST_REACH, a file on its scope's side (the app or the
@@ -22,6 +24,8 @@ check.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import replace
+from string import Formatter
 
 from xarch.kernel.violations import RULES, Violation
 from xarch.modules.rules.application.logic.facts import reach_scopes
@@ -191,8 +195,28 @@ def _said(rule: Rule, saying, found: Found, facts: Facts, profile: Profile) -> V
     return Violation(file, line, message, rule.id, fix, rule.id not in RULES)
 
 
+def _listed(saying, found: Found, facts: Facts, profile: Profile) -> tuple[tuple[str, str], list[str]]:
+    """The message and fix of a finding with each variable its saying lists per line left as a mark of its place,
+    and the values of those variables."""
+    marks = {name: f"\x00{index}\x00" for index, name in enumerate(saying.per_line)}
+
+    def rendered(text: str) -> str:
+        names = {name for _, name, _, _ in Formatter().parse(text) if name}
+        return text.format_map({name: marks.get(name) or value(name, found, facts, profile) for name in names})
+
+    return (rendered(saying.message), rendered(saying.fix)), [value(name, found, facts, profile)
+                                                              for name in saying.per_line]
+
+
+def _joined(text: str, values: list[list[str]]) -> str:
+    for index, said_values in enumerate(values):
+        text = text.replace(f"\x00{index}\x00", ", ".join(dict.fromkeys(said_values)))
+    return text
+
+
 def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violation | Weak]:
     found: list[Violation | Weak] = []
+    listed: dict[tuple, tuple[int, list[list[str]]]] = {}
     seen: set[tuple[int, tuple[str, ...]]] = set()
     keep, exempt = _questions(rule.keep), _questions(rule.exempt)
     targets, quantifier = rule.targets, rule.quantifier
@@ -213,6 +237,18 @@ def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violat
                 if key in seen:
                     continue
                 seen.add(key)
+            if saying.per_line:
+                texts, values = _listed(saying, candidate, facts, profile)
+                at = (fact.line, index, texts)
+                if at not in listed:
+                    listed[at] = (len(found), [[] for _ in values])
+                    found.append(_said(rule, saying, candidate, facts, profile))
+                place, gathered = listed[at]
+                for into, one in zip(gathered, values):
+                    into.append(one)
+                first = found[place]
+                found[place] = replace(first, message=_joined(texts[0], gathered), fix=_joined(texts[1], gathered))
+                continue
             found.append(_said(rule, saying, candidate, facts, profile))
     return found
 

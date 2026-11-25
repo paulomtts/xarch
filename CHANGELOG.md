@@ -14,9 +14,17 @@ All notable changes to this project are written here. The format follows
   tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
   holding it, which is its own folder; only two tiers with the same folder are still refused.
+- A check of your own (and a case of one) takes `per_line: [<variable>, ...]`: the findings of a file on one line
+  that differ only in those variables are said as one, the first, each of them written as its values in the order
+  found, joined by `, ` (a value found again written once). An unknown variable is refused at
+  `checks.<id>.per_line`.
 
 ### Changed
 
+- `may-import` reports one finding per import line and place: an import taking several names a part may not import
+  is one finding whose message lists them (`not A, not B (pkg.mod.A, pkg.mod.B)` for a name pattern; the places
+  once each for a part it may not import at all), in the text and in the JSON (`--format json`), where a violation's
+  `message` lists them the same way. A line with a single name says what it said before.
 - `cycles` reports one finding per group of instances that all reach each other (a strongly connected group),
   however many elementary cycles run through it, instead of one per elementary cycle: the message names the group's
   instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per

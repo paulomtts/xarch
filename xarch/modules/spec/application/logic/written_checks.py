@@ -15,7 +15,8 @@ is the rules module's, which reads what this gives back.
       message: <sentence>         with {<variable>}s
       fix: <sentence>
       once_per: [<variable>, ...]
-      cases: [{when: [<filter>, ...], message, fix, once_per}, ...]
+      per_line: [<variable>, ...]
+      cases: [{when: [<filter>, ...], message, fix, once_per, per_line}, ...]
       examples: {flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}
 
 A filter is a name, `not <name>`, or a map of one entry {<name>: <value>} ({not <name>: <value>}); a target is a kind
@@ -99,7 +100,8 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
     mode = _text(body.get("mode", "fail"), f"{where}.mode", problems)
     own = Saying(_sentence(body.get("message"), f"{where}.message", problems),
                  _sentence(body.get("fix"), f"{where}.fix", problems), (),
-                 _names(body.get("once_per", []), f"{where}.once_per", problems, empty=True))
+                 _names(body.get("once_per", []), f"{where}.once_per", problems, empty=True),
+                 _names(body.get("per_line", []), f"{where}.per_line", problems, empty=True))
     cases = _cases(body.get("cases", []), f"{where}.cases", problems)
     flagged, clean = _examples(body.get("examples"), f"{where}.examples", language, problems)
     if len(quantified) != 1:
@@ -236,20 +238,21 @@ def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: se
 
 def _cases(value: Any, where: str, problems: list[str]) -> tuple[Saying, ...]:
     if not isinstance(value, list):
-        problems.append(f"{where}: must be a list of {{when, message, fix, once_per}}")
+        problems.append(f"{where}: must be a list of {{when, message, fix, once_per, per_line}}")
         return ()
     found: list[Saying] = []
     for index, case in enumerate(value, 1):
         at = f"{where}[{index}]"
         if not isinstance(case, Mapping):
-            problems.append(f"{at}: must be a map {{when, message, fix, once_per}}")
+            problems.append(f"{at}: must be a map {{when, message, fix, once_per, per_line}}")
             continue
         problems += _unknown(case, CASE_SLOTS, at)
         problems += [f"{at}: missing `{key}`" for key in ("when", "message", "fix") if key not in case]
         found.append(Saying(_sentence(case.get("message"), f"{at}.message", problems),
                             _sentence(case.get("fix"), f"{at}.fix", problems),
                             filters(case.get("when", []), f"{at}.when", problems),
-                            _names(case.get("once_per", []), f"{at}.once_per", problems, empty=True)))
+                            _names(case.get("once_per", []), f"{at}.once_per", problems, empty=True),
+                            _names(case.get("per_line", []), f"{at}.per_line", problems, empty=True)))
     return tuple(found)
 
 

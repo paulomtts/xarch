@@ -102,6 +102,32 @@ def test_a_finding_is_said_by_the_first_saying_whose_conditions_all_hold_and_onc
                                           "domain/ of modules/docs imports reserved yaml and takes load"]
 
 
+def test_the_findings_of_one_line_a_saying_lists_per_line_are_one_finding_listing_the_values_that_differ():
+    listing = (Saying("{where} imports {package} and takes {name}", "drop {name} of {package}", per_line=("name",)),)
+    found = run((rule(scope=Scope(APP, "domain"), facts=("imported-name",), targets=EXISTING, sayings=listing,
+                      keep=c("takes-a-name")),),
+                facts_of(FILES, [], PROFILE, "app"), PROFILE)
+    assert [(v.line, v.message, v.fix) for v in found] == [
+        (3, "domain/ of modules/docs imports yaml and takes load, dump", "drop load, dump of yaml")]
+
+
+def test_findings_of_one_line_that_differ_in_another_variable_stay_apart():
+    listing = (Saying("{where} imports {package} and takes {name}", "x", per_line=("name",)),)
+    files = [source(DOMAIN, imp(3, "yaml", "load", "dump"), imp(3, "json", "loads"))]
+    found = run((rule(scope=Scope(APP, "domain"), facts=("imported-name",), targets=EXISTING, sayings=listing,
+                      keep=c("takes-a-name")),),
+                facts_of(files, [], PROFILE, "app"), PROFILE)
+    assert [v.message for v in found] == ["domain/ of modules/docs imports yaml and takes load, dump",
+                                          "domain/ of modules/docs imports json and takes loads"]
+
+
+def test_a_value_said_twice_on_one_line_is_listed_once():
+    listing = (Saying("{where} imports {package}", "x", per_line=("package",)),)
+    found = run((rule(scope=Scope(APP, "domain"), facts=("imported-name",), targets=EXISTING, sayings=listing),),
+                facts_of([source(DOMAIN, imp(3, "yaml", "load", "dump"))], [], PROFILE, "app"), PROFILE)
+    assert [v.message for v in found] == ["domain/ of modules/docs imports yaml"]
+
+
 def test_a_rule_in_list_mode_makes_weak_findings():
     found = run((rule(scope=Scope(APP, "kernel"), mode=LIST),), facts_of(FILES, [], PROFILE, "app"), PROFILE)
     assert found == [Weak("libraries", "app/kernel/ids.py", 1, "kernel/ imports yaml", "drop yaml")]
