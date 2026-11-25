@@ -10,6 +10,7 @@ from tests.modules.rules.builders import GUARD, INTEGRATION, PROFILE, UNIT, imp,
 from xarch.modules.rules.application.logic import tier_of
 from xarch.modules.rules.application.logic.tier_of import allowance, may_use_fakes
 from xarch.profile_values.placement import Target
+from xarch.profile_values.testing import Fakes
 from xarch.profile_values.tiers import CheckedTier as Tier
 
 APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modules/docs/domain/values.py",
@@ -240,9 +241,33 @@ def test_a_test_in_a_tiers_folder_imports_only_what_the_tier_allows():
     pytest.param(PROFILE, UNIT, False, id="one testing none of their parts may not"),
     pytest.param(PROFILE, GUARD, False, id="nor one with no subject"),
     pytest.param(profile(fakes=None), INTEGRATION, False, id="without fakes no tier may"),
+    pytest.param(profile(fakes=Fakes(("fakes",), ("ports",), "Fake", ("unit", "guard"))), UNIT, True,
+                 id="a tier fakes.tiers lists may, though it tests none of their parts"),
+    pytest.param(profile(fakes=Fakes(("fakes",), ("ports",), "Fake", ("unit", "guard"))), GUARD, True,
+                 id="so may one with no subject"),
+    pytest.param(profile(fakes=Fakes(("fakes",), ("ports",), "Fake", ("unit",))), INTEGRATION, True,
+                 id="a tier testing their parts still may when fakes.tiers leaves it out"),
+    pytest.param(profile(fakes=Fakes(("fakes",), ("ports",), "Fake", ("unit",))), GUARD, False,
+                 id="one neither listed nor testing their parts still may not"),
 ])
 def test_may_use_fakes(checked, tier, expected):
     assert may_use_fakes(checked, tier) == expected
+
+
+LISTED = profile(fakes=Fakes(("fakes",), ("ports",), "Fake", ("guard",)))
+"""PROFILE with the guard tier allowed the fakes by fakes.tiers."""
+
+
+@pytest.mark.parametrize("path, imports, expected", [
+    pytest.param("architecture/test_rules.py", [imp(1, "tests.fakes", "repo")], [],
+                 id="a test of a tier fakes.tiers lists imports the fakes"),
+    pytest.param(DOMAIN_TEST, [imp(1, "tests.fakes.repo", "FakeRepo")],
+                 ["1: a unit test may not import the fakes (tests.fakes.repo): only a tier that tests ports, or the "
+                  "guard tier (fakes.tiers), may"],
+                 id="a tier it does not list is told which may"),
+])
+def test_fakes_tiers_open_the_fakes_to_the_tiers_they_list(path, imports, expected):
+    assert problems(path, *imports, checked=LISTED) == expected
 
 
 @pytest.mark.parametrize("path, imports, fix", [

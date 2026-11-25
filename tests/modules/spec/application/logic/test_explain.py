@@ -42,7 +42,7 @@ def test_a_key_is_found_by_the_address_a_person_types_with_or_without_the_placeh
 
 
 def test_a_key_that_holds_keys_gives_them_and_one_that_holds_none_gives_none():
-    assert [key.name for key in held_by(key_at("fakes"))] == ["folder", "for", "prefix"]
+    assert [key.name for key in held_by(key_at("fakes"))] == ["folder", "for", "prefix", "tiers"]
     assert [key.name for key in held_by(key_at("parts.imports.may"))] == ["types_only"]
     assert held_by(key_at("parts.imports.libraries")) == ()
 

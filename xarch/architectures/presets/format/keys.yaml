@@ -224,7 +224,7 @@ keys:
       <<tiered-part>>
   fakes:
     meaning: the folder of the test fakes, and what they stand in for
-    accepts: a map {folder, for, prefix}
+    accepts: a map {folder, for, prefix, tiers}
     example: |
       <<two>>
       <<fakes>>
@@ -1060,6 +1060,30 @@ keys:
     example: |
       <<two>>
       <<fakes>>
+  fakes.tiers:
+    meaning: the tiers that may also import the fakes
+    accepts: >-
+      "[<tier>, ...]" (default none): the tests of a tier it lists may import the fakes, as may those of a tier whose
+      subject holds a part `fakes.for` names, and stand-ins holds their mocks the same way; a tier the profile does not
+      have is refused. Nothing else opens the fakes to a tier: its `imports.may` never does
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          proves: a rule
+        integration:
+          proves: a use case
+      parts:
+        core/:
+          role: the rules of the documents
+          tests: unit
+        documents/:
+          role: the documents
+          tests: integration
+      fakes:
+        folder: fakes
+        for: [documents]
+        tiers: [unit]
   guards.scenario-coverage:
     meaning: every result of a use case has a row
     accepts: >-

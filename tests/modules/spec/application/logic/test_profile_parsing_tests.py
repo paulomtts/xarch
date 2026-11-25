@@ -603,13 +603,35 @@ def test_fakes_name_their_folder_below_the_tests_folder_the_parts_they_stand_in_
         ("support", "fakes"), ("store",))
 
 
+def test_fakes_name_the_tiers_that_may_import_them_besides_those_testing_what_they_stand_in_for():
+    assert parsed(covered(fakes={"folder": "fakes", "for": ["store"], "tiers": ["unit", "integration"]})).fakes == (
+        Fakes(("fakes",), ("store",), tiers=("unit", "integration")))
+    assert parsed(covered(fakes={"folder": "fakes", "for": ["store"]})).fakes.tiers == ()
+
+
+FAKES_TIERS = "layered.yaml: fakes.tiers: must be a list of tier names: the tiers that may import the fakes"
+
+
+@pytest.mark.parametrize("tiers, expected", [
+    pytest.param(["unit", "e2e"], ["layered.yaml: fakes.tiers: no tier named 'e2e': use integration, unit"],
+                 id="a tier the profile does not have"),
+    pytest.param(["unit", "unit"], ["layered.yaml: fakes.tiers: 'unit' is listed twice"], id="a tier listed twice"),
+    pytest.param("unit", [FAKES_TIERS], id="a name, not a list"),
+    pytest.param([3], [FAKES_TIERS], id="an entry that is no name"),
+    pytest.param([], [FAKES_TIERS], id="an empty list"),
+])
+def test_bad_fakes_tiers_are_refused(tiers, expected):
+    assert problems(covered(fakes={"folder": "fakes", "for": ["store"], "tiers": tiers})) == expected
+
+
 @pytest.mark.parametrize("fakes, expected", [
-    pytest.param(3, "layered.yaml: fakes: must be a mapping {folder, for} and optionally prefix: the folder of the "
-                    "fakes below the tests folder, the parts they stand in for, and how a fake's name starts"),
+    pytest.param(3, "layered.yaml: fakes: must be a mapping {folder, for} and optionally prefix and tiers: the folder "
+                    "of the fakes below the tests folder, the parts they stand in for, how a fake's name starts, and "
+                    "the tiers that may import them besides"),
     pytest.param({"for": ["store"]}, "layered.yaml: fakes: missing `folder`"),
     pytest.param({"folder": "fakes"}, "layered.yaml: fakes: missing `for`"),
     pytest.param({"folder": "fakes", "for": ["store"], "colour": 1},
-                 "layered.yaml: fakes: unknown key 'colour': use folder, for, prefix"),
+                 "layered.yaml: fakes: unknown key 'colour': use folder, for, prefix, tiers"),
     pytest.param({"folder": "../fakes", "for": ["store"]},
                  "layered.yaml: fakes.folder: must be a folder below the tests folder, such as fakes: relative, with "
                  "no `..`, no empty step and no `*`"),

@@ -418,7 +418,10 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         fakes = ""
         if architecture.fakes is not None:
             parts = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in architecture.fakes.stand_in_for])
-            fakes = (f"; only a test whose tier tests {parts} imports the fakes in "
+            listed = [t.name for t in architecture.tiers if t.name in architecture.fakes.tiers
+                      and not _tests_faked(architecture, t)]
+            also = f", or a {_or(listed)} test," if listed else ""
+            fakes = (f"; only a test whose tier tests {parts}{also} imports the fakes in "
                      f"`{'/'.join((DEFAULT_TESTS, *architecture.fakes.folder))}/`")
         lines.append("`tiers`: a test lives in the folder that mirrors its subject in the app, and imports only that "
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
@@ -670,6 +673,11 @@ def _branches(architecture: Architecture) -> str:
     return " and no ".join(said) or "branch"
 
 
+def _tests_faked(architecture: Architecture, tier: Tier) -> bool:
+    """Whether the tier tests a part the fakes stand in for."""
+    return architecture.fakes is not None and any(s.part in architecture.fakes.stand_in_for for s in tier.subject)
+
+
 def _stand_ins_line(architecture: Architecture, mock: str, spec: SpecEntry, built: str = "") -> str:
     """The line of the guard stand-ins; a mock is written as the first of the profile's specs, by the language's
     template of its form."""
@@ -677,7 +685,7 @@ def _stand_ins_line(architecture: Architecture, mock: str, spec: SpecEntry, buil
     assert fakes is not None
     writing = architecture.language.checked.writing
     parts = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in fakes.stand_in_for])
-    tiers = _and([t.name for t in architecture.tiers if any(s.part in fakes.stand_in_for for s in t.subject)])
+    tiers = _and([t.name for t in architecture.tiers if _tests_faked(architecture, t) or t.name in fakes.tiers])
     fixture = f" (or, from a fixture, `{spec.written(writing, built, '<Port>')}`)" if built else ""
     mocks = (f"; and every mock in the {tiers} tests names what it stands in for, "
              f"`{spec.written(writing, mock, '<Port>')}`{fixture}, never a read port") if tiers else ""

@@ -153,8 +153,9 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                   'parts: must be the folder tree of the app: folders ending in /, files with their extension',
                   'layers: must be a mapping of names to lists of parts, from the inside out',
                   'tiers: must be a mapping of tier names to {proves, litmus, ...}, in the order their litmus tests run',
-                  "fakes: must be a mapping {folder, for} and optionally prefix: the folder of the fakes below the "
-                  "tests folder, the parts they stand in for, and how a fake's name starts",
+                  "fakes: must be a mapping {folder, for} and optionally prefix and tiers: the folder of the fakes "
+                  "below the tests folder, the parts they stand in for, how a fake's name starts, and the tiers that "
+                  "may import them besides",
                   'guards: must be a mapping of guard names to their parameters, such as {no-comments: {}}',
                   'missing `testing`: `tiers` must recognise a test file by its name: write testing: <preset>, or '
                   'testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}',

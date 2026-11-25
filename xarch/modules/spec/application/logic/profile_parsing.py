@@ -51,8 +51,9 @@ key_catalogue); the shape:
                                `imports.types_only` the parts (`parts.<part>`) its tests may import only as types;
                                `uses: {apply_never: true}` holds its tests to the `uses.never` list of the part they
                                mirror; `docs` holds what only fills the generated docs
-    fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
-                               stand in for, and how a fake's name starts
+    fakes: {folder, for, prefix, tiers}        the folder of the test fakes below the tests folder, the parts they
+                               stand in for, how a fake's name starts, and the tiers that may import them besides
+                               those testing a part they stand in for
     guards: {<guard>: {...}}                   the pre-built checks in use; left out means off
     excluded: {<folder>: <reason>}             folders below the app that are not its source
     hints: {<rule id>: <text>}                 your own advice for a rule, shown after its built-in fix
@@ -225,10 +226,11 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     problems += [f"tiers.{tier.name}.plain_tables: needs a table form: the framework {_framework_named(testing)} "
                  "writes none in `testing.tables`" for tier in tiers
                  if tier.plain_tables and testing is not None and not testing.framework.tables]
-    fakes = _fakes(document["fakes"], parts, declared, problems, language, words) if "fakes" in document else None
+    written_tiers = _tier_names(document["tiers"]) if isinstance(document.get("tiers"), Mapping) else []
+    fakes = (_fakes(document["fakes"], parts, declared, problems, language, words, written_tiers) if "fakes" in document
+             else None)
     problems += ck.folder_clashes(tiers, fakes)
     shared = _tests_shared(document, tiers, fakes, problems, language)
-    written_tiers = _tier_names(document["tiers"]) if isinstance(document.get("tiers"), Mapping) else []
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language,
                      words, written_tiers)
     problems += _needs_testing(document)
@@ -748,11 +750,12 @@ def _helpers(value: Any, examples: ex.Examples, where: str, problems: list[str],
 
 
 def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str],
-           language: Language, words: Collection[str]) -> Fakes | None:
+           language: Language, words: Collection[str], tiers: Collection[str] = ()) -> Fakes | None:
     where = "fakes"
     if not isinstance(value, Mapping):
-        problems.append(f"{where}: must be a mapping {{folder, for}} and optionally prefix: the folder of the fakes "
-                        "below the tests folder, the parts they stand in for, and how a fake's name starts")
+        problems.append(f"{where}: must be a mapping {{folder, for}} and optionally prefix and tiers: the folder of the "
+                        "fakes below the tests folder, the parts they stand in for, how a fake's name starts, and the "
+                        "tiers that may import them besides")
         return None
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(FAKES), where, FAKES)
@@ -766,9 +769,28 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
         problems.append(f"{where}.folder: must be a folder below the tests folder, such as fakes: relative, with no "
                         "`..`, no empty step and no `*`")
     names = ck.part_names(value["for"], declared, f"{where}.for", problems, words=words) if "for" in value else []
+    opened = _fakes_tiers(value["tiers"], tiers, problems) if "tiers" in value else ()
     if len(problems) != count:
         return None
-    return Fakes(steps, tuple(n for n in names if n in parts), prefix)
+    return Fakes(steps, tuple(n for n in names if n in parts), prefix, opened)
+
+
+def _fakes_tiers(value: Any, tiers: Collection[str], problems: list[str]) -> tuple[str, ...]:
+    """The tiers `fakes.tiers` lets import the fakes besides those testing a part they stand in for, in the order
+    written; a value that is no list of names, a tier the profile does not have and one listed twice are refused."""
+    where = "fakes.tiers"
+    if not isinstance(value, list) or not value or not all(isinstance(name, str) and name for name in value):
+        problems.append(f"{where}: must be a list of tier names: the tiers that may import the fakes")
+        return ()
+    found: list[str] = []
+    for name in value:
+        if name not in tiers:
+            problems.append(f"{where}: no tier named {name!r}: use {', '.join(sorted(tiers)) or 'a tier of `tiers`'}")
+        elif name in found:
+            problems.append(f"{where}: {name!r} is listed twice")
+        else:
+            found.append(name)
+    return tuple(found)
 
 
 def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],

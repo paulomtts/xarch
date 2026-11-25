@@ -188,6 +188,12 @@ def test_a_test_of_a_use_case_may_use_the_fakes():
     assert [r.target.part for r in here.reaches] == ["controller", "domain", "ports", "kernel"]
 
 
+def test_a_test_of_a_tier_fakes_tiers_lists_may_use_the_fakes():
+    listed = replace(PROFILE, fakes=replace(PROFILE.fakes, tiers=("guard",)))
+    here = describe(listed, found("tests", "architecture", "test_rules.py"), APP, TESTS)
+    assert (here.tier.name, here.may_use_fakes, here.fakes_path) == ("guard", True, "tests/fakes/")
+
+
 def test_a_test_that_lies_in_no_tier_says_so():
     here = describe(PROFILE, found("tests", "stray", "test_a.py"), APP, TESTS)
     assert isinstance(here, SuitePlace)

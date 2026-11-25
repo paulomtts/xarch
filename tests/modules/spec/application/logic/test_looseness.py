@@ -199,6 +199,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(covered()), parsed(tight())),
         (near(True), near(None)),
         (sharing("support"), sharing()),
+        (faking("unit"), faking()),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -787,3 +788,25 @@ def test_each_shared_entry_the_compared_profile_does_not_share_is_looser():
 ])
 def test_shared_is_looser_only_for_an_entry_the_compared_profile_leaves_out(custom, base):
     assert loosened(sharing(*custom), sharing(*base)) == ()
+
+
+def faking(*tiers: str) -> Architecture:
+    """covered(), its fakes standing in for store and open to the tiers given (none: no `tiers` at all)."""
+    fakes = {"folder": "fakes", "for": ["store"]} | ({"tiers": list(tiers)} if tiers else {})
+    return parsed(covered(fakes=fakes))
+
+
+def test_each_tier_fakes_tiers_opens_the_fakes_to_that_the_compared_profile_does_not_is_looser():
+    assert loosened(faking("unit", "integration"), faking("integration")) == (
+        Loosened("fakes.tiers", "unit", "", "the unit tests may also import the fakes (fakes.tiers)"),)
+    assert loosened(faking("unit"), parsed(covered())) == (
+        Loosened("fakes.tiers", "unit", "", "the unit tests may also import the fakes (fakes.tiers)"),)
+
+
+@pytest.mark.parametrize("custom, base", [
+    pytest.param(("unit",), ("unit",), id="both open the fakes to the same tier"),
+    pytest.param((), ("unit",), id="fakes.tiers dropped"),
+    pytest.param((), (), id="neither"),
+])
+def test_fakes_tiers_is_looser_only_for_a_tier_the_compared_profile_leaves_out(custom, base):
+    assert loosened(faking(*custom), faking(*base)) == ()

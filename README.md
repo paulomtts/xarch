@@ -122,7 +122,7 @@ parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     docs}}
-fakes:    {folder*, for*, prefix}
+fakes:    {folder*, for*, prefix, tiers}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
@@ -207,6 +207,10 @@ its own folder's: folders and files below the tests root (default none), each ou
 fakes' folder (an entry inside or holding one is refused). A test file there is still a test file, which no test
 imports, and the fakes keep their own rule; the `tiers` message of an import from elsewhere names the shared entries,
 and `xarch where` lists them for a test.
+A test may import the fakes (`fakes.folder`) when its tier's subject holds a part `fakes.for` names; `fakes.tiers:
+[<tier>, ...]` (default none) lets the tests of the tiers it lists import them too, a tier with no such part, such as
+one placed by its `folder`, and `stand-ins` then holds their mocks as well. A tier the profile does not have is
+refused; nothing else opens the fakes to a tier (its `imports.may` never does).
 That the table forms and the call form are neutral to a language is proved without a TypeScript reader: a test-only
 framework (`tests/fakes/frameworks/stub.yaml`, a function form and a call form of a test, a loop form and a call form of
 a table with literal rows) is checked on hand-built facts and worded by the `writing` of the test-only language
@@ -359,7 +363,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match | `parts.imports.may` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
-| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared` |
+| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared`, `fakes.tiers` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
@@ -455,7 +459,7 @@ how many facts it read in the project.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
   `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
-  `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
+  `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
   `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
@@ -519,8 +523,8 @@ enforcement
   allows that the other's does not (`classes` allowing `records` and `exceptions` too), a setting of a kind it holds
   dropped or widened (`names`, `immutable`, `built_by`, compared kind by kind on the settings the part holds each kind
   to, for a kind either lists), a part's `shared` dropped or lowered, a tier's `imports.must` dropped or a part added
-  to it, a tier no longer `plain_tables`, `testing.beside` set where the other leaves it out, and an entry of
-  `testing.shared` the other does not share.
+  to it, a tier no longer `plain_tables`, `testing.beside` set where the other leaves it out, an entry of
+  `testing.shared` the other does not share, and a tier `fakes.tiers` lists that the other's does not.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.

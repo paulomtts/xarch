@@ -150,7 +150,9 @@ class StandIns:
 @dataclass(frozen=True)
 class Fakes:
     """Where the test fakes live, as a folder below the tests folder (e.g. ("fakes",)), the parts they stand in for,
-    and how a fake's name starts (the fake of port X is <prefix>X; empty when the file does not say)."""
+    how a fake's name starts (the fake of port X is <prefix>X; empty when the file does not say), and the tiers whose
+    tests may import them besides those that test a part they stand in for (`fakes.tiers`; empty: none)."""
     folder: tuple[str, ...]
     stand_in_for: tuple[str, ...]
     prefix: str = ""
+    tiers: tuple[str, ...] = ()

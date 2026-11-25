@@ -178,7 +178,10 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
     by_folder = Saying("a {tier} test may not import {target_part} ({target})",
                        "import here only what the subject of the {tier} tier may; test {target_part} from the folder "
                        "that mirrors it")
-    fakes = (Saying("a {tier} test may not import the fakes ({target}): only a tier that tests {faked_parts} may",
+    listed = profile.fakes.tiers if profile.fakes is not None else ()
+    opened = f", or the {_and_words(listed)} tier{'s' if len(listed) > 1 else ''} (fakes.tiers)," if listed else ""
+    fakes = (Saying(f"a {{tier}} test may not import the fakes ({{target}}): only a tier that tests {{faked_parts}}{opened} "
+                    "may",
                     "drop the import of {target}, or move the test to a tier that tests {faked_parts}",
                     _all(f"target-below {folder}")),) if folder else ()
     test = Saying("a test may not import another test file ({target}): what tests share lives in test code that is no "
@@ -203,6 +206,10 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
                  (mirrored, by_folder), keep=_all("target-placed"), key=f"tiers{also}"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-tests",), MAY_ONLY, (Match("permitted"),),
                  (*fakes, test, elsewhere), key="tiers"))
+
+
+def _and_words(words: tuple[str, ...]) -> str:
+    return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
 
 
 def _shared_shown(entry: tuple[str, ...], profile: Profile) -> str:

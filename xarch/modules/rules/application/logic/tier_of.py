@@ -126,8 +126,10 @@ def allowance(profile: Profile, where: Tested) -> tuple[Target, ...]:
 
 
 def may_use_fakes(profile: Profile, tier: CheckedTier) -> bool:
-    """Whether the tests of the tier may import the fakes: its subject holds a part they stand in for."""
-    return profile.fakes is not None and any(s.part in profile.fakes.stand_in_for for s in tier.subject)
+    """Whether the tests of the tier may import the fakes: its subject holds a part they stand in for, or `fakes.tiers`
+    lists it."""
+    return profile.fakes is not None and (any(s.part in profile.fakes.stand_in_for for s in tier.subject)
+                                          or tier.name in profile.fakes.tiers)
 
 
 def as_place(instance: str | None) -> Place:

@@ -592,3 +592,24 @@ OTHER_FORM = {"decorator": "checks.cases", "columns_from": {"position": 0}, "row
 ])
 def test_the_guard_line_says_a_row_as_each_form_writes_one(tables, clause):
     assert clause in guard_lines(testing={"tables": tables})[0]
+
+
+def guards_text(fakes: dict) -> list[str]:
+    """The lines of the guards section of covered() with stand-ins and the fakes given."""
+    document = covered(guards={"scenario-coverage": SCENARIOS, "stand-ins": {}}, fakes=fakes)
+    return fill("{{guards}}", parsed(document), "layered.md", file_types=FILE_TYPES).splitlines()
+
+
+def test_the_tiers_fakes_tiers_lists_are_said_among_those_that_import_the_fakes_and_have_their_mocks_held():
+    lines = guards_text(FAKES | {"tiers": ["unit"]})
+    tiers = next(line for line in lines if line.startswith("- `tiers`"))
+    stand_ins = next(line for line in lines if line.startswith("- `stand-ins`"))
+    assert "; only a test whose tier tests `store/`, or a unit test, imports the fakes in `tests/fakes/`;" in tiers
+    assert "and every mock in the unit and integration tests names what it stands in for" in stand_ins
+
+
+def test_without_fakes_tiers_the_lines_are_those_of_the_fakes_alone():
+    lines = guards_text(FAKES)
+    tiers = next(line for line in lines if line.startswith("- `tiers`"))
+    assert "; only a test whose tier tests `store/` imports the fakes in `tests/fakes/`;" in tiers
+    assert guards_text(FAKES | {"tiers": ["integration"]}) == lines

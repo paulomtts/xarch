@@ -10,6 +10,8 @@ All notable changes to this project are written here. The format follows
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.
+- `fakes.tiers: [<tier>, ...]` lets the tests of the tiers it lists import the fakes besides those of a tier that
+  tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
 
 ### Fixed
 

@@ -79,6 +79,7 @@ SHAPE = (
     Shown('fakes.folder', 1, 'the folder of the fakes', True, True),
     Shown('fakes.for', 1, 'the parts whose Protocols the fakes stand in for', True, True),
     Shown('fakes.prefix', 1, "how a fake's name starts", False, True),
+    Shown('fakes.tiers', 1, 'the tiers that may also import the fakes', False, True),
     Shown('guards', 0, 'the pre-built checks in use', False, True),
     Shown('guards.scenario-coverage', 1, 'every result of a use case has a row', False, True),
     Shown('guards.no-comments', 1, 'no `#` comments in the app or its tests', False, True),
@@ -154,7 +155,7 @@ def test_a_key_says_what_it_accepts_whether_check_enforces_it_through_which_rule
     assert "@any" not in key.accepts and "bare name" not in key.accepts
     assert [held_key.key for held_key in key.keys] == ["parts.imports.may.types_only"]
     assert [(held_key.key, held_key.required) for held_key in explained("fakes").keys] == [
-        ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False)]
+        ("fakes.folder", True), ("fakes.for", True), ("fakes.prefix", False), ("fakes.tiers", False)]
 
 
 def test_the_choices_are_the_bundled_profiles_the_testing_presets_and_the_languages_the_files_hold():

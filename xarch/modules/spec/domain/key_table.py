@@ -173,6 +173,7 @@ _KEYS: tuple[Key, ...] = (
     Key(FAKES, "folder", True, rules=("stand-ins", "dead-code")),
     Key(FAKES, "for", True, rules=("stand-ins", "dead-code")),
     Key(FAKES, "prefix", rules=("stand-ins", "dead-code")),
+    Key(FAKES, "tiers", rules=("tiers", "stand-ins")),
 
     _guard("scenario-coverage"),
     _guard("no-comments"),
@@ -238,6 +239,7 @@ _NEVER_USE = (*_IMPORTS, "use", "method_call", "import.resolved")
 _TYPES_ONLY = ("call", "use", "module_functions", "import.resolved")
 NEEDS: dict[str, tuple[str, ...]] = {
     "fakes": ("class", "class.interface"),
+    "fakes.tiers": _IMPORTS,
     "parts.<part>.imports.may": _IMPORTS,
     "parts.<part>.imports.must": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
     "parts.<part>.imports.may.types_only": _TYPES_ONLY,

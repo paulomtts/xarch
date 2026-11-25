@@ -92,3 +92,16 @@ def test_without_shared_the_tier_first_test_is_held_to_its_own_folder(tmp_path):
     assert tier_first(tmp_path, SHARING) == [
         f"tests/unit/modules/docs/test_a.py:{line}: a test may import test code only from its own folder tests/unit/ "
         f"({target})" for line, target in ((1, "tests.support.clock"), (2, "tests.helpers"), (3, "tests.other.builders"))]
+
+
+FAKING = {"fakes/__init__.py": "", "fakes/repo.py": "x = 1\n", "unit/test_a.py": "from tests.fakes.repo import x\n"}
+
+
+def test_a_tier_first_test_of_a_tier_fakes_tiers_lists_imports_the_fakes(tmp_path):
+    assert tier_first(tmp_path, FAKING, fakes="fakes: {folder: fakes, for: [sub], tiers: [unit]}\n") == []
+
+
+def test_without_fakes_tiers_a_tier_first_test_may_not_import_the_fakes(tmp_path):
+    assert tier_first(tmp_path, FAKING, fakes="fakes: {folder: fakes, for: [sub]}\n") == [
+        "tests/unit/test_a.py:1: a unit test may not import the fakes (tests.fakes.repo): only a tier that tests sub "
+        "may"]
