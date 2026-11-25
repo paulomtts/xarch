@@ -561,8 +561,12 @@ enforcement
   import rules cannot see what it names.
 - `weak`, met to the letter only, never a violation: a fake `<prefix><Port>` that defines in its own body (methods,
   or names its body or `self.` assigns) less than every port of its name declares; and a `Result` variant that no
-  row covers, credited only to standalone tests that name it and hold no `assert`; and a method `pass-through` finds.
-  A weak check that has a fix shows it on an indented `fix:` line under its own.
+  row covers, credited only to standalone tests that name it and hold no `assert`; a method `pass-through` finds; a
+  class or function `holds` finds where its part does not hold that kind, and a class `immutable` finds mutable; a
+  file `dead-code`'s `untested` finds no test of its tier reaches, a name its `tests_only` finds only the tests use,
+  and an entry of `guards.dead-code.known` that no longer holds; and a finding of a check of the profile's own
+  whose `mode` is `list`. None of them changes the exit code of a plain `check`; each fails `--strict`, which the
+  guard test runs. A weak check that has a fix shows it on an indented `fix:` line under its own.
 - `approximate`: each key the profile sets whose check reads a fact the language's reader supplies only partly, as
   its data file grades it (`supplies`), with what the reader misses: the check runs, and may miss what it looks for.
   A key whose check reads a fact the language does not supply at all is refused when the profile loads, naming the
@@ -574,8 +578,8 @@ Without `--strict` the section never changes the exit code. `--strict` fails (ex
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
 every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
 unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
-them after the section, under `strict:`. The guard test `init` writes runs `check` without `--strict`: a
-project opts in by running `xarch check --strict` in CI or a pre-commit hook.
+them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
+[Project files](#project-files)): a fresh project of either bundled profile has no such finding.
 
 ## xarch where: ask before you write
 
@@ -1153,7 +1157,8 @@ project edits them.
 
 `AGENTS.md` (beside the app folder, about 60 lines) is written for a coding agent that has never seen xarch: what governs
 the project (the profile and `docs/project/`), to run `xarch where <path>` before creating or moving a file and to
-take the first litmus test a piece of code passes, to run `xarch check` and `ruff check` before finishing, how tests are
+take the first litmus test a piece of code passes, to run `xarch check --strict` (what the guard test runs, so a weak
+finding fails it too) and `ruff check` before finishing, how tests are
 written, how to run `xarch review` as a second, advisory reading (with no key set it refuses: skip it, or run it with
 `--offline` when the project commits its answer cache; `xarch review calibrate` is the maintainer's), and what not to
 do to get a green check: move code into a folder no part covers, switch a guard off or loosen the profile, edit the
@@ -1165,11 +1170,14 @@ the pytest-style rules, no `print`, no naive datetime and no unused `noqa`, for 
 What differs by part (which imports, names or outside packages a part may use) is the profile's job, via
 `imports.may`, `imports.libraries` and `uses.never`; `xarch check` does not run the linter.
 
-The guard test, `tests/architecture/test_rules.py`, runs `python -m xarch check --app <project>/<app>` with the
-interpreter running the test, and fails with `xarch check`'s output as its message, so every guard runs with the
-project's test suite; xarch must be installed in that environment. It does not pass `--strict`; a project that wants
-strictness runs `xarch check --strict` in CI or a pre-commit hook (editing the pinned guard test is itself reported as
-changed). It is also the guard tier's example in `testing.md`.
+The guard test, `tests/architecture/test_rules.py`, runs `python -m xarch check --strict --app <project>/<app>` with
+the interpreter running the test, and fails with `xarch check`'s output as its message, so every guard runs with the
+project's test suite; xarch must be installed in that environment. It passes `--strict` because a project `init` and
+`new` have just written, of either bundled profile, has no finding `--strict` fails on: a weak finding (a method that
+only forwards, a class where the part holds functions, a file no test reaches) therefore fails the build as soon as it
+appears, rather than piling up as advice nobody acts on, and `AGENTS.md` tells an agent to run the same command.
+Editing the pinned guard test (to drop `--strict`, say) is itself reported as changed. It is also the guard tier's
+example in `testing.md`.
 
 ## Development
 

@@ -15,6 +15,17 @@ All notable changes to this project are written here. The format follows
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
   holding it, which is its own folder; only two tiers with the same folder are still refused.
 
+### Changed
+
+- The guard test `init` writes (`tests/architecture/test_rules.py`) runs `xarch check --strict`, and the `AGENTS.md`
+  it writes tells an agent to run the same: a fresh project of either bundled profile, with a module, has no finding
+  `--strict` fails on, so a weak finding (`holds`, `immutable`, `pass-through`, a file `dead-code`'s `untested` finds)
+  now fails the project's test suite as soon as it appears instead of staying advice. The guard test is pinned, so a
+  project written by 0.3.0 sees it listed as changed until it takes the new one.
+- The README's list of weak findings names every kind the enforcement section lists as `weak` (it left out `holds`,
+  `immutable`, `dead-code`'s `untested` and `tests_only` findings, stale `known` entries and the `list` findings of a
+  profile's own checks); the code was right.
+
 ### Fixed
 
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
