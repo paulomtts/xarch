@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from xarch.kernel.logic.placement import name_matches, reaches
+from xarch.kernel.logic.placement import module_steps, name_matches, reaches
 from xarch.modules.rules.application.logic.places import allowed
 from xarch.modules.rules.application.logic.tier_of import Tested, allowance, as_place, may_use_fakes
 from xarch.modules.rules.domain.profile import Profile
@@ -100,7 +100,16 @@ def _test_code(found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] 
         return target if tier is not None and may_use_fakes(profile, tier) else None
     if target in facts.test_files:
         return None
+    if any(target[:len(steps)] == steps for steps in _shared_code(profile)):
+        return target
     return target if read.own and target[:len(read.own)] == read.own else None
+
+
+def _shared_code(profile: Profile) -> tuple[tuple[str, ...], ...]:
+    """The test code every tier may import (`testing.shared`), each entry as the language names it below the tests
+    root: a file with no ending, a package file as its folder."""
+    framework = profile.framework
+    return tuple(module_steps(entry, profile.language.marks) for entry in framework.shared) if framework else ()
 
 
 def _outside(match: Match, found: Found, facts: Facts, profile: Profile) -> tuple[str, ...] | None:

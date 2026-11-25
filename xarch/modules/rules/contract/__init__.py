@@ -228,7 +228,8 @@ class InTests:
     """A test file, or the folder of one, below the tests root: its path, whether it is there now; the part it mirrors
     (None: none); what it may import, as places and in the docs' words; the parts it may use as types only; the names
     it may not use; its tier (None: it lies in none); whether it may import the fakes and where they live; the one
-    folder it may import test code from; and why it lies in no tier ("" for nothing to say)."""
+    folder it may import test code from; why it lies in no tier ("" for nothing to say); and the shared test code it
+    may import besides (testing.shared), each a folder ending in / or a file, from the project root."""
     kind: ClassVar[str] = "test"
     path: str
     exists: bool
@@ -242,6 +243,7 @@ class InTests:
     fakes_path: str
     code_from: str
     note: str
+    shared: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

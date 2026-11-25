@@ -64,7 +64,7 @@ def _where(found: Placed) -> WhereAnswer:
             return kind(found.found.shown, found.found.exists, mirrors, _reaches(found.reaches),
                         found.may_import_text, tier.imports_types_only if tier is not None else (), found.uses_never,
                         _tier(tier) if tier is not None else None, found.may_use_fakes, found.fakes_path,
-                        found.test_code_from, found.note)
+                        found.test_code_from, found.note, found.shared)
         case FakePlace():
             return Fake(found.found.shown, found.found.exists, found.fakes_path, found.test_code_from, found.note)
 

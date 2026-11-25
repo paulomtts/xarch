@@ -177,7 +177,7 @@ def test_a_bare_name_in_the_file_of_the_scenario_guard_is_refused_with_its_hint(
 OLD_TABLE_PROFILE = PRESET_PROFILE.replace("testing: pytest\n", 'testing:\n  files: ["test_*.py"]\n  declared: [{function: "test_*"}]\n'
                                            "  table: {decorator: pytest.mark.parametrize, row: pytest.param, id: id}\n")
 RETIRED_TABLE = ("testing: unknown key 'table': moved in 0.3.0: write tables, a list of forms (xarch profile explain "
-                 "testing.tables); use beside, declared, files, globals, mocks, preset, skips, tables")
+                 "testing.tables); use beside, declared, files, globals, mocks, preset, shared, skips, tables")
 
 
 def test_a_profile_writing_the_table_of_testing_is_refused_with_its_hint(tmp_path):
@@ -195,7 +195,7 @@ def test_a_profile_writing_the_functions_of_testing_is_refused_with_its_hint(tmp
     checked = CliRunner().invoke(app, ["profile", "check", str(path)])
     assert checked.exit_code == 1
     assert (f"    {path}: testing: unknown key 'functions': moved in 0.3.0: write declared: [{{function: \"<pattern>\"}}]; "
-            "use beside, declared, files, globals, mocks, preset, skips, tables") in checked.output.splitlines()
+            "use beside, declared, files, globals, mocks, preset, shared, skips, tables") in checked.output.splitlines()
 
 
 def test_beside_that_is_no_bool_is_refused_naming_the_file(tmp_path):

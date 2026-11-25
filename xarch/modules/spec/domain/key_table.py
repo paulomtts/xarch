@@ -138,6 +138,7 @@ _KEYS: tuple[Key, ...] = (
 
     Key(TESTING, "preset", rules=("tiers", "test-tree"), choices=CHOICE_PRESETS),
     Key(TESTING, "beside", rules=("tiers", "test-tree")),
+    Key(TESTING, "shared", rules=("tiers",)),
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
     Key(TESTING, "declared", True, rules=("scenario-coverage", "stand-ins"), opens=DECLARED),
     Key(TESTING, "globals", rules=("scenario-coverage", "stand-ins")),
@@ -266,6 +267,7 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "tiers.<tier>.imports.may": _IMPORTS,
     "tiers.<tier>.imports.also": _IMPORTS,
     "testing.skips": ("use", "import.resolved"),
+    "testing.shared": _IMPORTS,
     "testing.tables[].decorator": ("function.tables.decorator",),
     "testing.tables[].call": ("function.tables.call",),
     "testing.tables[].loop": ("function.tables.loop",),

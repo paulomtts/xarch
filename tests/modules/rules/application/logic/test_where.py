@@ -174,6 +174,13 @@ def test_a_test_gets_its_tier_the_part_it_mirrors_what_it_may_import_and_whether
         False, "tests/modules/docs/", ("datetime.datetime.now", "builtins.open"))
 
 
+def test_a_test_is_told_the_shared_test_code_it_may_import_besides_its_own_folder():
+    shared = replace(PROFILE, framework=replace(PROFILE.framework, shared=(("support",), ("helpers.py",))))
+    here = describe(shared, found("tests", "architecture", "test_rules.py"), APP, TESTS)
+    assert (here.test_code_from, here.shared) == ("tests/architecture/", ("tests/support/", "tests/helpers.py"))
+    assert describe(PROFILE, found("tests", "architecture", "test_rules.py"), APP, TESTS).shared == ()
+
+
 def test_a_test_of_a_use_case_may_use_the_fakes():
     here = describe(PROFILE, found("tests", "modules", "docs", "application", "test_publish.py"), APP, TESTS)
     assert (here.tier.name, here.place.part, here.may_use_fakes, here.fakes_path) == (

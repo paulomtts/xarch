@@ -85,8 +85,9 @@ class SuitePlace:
     """A file or folder below the tests root that is no fake: the path as resolved; whether it is a test (else a
     helper or other support); the tier it lies in (None: none), the part it mirrors (place, with its words and the
     word of one instance of its folder, None when it mirrors none) and what it may import, as places and in the docs'
-    words; the names it may not use; whether it may import the fakes and where they live; and the one folder it may
-    import test code from; note, why it is in no tier, for a test."""
+    words; the names it may not use; whether it may import the fakes and where they live; the one folder it may
+    import test code from; note, why it is in no tier, for a test; and the shared test code it may import besides
+    (testing.shared), each a folder ending in / or a file, from the project root."""
     found: Resolved
     test: bool
     tier: CheckedTier | None
@@ -100,6 +101,7 @@ class SuitePlace:
     fakes_path: str
     test_code_from: str
     note: str
+    shared: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

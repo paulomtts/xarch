@@ -51,3 +51,44 @@ def check(tmp_path, tier: str, tests: tuple[str, ...]) -> list[str]:
 ])
 def test_a_test_with_no_part_to_mirror_is_placed_only_by_a_tier_folder(tmp_path, tier, tests, expected):
     assert check(tmp_path, tier, tests) == expected
+
+
+TIER_FIRST = """\
+name: tierfirst
+testing: {{preset: pytest{shared}}}
+parts:
+  sub/: {{role: "the only part", untested: "its tests lie tier first"}}
+tiers:
+{tiers}
+{fakes}"""
+UNIT = "  unit:\n    proves: a rule\n    folder: unit\n    imports:\n      may: everything\n"
+
+
+def tier_first(tmp_path, tests: dict[str, str], shared: str = "", tiers: str = UNIT, fakes: str = "") -> list[str]:
+    """The tiers findings of a project whose tests lie tier first, tests/<tier>/, each test file with the text given."""
+    (tmp_path / "app" / "sub").mkdir(parents=True)
+    (tmp_path / "app" / "sub" / "a.py").write_text("x = 1\n")
+    for name, text in tests.items():
+        (tmp_path / "tests" / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "tests" / name).write_text(text)
+    (tmp_path / "tf.yaml").write_text(TIER_FIRST.format(shared=shared, tiers=tiers, fakes=fakes))
+    result = source_check(tmp_path / "app", str(tmp_path / "tf.yaml"), tmp_path / "tests")
+    return [f"{v}" for v in result.violations if v.rule == "tiers"]
+
+
+SHARING = {"support/__init__.py": "", "support/clock.py": "x = 1\n", "helpers.py": "x = 1\n",
+           "other/builders.py": "x = 1\n",
+           "unit/modules/docs/test_a.py": "from tests.support import clock\nfrom tests.helpers import x\n"
+                                          "from tests.other.builders import x as y\n"}
+
+
+def test_a_tier_first_test_imports_the_shared_test_code_and_nothing_else_outside_its_folder(tmp_path):
+    assert tier_first(tmp_path, SHARING, shared=", shared: [support, helpers.py]") == [
+        "tests/unit/modules/docs/test_a.py:3: a test may import test code only from its own folder tests/unit/ or the "
+        "shared support/, helpers.py (testing.shared) (tests.other.builders)"]
+
+
+def test_without_shared_the_tier_first_test_is_held_to_its_own_folder(tmp_path):
+    assert tier_first(tmp_path, SHARING) == [
+        f"tests/unit/modules/docs/test_a.py:{line}: a test may import test code only from its own folder tests/unit/ "
+        f"({target})" for line, target in ((1, "tests.support.clock"), (2, "tests.helpers"), (3, "tests.other.builders"))]

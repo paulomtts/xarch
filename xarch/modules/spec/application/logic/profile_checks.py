@@ -348,6 +348,16 @@ def folder_clashes(tiers: tuple[Tier, ...], fakes: Fakes | None) -> list[str]:
     return problems
 
 
+def shared_clashes(shared: tuple[tuple[str, ...], ...], tiers: tuple[Tier, ...], fakes: Fakes | None) -> list[str]:
+    """The entries of `testing.shared` that lie inside, or hold, a tier's folder or the fakes' folder: the test code
+    every tier may import is no tier's own."""
+    taken = [(f"the folder '{'/'.join(tier.folder)}' of tier '{tier.name}'", tier.folder) for tier in tiers
+             if tier.folder]
+    taken += [(f"the fakes' folder '{'/'.join(fakes.folder)}'", fakes.folder)] if fakes is not None else []
+    return [f"testing.shared: '{'/'.join(entry)}' overlaps {owner}: name test code that lies outside every tier's "
+            "folder and the fakes' folder" for entry in shared for owner, other in taken if _overlap(entry, other)]
+
+
 def _overlap(first: tuple[str, ...], second: tuple[str, ...]) -> bool:
     return first[:len(second)] == second or second[:len(first)] == first
 

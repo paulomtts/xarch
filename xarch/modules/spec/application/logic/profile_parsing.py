@@ -8,11 +8,13 @@ key_catalogue); the shape:
     based_on: <bundled name>   optional; the bundled profile this one was copied from, which a report compares with
     language: <language>       optional; the language of the app: the name of a language xarch ships (the first by name
                                when left out), read from its data file
-    testing: <preset> | {preset, beside} | {files, declared, globals, skips, tables, mocks, beside}
+    testing: <preset> | {preset, beside, shared} | {files, declared, globals, skips, tables, mocks, beside, shared}
                                how the test framework names things; a preset is a name, alone or under preset, read
                                from data shipped with xarch, and a key of the framework beside it is refused; beside,
                                whether every test of a part sits beside the code it tests (a tier with a `folder`
-                               keeps its tests below the tests folder, and no part may name it then).
+                               keeps its tests below the tests folder, and no part may name it then); shared, the
+                               folders and files below the tests folder (outside every tier's folder and the fakes')
+                               whose test code a test of any tier may import besides its own folder's.
                                Required with `tiers` and with the guards scenario-coverage and stand-ins
     parts: {<folder>/: {<key of the part>, <folder>/, <file>, ...}, <file>: {role, ...}}
                                the folder tree of the app: a key ending in / is a folder of one or more steps, one
@@ -148,7 +150,7 @@ _LISTED = {PassThrough: (PASS_THROUGH, "the parts whose methods are listed when 
 """The guards whose one key is the parts they read, each with the scope of its keys and what its parts are."""
 _PRESET_MAP = "{files, declared}"
 _TIER_INSTEAD = "`tests: <tier>`, or `untested: <reason>`"
-_SETTINGS = ("preset", "beside")
+_SETTINGS = ("preset", "beside", "shared")
 """The keys of `testing` that are the project's settings, not the framework's: written beside preset, never refused."""
 
 
@@ -225,6 +227,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
                  if tier.plain_tables and testing is not None and not testing.framework.tables]
     fakes = _fakes(document["fakes"], parts, declared, problems, language, words) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
+    shared = _tests_shared(document, tiers, fakes, problems, language)
     written_tiers = _tier_names(document["tiers"]) if isinstance(document.get("tiers"), Mapping) else []
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language,
                      words, written_tiers)
@@ -246,7 +249,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     if problems:
         raise InvalidArchitecture(source, problems)
     shown = ex.examples_of(examples, built.tree, parts, language)
-    framework = replace(testing.framework, beside=beside) if testing else None
+    framework = replace(testing.framework, beside=beside, shared=shared) if testing else None
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, framework, uses_never, excluded, hints, based_on, language,
                         reserved, needs.approximate(shortfalls), own, never, mask, placement, own_evals, placed, alike)
@@ -474,10 +477,11 @@ def _testing(value: Any, presets: Mapping[str, Any], problems: list[str], langua
     if preset and isinstance(value, Mapping) and "preset" in value:
         problems.append(f"testing.preset: the preset {preset} names a preset: a preset writes the whole framework")
         return None
-    if preset and isinstance(value, Mapping) and "beside" in value:
-        problems.append(f"testing.beside: the preset {preset} says beside: a preset writes the framework; write beside "
-                        "in the profile, beside preset")
-        return None
+    for key in _SETTINGS[1:]:
+        if preset and isinstance(value, Mapping) and key in value:
+            problems.append(f"testing.{key}: the preset {preset} says {key}: a preset writes the framework; write "
+                            f"{key} in the profile, beside preset")
+            return None
     count = len(problems)
     framework = ck.framework_patterns(value, problems, "testing", names_of(TESTING), language, TESTING)
     tables = ck.table_forms(value["tables"], "testing.tables", problems, language) if "tables" in value else ()
@@ -557,6 +561,31 @@ def _tests_beside(document: Mapping[Any, Any], specs: dict[str, Any], tiers: tup
                             f"{'/'.join((DEFAULT_TESTS, *folders[tier]))}: under testing.beside a part's tests sit "
                             "beside its code; give the part a tier with no folder")
     return True
+
+
+def _tests_shared(document: Mapping[Any, Any], tiers: tuple[Tier, ...], fakes: Fakes | None, problems: list[str],
+                  language: Language) -> tuple[tuple[str, ...], ...]:
+    """The folders and files below the tests folder whose test code a test of any tier may import, as the map `testing`
+    writes them (`shared`), each as its steps; none when it does not say. A value that is no list of paths below the
+    tests folder, shared with no `tiers`, and each entry that lies inside, or holds, a tier's folder or the fakes'
+    folder are refused."""
+    written = document.get("testing")
+    if not isinstance(written, Mapping) or "shared" not in written:
+        return ()
+    value = written["shared"]
+    entries = [tuple(item.split("/")) if ck.line(item) and not item.startswith("/") else ()
+               for item in value] if isinstance(value, list) else [()]
+    if any(not steps or any(step in ("", ".", "..") or EACH in step for step in steps) for steps in entries):
+        problems.append("testing.shared: must be a list of folders or files below the tests folder, such as "
+                        f"[support, helpers{language.checked.extension}]: each relative, with no `..`, no empty step "
+                        "and no `*`")
+        return ()
+    if entries and "tiers" not in document:
+        problems.append("testing.shared: the profile has no `tiers`: add them, or drop the key")
+        return ()
+    clashes = ck.shared_clashes(tuple(entries), tiers, fakes)
+    problems += clashes
+    return () if clashes else tuple(entries)
 
 
 def _framework_named(testing: _Testing) -> str:

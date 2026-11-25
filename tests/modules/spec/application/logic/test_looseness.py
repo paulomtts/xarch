@@ -198,6 +198,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(layered()), parsed(given(layered(), "service", shared=3))),
         (parsed(covered()), parsed(tight())),
         (near(True), near(None)),
+        (sharing("support"), sharing()),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -763,3 +764,26 @@ def test_beside_is_looser_only_where_the_compared_profile_leaves_it_out(custom, 
 
 def test_a_profile_with_no_testing_compared_with_one_beside_is_not_looser_by_beside():
     assert "testing.beside" not in [item.key for item in loosened(parsed(layered()), near(True))]
+
+
+def sharing(*entries: str) -> Architecture:
+    """covered(), its testing sharing the test code given with every tier (none: no `shared` at all)."""
+    document = covered()
+    if entries:
+        document["testing"]["shared"] = list(entries)
+    return parsed(document)
+
+
+def test_each_shared_entry_the_compared_profile_does_not_share_is_looser():
+    assert loosened(sharing("support", "helpers.py"), sharing("support")) == (
+        Loosened("testing.shared", "", "helpers.py",
+                 "a test of any tier may also import the test code in helpers.py (testing.shared)"),)
+
+
+@pytest.mark.parametrize("custom, base", [
+    pytest.param(("support",), ("support",), id="both share the same"),
+    pytest.param((), ("support",), id="shared dropped"),
+    pytest.param((), (), id="neither"),
+])
+def test_shared_is_looser_only_for_an_entry_the_compared_profile_leaves_out(custom, base):
+    assert loosened(sharing(*custom), sharing(*base)) == ()

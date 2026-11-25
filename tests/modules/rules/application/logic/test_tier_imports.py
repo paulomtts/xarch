@@ -17,7 +17,8 @@ APP = [source(p) for p in ["kernel/ids.py", "modules/docs/domain/doc.py", "modul
                            "modules/docs/contract/__init__.py", "modules/docs/adapters/db.py",
                            "modules/other/domain/doc.py", "platform/sql.py", "web/routes.py", "scripts/seed.py"]]
 HELPERS = [in_tests(p) for p in ["modules/docs/builders.py", "modules/other/builders.py", "web/conftest.py",
-                                 "fakes/repo.py", "helpers.py", "conftest.py"]]
+                                 "fakes/repo.py", "helpers.py", "conftest.py", "support/__init__.py",
+                                 "support/clock.py"]]
 NO_TIER = "lies in no tier: no part's folder and no tier's `folder` is mirrored here"
 DOMAIN_TEST = "modules/docs/domain/test_doc.py"
 
@@ -102,6 +103,38 @@ def test_app_imports(path, imports, expected):
 ])
 def test_test_imports(path, imports, expected):
     assert problems(path, *imports) == expected
+
+
+SHARED = profile(framework=replace(PROFILE.framework, shared=(("support",), ("helpers.py",))))
+"""PROFILE with the folder support/ and the file helpers.py below the tests root shared by every tier."""
+SHARED_ELSEWHERE = ("a test may import test code only from its own folder {own}/ or the shared support/, helpers.py "
+                    "(testing.shared) ({target})")
+
+
+@pytest.mark.parametrize("path, imports, expected", [
+    pytest.param(DOMAIN_TEST, [imp(1, "tests", "helpers"), imp(2, "tests.support", "clock"),
+                               imp(3, "tests.support.clock", "Frozen"), imp(4, "tests", "support")], [],
+                 id="a test of any tier imports the shared folder and the shared file"),
+    pytest.param("architecture/test_rules.py", [imp(1, "tests.helpers", "x"), imp(2, "tests.support", "clock")], [],
+                 id="so does a test placed by its tier's folder"),
+    pytest.param(DOMAIN_TEST, [imp(1, "", "helpers", up=3)], [],
+                 id="a relative import reaching the shared file is fine too"),
+    pytest.param(DOMAIN_TEST, [imp(1, "tests.modules.other", "builders"), imp(2, "tests", "conftest")],
+                 [f"1: {SHARED_ELSEWHERE.format(own='tests/modules/docs', target='tests.modules.other.builders')}",
+                  f"2: {SHARED_ELSEWHERE.format(own='tests/modules/docs', target='tests.conftest')}"],
+                 id="test code outside its own folder and the shared ones is still reported, naming the shared ones"),
+    pytest.param(DOMAIN_TEST, [imp(1, "tests.fakes.repo", "FakeRepo")],
+                 ["1: a unit test may not import the fakes (tests.fakes.repo): only a tier that tests ports may"],
+                 id="the fakes stay the fakes' rule"),
+])
+def test_shared_test_code_is_open_to_every_tier(path, imports, expected):
+    assert problems(path, *imports, checked=SHARED) == expected
+
+
+def test_without_shared_the_same_imports_are_reported_as_before():
+    assert problems(DOMAIN_TEST, imp(1, "tests", "helpers"), imp(2, "tests.support", "clock")) == [
+        "1: a test may import test code only from its own folder tests/modules/docs/ (tests.helpers)",
+        "2: a test may import test code only from its own folder tests/modules/docs/ (tests.support.clock)"]
 
 
 @pytest.mark.parametrize("checked", [

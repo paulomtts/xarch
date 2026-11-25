@@ -197,8 +197,8 @@ def test_the_tier_import_keys_need_what_the_keys_they_replace_needed():
 def test_the_forms_that_declare_a_test_are_a_list_scope_of_function_call_title_and_body_and_functions_is_no_key():
     assert SCOPES[DECLARED] == "testing.declared[]"
     assert [key.name for key in KEYS if key.scope == DECLARED] == ["function", "call", "title", "body"]
-    assert [key.name for key in KEYS if key.scope == TESTING] == ["preset", "beside", "files", "declared", "globals",
-                                                                  "skips", "tables", "mocks"]
+    assert [key.name for key in KEYS if key.scope == TESTING] == ["preset", "beside", "shared", "files", "declared",
+                                                                  "globals", "skips", "tables", "mocks"]
     assert [(key.required, key.opens) for key in KEYS if (key.scope, key.name) == (TESTING, "declared")] == [
         (True, DECLARED)]
 

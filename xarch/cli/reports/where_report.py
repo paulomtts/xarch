@@ -82,8 +82,13 @@ def _test_lines(where: InTests) -> list[str]:
     if where.tier is not None:
         lines.append(_line("fakes", f"may import {where.fakes_path}" if where.may_use_fakes else "may not import them"))
         lines += [_line("tier proves", where.tier.proves), _line("tier may touch", where.tier.may_touch),
-                  _line("tier litmus", where.tier.litmus), _line("test code", f"from {where.code_from} only")]
+                  _line("tier litmus", where.tier.litmus), _line("test code", _code_from(where))]
     return lines
+
+
+def _code_from(where: InTests) -> str:
+    shared = f" and the shared {', '.join(where.shared)}" if where.shared else ""
+    return f"from {where.code_from}{shared} only"
 
 
 def _note(where: WhereAnswer) -> str:
@@ -134,7 +139,8 @@ def where_document(profile: str, where: WhereAnswer) -> str:
                          "may_import_text": where.may_import_text or None, "never_uses": list(where.uses_never),
                          "tier": _tier(where.tier) if where.tier is not None else None,
                          "test": {"may_use_fakes": where.may_use_fakes, "fakes_path": where.fakes_path or None,
-                                  "types_only": list(where.types_only), "code_from": where.code_from or None},
+                                  "types_only": list(where.types_only), "code_from": where.code_from or None,
+                                  **({"shared": list(where.shared)} if where.shared else {})},
                          "note": where.note or None}
         case Fake():
             shown |= {"test": {"may_use_fakes": False, "fakes_path": where.fakes_path or None, "types_only": [],

@@ -139,8 +139,8 @@ keys:
   testing:
     meaning: how the test framework names things
     accepts: >-
-      a preset name, a map {preset, beside} naming one, or a map {files, declared, globals, skips, tables, mocks,
-      beside}; needed with `tiers` and the guards scenario-coverage and stand-ins. Dotted names are what an import
+      a preset name, a map {preset, beside, shared} naming one, or a map {files, declared, globals, skips, tables,
+      mocks, beside, shared}; needed with `tiers` and the guards scenario-coverage and stand-ins. Dotted names are what an import
       binds; what stays %language% is `%interface_path%` as the mark of a port, `%package_file%`, the syntax tree,
       import resolution and the standard library's names
     example: |-
@@ -793,6 +793,20 @@ keys:
     example: |
       <<testing>>
         beside: true
+      tiers:
+        unit:
+          proves: a rule
+      <<tiered-part>>
+  testing.shared:
+    meaning: the test code every tier may import besides its own folder's
+    accepts: >-
+      a list of folders and files below the tests folder, such as [support, helpers%extension%] (default none): a test of any
+      tier may import the test code in them as well as its own folder's; each lies outside every tier's `folder` and
+      the fakes' folder. A test file in them is still a test file, which no test imports. It is written beside
+      `preset`, or in the whole map, never in a preset
+    example: |
+      <<testing>>
+        shared: [support, helpers%extension%]
       tiers:
         unit:
           proves: a rule

@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 from xarch.kernel.logic.conditions import condition
+from xarch.kernel.logic.placement import stem
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.application.logic.tier_of import BESIDE_FIX, BESIDE_NO_PART, BESIDE_UNTESTED, NO_TIER, NO_TIER_FIX
 from xarch.modules.rules.domain.profile import Profile
@@ -184,8 +185,14 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
                   "test file",
                   "move what {target} holds that this test needs into test code of its folder that is no test file, "
                   "and import it from there", _all("target-test"), ("line", "target"))
-    elsewhere = Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
-                       "move what {target} holds into {own_folder}/, or drop the import")
+    shared = profile.framework.shared if profile.framework is not None else ()
+    named = ", ".join(_shared_shown(entry, profile) for entry in shared).replace("{", "{{").replace("}", "}}")
+    elsewhere = (Saying("a test may import test code only from its own folder {own_folder}/ or the shared "
+                        f"{named} (testing.shared) ({{target}})",
+                        "move what {target} holds into {own_folder}/ or into shared test code, or drop the import")
+                 if shared else
+                 Saying("a test may import test code only from its own folder {own_folder}/ ({target})",
+                        "move what {target} holds into {own_folder}/, or drop the import"))
     also = "".join(f"; tiers.{tier.name}.imports.also" for tier in profile.tiers if tier.imports_also)
     near = ((Saying(BESIDE_UNTESTED, BESIDE_FIX, _all("beside", "mirrors-a-part")),
              Saying(BESIDE_NO_PART, BESIDE_FIX, _all("beside")))
@@ -196,6 +203,12 @@ def _tiers(profile: Profile) -> tuple[Rule, ...]:
                  (mirrored, by_folder), keep=_all("target-placed"), key=f"tiers{also}"),
             Rule("tiers", Scope(TESTS, where=_all("tiered")), ("import-into-tests",), MAY_ONLY, (Match("permitted"),),
                  (*fakes, test, elsewhere), key="tiers"))
+
+
+def _shared_shown(entry: tuple[str, ...], profile: Profile) -> str:
+    """An entry of testing.shared as a message names it: a source file as written, a folder ending in /."""
+    shown = "/".join(entry)
+    return shown if stem(entry[-1], profile.language.marks) is not None else f"{shown}/"
 
 
 def _syntax(profile: Profile) -> tuple[Rule, ...]:

@@ -68,8 +68,8 @@ def test_a_preset_is_the_same_map_validated_like_one_written_in_the_file():
     pytest.param({"declared": BY_NAME}, PRESETS, ["layered.yaml: testing: missing `files`"], id="no files"),
     pytest.param({"files": ["test_*.py"]}, PRESETS, ["layered.yaml: testing: missing `declared`"], id="no declared"),
     pytest.param({"files": ["test_*.py"], "declared": BY_NAME, "colour": 1}, PRESETS,
-                 ["layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, skips, "
-                  "tables"],
+                 ["layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, shared, "
+                  "skips, tables"],
                  id="an unknown key"),
     pytest.param({"files": ["x"], "declared": BY_NAME}, PRESETS,
                  ["layered.yaml: testing.files: 'x' is not a file name pattern: a name ending in .py, with `*` for any "
@@ -98,7 +98,8 @@ def test_a_map_that_names_a_preset_is_the_preset_by_name():
 BESIDE = "drop it, or drop preset and write the whole map"
 NO_RSPEC = "layered.yaml: testing.preset: no preset 'rspec': use pytest, or write the map {files, declared}"
 NOT_A_NAME = "layered.yaml: testing.preset: must be a preset name: use pytest, or write the map {files, declared}"
-UNKNOWN_COLOUR = "layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, skips, tables"
+UNKNOWN_COLOUR = ("layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, "
+                  "shared, skips, tables")
 CHECK_FILES = ["check_*.py"]
 
 
@@ -1037,8 +1038,7 @@ def test_a_broken_framework_and_a_broken_beside_are_both_reported_beside_last():
 
 
 def test_an_unknown_key_beside_preset_lists_beside_among_the_keys():
-    assert problems(beside(beside=True, colour=1)) == [
-        "layered.yaml: testing: unknown key 'colour': use beside, declared, files, globals, mocks, preset, skips, tables"]
+    assert problems(beside(beside=True, colour=1)) == [UNKNOWN_COLOUR]
 
 
 def test_a_preset_may_not_say_beside_whichever_form_names_it():
@@ -1175,3 +1175,63 @@ def test_under_python_a_type_argument_is_refused_as_written_by_no_template():
                     languages={"python": replace(PYTHON, checked=replace(PYTHON.checked, supplies=None))}) == [
         "layered.yaml: testing.mocks.specs.0: the language Python does not write `writing.specs.type_argument`, how a "
         "mock is given its spec by a type argument"]
+
+
+SHARED_TYPE = ("layered.yaml: testing.shared: must be a list of folders or files below the tests folder, such as "
+               "[support, helpers.py]: each relative, with no `..`, no empty step and no `*`")
+
+
+def test_shared_beside_a_preset_names_the_test_code_every_tier_may_import():
+    framework = parsed(beside(shared=["support", "helpers.py", "data/builders"])).framework
+    assert framework == replace(parsed(covered(testing="pytest")).framework,
+                                shared=(("support",), ("helpers.py",), ("data", "builders")))
+
+
+def test_shared_in_a_whole_framework_is_kept_and_no_shared_is_none():
+    written = parsed(covered(testing={"files": ["test_*.py"], "declared": BY_NAME, "shared": ["support"]})).framework
+    assert written.shared == (("support",),)
+    assert parsed(covered(testing="pytest")).framework.shared == ()
+    assert parsed(beside(shared=[])) == parsed(covered(testing="pytest"))
+
+
+@pytest.mark.parametrize("value", [
+    pytest.param("support", id="a word, not a list"), pytest.param([3], id="an entry that is no text"),
+    pytest.param(["/support"], id="an absolute entry"), pytest.param(["../support"], id="an entry climbing out"),
+    pytest.param(["support/"], id="an entry with an empty step"), pytest.param(["*"], id="an entry with a star"),
+    pytest.param([""], id="an empty entry"), pytest.param(None, id="null"),
+])
+def test_shared_that_is_no_list_of_paths_below_the_tests_folder_is_refused(value):
+    assert problems(beside(shared=value)) == [SHARED_TYPE]
+
+
+def test_shared_with_no_tiers_is_refused():
+    assert problems(layered(testing={"preset": "pytest", "shared": ["support"]})) == [
+        "layered.yaml: testing.shared: the profile has no `tiers`: add them, or drop the key"]
+
+
+@pytest.mark.parametrize("entry, owner", [
+    pytest.param("architecture/helpers.py", "the folder 'architecture' of tier 'guard'", id="inside a tier's folder"),
+    pytest.param("architecture", "the folder 'architecture' of tier 'guard'", id="a tier's folder itself"),
+    pytest.param("fakes/db", "the fakes' folder 'fakes'", id="inside the fakes' folder"),
+])
+def test_a_shared_entry_overlapping_a_tier_s_folder_or_the_fakes_is_refused(entry, owner):
+    document = guarded({"preset": "pytest", "shared": ["support", entry]})
+    document["fakes"] = {"folder": "fakes", "for": ["service"]}
+    assert problems(document) == [f"layered.yaml: testing.shared: '{entry}' overlaps {owner}: name test code that lies "
+                                  "outside every tier's folder and the fakes' folder"]
+
+
+def test_the_tests_folder_itself_is_no_shared_entry():
+    assert problems(guarded({"preset": "pytest", "shared": ["support", "."]})) == [SHARED_TYPE]
+
+
+def test_a_shared_entry_that_only_starts_like_a_tier_s_folder_is_fine():
+    document = guarded({"preset": "pytest", "shared": ["architecture_helpers.py", "arch"]})
+    assert parsed(document).framework.shared == (("architecture_helpers.py",), ("arch",))
+
+
+def test_shared_in_a_preset_is_refused():
+    odd = {"files": ["test_*.py"], "declared": BY_NAME, "shared": ["support"]}
+    assert problems(covered(testing={"preset": "odd"}), presets={**PRESETS, "odd": odd}) == [
+        "layered.yaml: testing.shared: the preset odd says shared: a preset writes the framework; write shared in the "
+        "profile, beside preset"]

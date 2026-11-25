@@ -39,8 +39,8 @@ holds the kind to (those written under it, else for `records` and `exceptions` t
 never for an exception): `names` dropped, or a pattern added that no bundled pattern matches read as a name,
 `immutable` dropped, `built_by` dropped or a part added to it; a part's `shared` dropped or lowered; a tier's
 `imports.must` dropped, or a part added to it; a tier no longer `plain_tables`; `testing.beside` set where the bundled
-profile leaves it out. Anything stricter, and what is compared in no way above (the layout, new parts, the guards'
-other parameters, `fakes`), is not listed.
+profile leaves it out; an entry of `testing.shared` the bundled profile does not share. Anything stricter, and what
+is compared in no way above (the layout, new parts, the guards' other parameters, `fakes`), is not listed.
 
 A custom profile whose `based_on` is the path of a profile file is compared with that file, called by its path as
 written, and is handed the files of its chain in order: that one, the one it names in turn, and so on; no file of the
@@ -73,7 +73,7 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 """The key of each setting of a kind of holds, a way it is looser listed under, kind by kind in the order of KINDS."""
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
-          "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "files.pinned", "reserved", "known",
+          "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "files.pinned", "reserved", "known",
           "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
@@ -317,6 +317,9 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     if custom.framework is not None and custom.framework.beside and not (base.framework is not None
                                                                          and base.framework.beside):
         found.append(("testing.beside", "", ""))
+    if custom.framework is not None:
+        before = base.framework.shared if base.framework is not None else ()
+        found += [("testing.shared", "", "/".join(entry)) for entry in custom.framework.shared if entry not in before]
     files = {file.path: file for file in custom.files}
     found += [("files.pinned", "", "/".join(file.path)) for file in base.files
               if file.pinned and file.path in files and not files[file.path].pinned]
@@ -527,6 +530,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{what} is no longer counted as a skip (testing.skips)"
         case "testing.beside":
             return "tests may sit beside the code: the mirrored tests tree is no longer checked (testing.beside)"
+        case "testing.shared":
+            return f"a test of any tier may also import the test code in {what} (testing.shared)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
         case "known":

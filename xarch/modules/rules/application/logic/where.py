@@ -207,7 +207,15 @@ def _tier_place(profile: Profile, where: Tested, found: Resolved, tests: str, ap
                       _word_of_instance(profile, where) or _singular(profile, part),
                       _reaches(profile, targets, where.instance, app), targets_phrase(targets, folders, profile.words()),
                       names, may_use_fakes(profile, where.tier), _fakes(profile, tests),
-                      f"{tests}/{'/'.join(where.own)}/" if where.own else f"{tests}/", "")
+                      f"{tests}/{'/'.join(where.own)}/" if where.own else f"{tests}/", "", _shared(profile, tests))
+
+
+def _shared(profile: Profile, tests: str) -> tuple[str, ...]:
+    """The shared test code (testing.shared) as paths from the project root: a source file as written, a folder ending
+    in /."""
+    shared = profile.framework.shared if profile.framework is not None else ()
+    return tuple(f"{tests}/{'/'.join(entry)}" + ("" if stem(entry[-1], profile.language.marks) is not None else "/")
+                 for entry in shared)
 
 
 def _fakes(profile: Profile, tests: str) -> str:

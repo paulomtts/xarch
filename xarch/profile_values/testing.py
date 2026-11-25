@@ -14,14 +14,17 @@ class Framework:
     matches a pattern, or a call whose arguments hold the test's title and its body), a test being of the first form
     it matches; the dotted names of what skips a test or expects it to fail (a marker or a call; empty: none is
     counted); the table forms it writes (tables; none: it writes none, and no table is read); the names it binds
-    without an import (globals), which are not the language's predefined names; and whether every test of a part sits
-    beside the code it tests rather than in the mirrored tests tree (beside, the project's `testing.beside`)."""
+    without an import (globals), which are not the language's predefined names; whether every test of a part sits
+    beside the code it tests rather than in the mirrored tests tree (beside, the project's `testing.beside`); and the
+    folders and files below the tests root, as written there, whose test code a test of any tier may import besides
+    its own folder's (shared, the project's `testing.shared`; empty: none)."""
     files: tuple[str, ...]
     declared: tuple[TestForm, ...]
     skips: tuple[tuple[str, ...], ...] = ()
     tables: tuple[TableForm, ...] = ()
     globals: tuple[tuple[str, ...], ...] = ()
     beside: bool = False
+    shared: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)

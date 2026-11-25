@@ -3,7 +3,7 @@ import json
 from dataclasses import replace
 
 from xarch.cli.reports.where_report import where_document, where_lines
-from xarch.modules.rules.contract import InPart, InTests, PartShown, Ungoverned, Untested
+from xarch.modules.rules.contract import InPart, InTests, PartShown, TierInfoView, Ungoverned, Untested
 
 PART = InPart("app/cli/app.py", True, PartShown("cli", "cli", role="the commands", litmus="Is it a command?"), (),
               "contract", ("typer",), (), Untested("a shim"))
@@ -47,3 +47,19 @@ def test_a_test_held_to_the_list_of_the_part_it_mirrors_shows_it_under_the_same_
 def test_an_answer_that_is_no_part_gives_never_uses_empty():
     document = json.loads(where_document("custom", Ungoverned("app/odd.py", False, (), None, "")))
     assert document["never_uses"] == [] and "forbidden" not in document
+
+
+TIER = TierInfoView("unit", "a rule", "nothing", "Does it decide?")
+
+
+def test_a_test_with_shared_test_code_names_it_on_its_test_code_line_and_in_its_document():
+    test = InTests("tests/unit/test_app.py", True, None, (), "", (), (), TIER, False, "", "tests/unit/", "",
+                   ("tests/support/", "tests/helpers.py"))
+    assert "test code:      from tests/unit/ and the shared tests/support/, tests/helpers.py only" in where_lines(test)
+    assert json.loads(where_document("custom", test))["test"]["shared"] == ["tests/support/", "tests/helpers.py"]
+
+
+def test_a_test_with_no_shared_test_code_is_shown_as_before():
+    test = InTests("tests/unit/test_app.py", True, None, (), "", (), (), TIER, False, "", "tests/unit/", "")
+    assert "test code:      from tests/unit/ only" in where_lines(test)
+    assert "shared" not in json.loads(where_document("custom", test))["test"]

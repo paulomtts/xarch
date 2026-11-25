@@ -5,6 +5,12 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
+  that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
+  folder is refused.
+
 ### Fixed
 
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone

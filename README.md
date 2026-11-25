@@ -114,7 +114,7 @@ and a key left out means off):
 
 ```
 name*  based_on  language  hints  excluded  reserved
-testing:  <preset> | {preset, beside} | {files*, declared*, globals, skips, tables, mocks, beside}
+testing:  <preset> | {preset, beside, shared} | {files*, declared*, globals, skips, tables, mocks, beside, shared}
 parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports: {may, must, libraries}, uses: {never},
                               tests | untested, package_only, shared,
                               holds: {classes: {names, immutable, built_by}, functions: {names},
@@ -202,6 +202,11 @@ merged, and a project with its own `files` writes the whole map instead; `testin
 `files` matches is a test of the tier its part names, never code of its part; a tier with a `folder` keeps its tests
 below the tests root, and a part may not name such a tier; `test-tree` then reports a test left below the tests root
 outside every tier `folder` and the fakes' folder.
+`testing: {preset: pytest, shared: [support, helpers.py]}` names test code that a test of any tier may import besides
+its own folder's: folders and files below the tests root (default none), each outside every tier `folder` and the
+fakes' folder (an entry inside or holding one is refused). A test file there is still a test file, which no test
+imports, and the fakes keep their own rule; the `tiers` message of an import from elsewhere names the shared entries,
+and `xarch where` lists them for a test.
 That the table forms and the call form are neutral to a language is proved without a TypeScript reader: a test-only
 framework (`tests/fakes/frameworks/stub.yaml`, a function form and a call form of a test, a loop form and a call form of
 a table with literal rows) is checked on hand-built facts and worded by the `writing` of the test-only language
@@ -354,7 +359,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match | `parts.imports.may` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
-| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests` |
+| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
@@ -449,8 +454,8 @@ how many facts it read in the project.
   profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
-  `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `files.pinned`,
-  `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
+  `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
+  `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
   `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
@@ -514,7 +519,8 @@ enforcement
   allows that the other's does not (`classes` allowing `records` and `exceptions` too), a setting of a kind it holds
   dropped or widened (`names`, `immutable`, `built_by`, compared kind by kind on the settings the part holds each kind
   to, for a kind either lists), a part's `shared` dropped or lowered, a tier's `imports.must` dropped or a part added
-  to it, a tier no longer `plain_tables`, and `testing.beside` set where the other leaves it out.
+  to it, a tier no longer `plain_tables`, `testing.beside` set where the other leaves it out, and an entry of
+  `testing.shared` the other does not share.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.
@@ -586,7 +592,8 @@ part claims is `structure`. A path in the project but outside the app and its te
 
 For a path in the tests: its tier, the part its folder mirrors, what it may import (the per-part rule: that part and what
 it may import), whether it may import the fakes, the parts it may use as types only, what the tier proves and may touch,
-its litmus test, and the one folder it may import test code from. A test that lies in no tier says so (`note`); a file
+its litmus test, and the one folder it may import test code from (and the shared test code, under `testing.shared`). A
+test that lies in no tier says so (`note`); a file
 below the fakes' folder is a `fake`, any other file that is no test a `support` file.
 
 Exit 0 for every path inside the project, placed or not; 2 for a path outside it or a profile that cannot be used (with
@@ -638,7 +645,8 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   `ungoverned`, whether `closed-tree` is on (that is, whether `xarch check` reports the file), else null.
 - `test`: for `test`, `fake` and `support`: `{"may_use_fakes", "fakes_path", "types_only", "code_from"}`, whether it
   may import the fakes, where they live, the parts it may use as types and never call, and the folder it may import test
-  code from. `note`: one line where the kind alone does not say it.
+  code from; a profile with `testing.shared` adds `"shared"` to a tiered test's object, the shared folders (ending in
+  `/`) and files below the project root. `note`: one line where the kind alone does not say it.
 
 ## xarch review: an advisory reading
 
