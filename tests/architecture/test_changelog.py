@@ -52,7 +52,7 @@ def test_every_row_of_the_table_of_old_and_new_has_two_cells():
 
 def test_every_name_retired_in_this_release_is_in_the_table_of_old_and_new():
     spans = [span for row in table_rows() for span in re.findall(r"`([^`]+)`", row[0])]
-    named = [word for retired in RETIRED if "0.3.0" in retired.text
+    named = [word for retired in RETIRED if VERSION in retired.text
              for word in (retired.name, retired.value) if word]
     missing = {word for word in named if not any(re.search(rf"\b{re.escape(word)}\b", span) for span in spans)}
     assert sorted(missing) == []
