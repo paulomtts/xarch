@@ -12,7 +12,7 @@ from xarch.kernel.placement import EVERYTHING
 from xarch.profile_values.placement import Target
 
 
-def may_import(targets: Iterable[Target], folders: Mapping[str, str], words: Mapping[str, str]) -> str:
+def targets_phrase(targets: Iterable[Target], folders: Mapping[str, str], words: Mapping[str, str]) -> str:
     """The targets as a phrase. folders names each part as the docs show it (a path ending in `/` for a folder), words
     the word of the repeating folder each part lies in (a part outside any has none); the part a rule belongs to is
     left out of the targets by the caller, since its own part is implied."""

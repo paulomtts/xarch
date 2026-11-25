@@ -9,5 +9,6 @@ from xarch.modules.rules.application.logic.explained import general
 
 def expands(address: str) -> bool:
     """Whether the engine expands the key at address to rules when a profile sets it (on any part or tier, for a key
-    that names one)."""
-    return general(address.strip().strip(".")) in KEYS
+    that names one, or written with none, as parts.holds.classes.names)."""
+    typed = address.strip().strip(".")
+    return typed in KEYS or general(typed) in KEYS

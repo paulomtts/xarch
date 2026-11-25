@@ -7,7 +7,7 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
-from xarch.modules.spec.domain.published import Eval
+from xarch.modules.spec.domain.published import Eval, Held
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -77,14 +77,12 @@ class Part:
     role: one line; also the part's note in the docs' tree
     entry: the entry point, which drives the rest; at most one part is
     untested: why no tier tests it, e.g. "reached through the adapters that use it"
-    must_import: the targets each of its files must import one of (or an outside package); empty: no such rule
-    holds: what its files define at module level, "classes" or "functions"; empty: either
-    types_only: the parts its files may import and use as types, but never call
-    no_callbacks: no function of it calls one of its own parameters
-    immutable: every class it defines at the top level, but an exception, is an immutable record, as the language's
-        data file says one is made
-    names: the patterns one of which every public class of it matches (`*` for any text); empty: any name
-    built_by: the only parts whose code may call the constructor of a class of it; empty: any part
+    imports_must: the targets each of its files must import one of (or an outside package); empty: no such rule
+    holds: the kinds its files may define at the top level, each with its settings (the patterns their names match,
+        whether its classes are immutable records, as the language's data file says one is made, and the only parts
+        whose code may build them), in the order of KINDS whatever the order written; empty: every kind
+    imports_types_only: the targets of its imports.may marked types_only, in the order of may: its files may import
+                        what they reach and use it as types, but never call it
     shared: the fewest users each public name it defines must have, being there to be shared; None: not shared
     """
     name: str
@@ -93,14 +91,10 @@ class Part:
     litmus: str = ""
     entry: bool = False
     untested: str = ""
-    must_import: tuple[Target, ...] = ()
-    holds: str = ""
-    types_only: tuple[str, ...] = ()
-    no_callbacks: bool = False
-    names: tuple[str, ...] = ()
-    built_by: tuple[str, ...] = ()
+    imports_must: tuple[Target, ...] = ()
+    holds: tuple[Held, ...] = ()
+    imports_types_only: tuple[Target, ...] = ()
     shared: int | None = None
-    immutable: bool = False
 
     @property
     def in_instance(self) -> bool:
@@ -207,16 +201,16 @@ class Tier:
     subject_text: the Subject cell as written, in place of the subject's parts
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
-    types_only: parts its tests may import and use as types, but never call
+    imports_types_only: parts its tests may import and use as types, but never call
     apply_never: its tests are held to the `uses.never` list of the part they mirror
     folder: the folder below the tests folder where its tests live when they mirror no part, e.g. ("architecture",);
         the example only shows a place, it never decides one
-    may_import: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
+    imports_may: what the tests in its own folder may import of the app, as targets; None for a tier with no folder,
         whose tests import what the part their folder mirrors may
-    must_import: the parts one of which each of its test files reaches, directly or through test code that is no
+    imports_must: the parts one of which each of its test files reaches, directly or through test code that is no
         test; empty: no such rule
     plain_tables: every table test of it holds no branch in its body
-    may_also_import: what each of its tests may import of the app besides what the part it mirrors may (or its own
+    imports_also: what each of its tests may import of the app besides what the part it mirrors may (or its own
         folder's allowance), as targets; a bare name of a part in the repeating folder is the instance the test mirrors
     """
     name: str
@@ -230,13 +224,13 @@ class Tier:
     data: str = ""
     example: TierExample | None = None
     helpers: tuple[TierExample, ...] = ()
-    types_only: tuple[str, ...] = ()
+    imports_types_only: tuple[str, ...] = ()
     apply_never: bool = False
     folder: tuple[str, ...] | None = None
-    may_import: tuple[Target, ...] | None = None
-    must_import: tuple[str, ...] = ()
+    imports_may: tuple[Target, ...] | None = None
+    imports_must: tuple[str, ...] = ()
     plain_tables: bool = False
-    may_also_import: tuple[Target, ...] = ()
+    imports_also: tuple[Target, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -298,8 +292,14 @@ class PassThrough:
     parts: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class NoCallbacks:
+    """The guard no-callbacks: the parts whose functions call none of their own parameters annotated as callables."""
+    parts: tuple[str, ...]
+
+
 Guard = (PackageOnly | ScenarioCoverage | NoComments | StandIns | ClosedTree | NoDuplicates | NoTwins | DeadCode
-         | PassThrough | PrivateImports)
+         | PassThrough | NoCallbacks | PrivateImports)
 
 
 @dataclass(frozen=True)
@@ -363,7 +363,7 @@ class Architecture:
     layers: named chains of parts, from the inside out
     placement: every part once: the order the litmus tests run in
     tiers: in the order their litmus tests run
-    libraries: the outside packages each part may import; None: unchecked
+    imports_libraries: the outside packages each part may import; None: unchecked
     guards: the pre-built checks in use
     fakes: where the test fakes live; None: no test may import them
     repeats: the repeating folders of the layout, in the order of the profile: each its word, as the docs show one
@@ -376,7 +376,7 @@ class Architecture:
     hints: the project's own advice for a rule id, shown after the built-in fix of a violation of that rule
     based_on: the bundled profile it says it was copied from; empty when it does not say
     language: the language of the app
-    reserved: the standard-library modules only the parts whose `libraries` list them may import, each with why
+    reserved: the standard-library modules only the parts whose `imports_libraries` list them may import, each with why
     approximate: the keys whose check reads a fact the language supplies only partly, with the reader's note
     checks: the checks the profile writes itself, by id, each as the format writes it (see written_checks): what the
         words in them mean is the rules module's
@@ -401,7 +401,7 @@ class Architecture:
     placement: tuple[str, ...] = ()
     naming: tuple[Naming, ...] = ()
     tiers: tuple[Tier, ...] = ()
-    libraries: dict[str, tuple[str, ...]] | None = None
+    imports_libraries: dict[str, tuple[str, ...]] | None = None
     guards: tuple[Guard, ...] = ()
     fakes: Fakes | None = None
     repeats: tuple[Repeat, ...] = ()

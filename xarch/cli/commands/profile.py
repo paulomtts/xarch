@@ -63,7 +63,7 @@ def register(app: typer.Typer, spec: SpecController, rules: RulesController) -> 
     @group.command()
     @rewrapped
     def explain(key: Annotated[str | None, typer.Argument(
-                    help="A key of the format, such as parts, parts.may_import, guards.no-duplicates or testing; or "
+                    help="A key of the format, such as parts, parts.imports.may, guards.no-duplicates or testing; or "
                          "checks, how a check is written, or a category of its words (kinds, quantifiers, targets, "
                          "filters, variables) or one of them, such as filters.public. Without one, the whole format on "
                          "one screen.")] = None,

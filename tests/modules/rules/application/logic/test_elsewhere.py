@@ -4,12 +4,13 @@ not asked of are not answered."""
 import pytest
 
 from tests.modules.rules.builders import profile
+from xarch.modules.rules.application.logic import expansion
 from xarch.modules.rules.application.logic.asked import project
 from xarch.modules.rules.application.logic.elsewhere import broken, reading
 from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
 from xarch.profile_values.checks import ANY
 
-HOLDS = profile(holds={"domain": "classes", "logic": "functions"})
+HOLDS = profile(holds={"domain": ("classes",), "logic": ("functions", "records", "exceptions")})
 FUNCTIONS = SourceFile("", (), (), functions=(Function(1, "validate"),))
 PRIVATE = SourceFile("", (), (), functions=(Function(1, "_validate", public=False),))
 CLASSES = SourceFile("", (), (), classes=(Class(1, "Document"),))
@@ -35,3 +36,13 @@ def test_a_file_breaks_the_holds_of_each_part_it_would_break_were_it_there(path,
 def test_only_the_files_asked_of_are_answered():
     facts = project([(DOMAIN, CLASSES), (LOGIC, FUNCTIONS)], HOLDS, "app", reading(HOLDS))
     assert broken(facts, HOLDS, frozenset({LOGIC})) == {LOGIC: ("domain",)}
+
+
+BOTH = SourceFile("", (), (), classes=(Class(1, "Document"),), functions=(Function(5, "validate"),))
+RECORDS = profile(holds={"domain": ("classes",), "logic": ("records",), "kernel": ("functions", "records", "exceptions")})
+
+
+def test_a_part_whose_function_rule_and_class_rule_a_file_both_breaks_is_named_once_in_the_profile_s_order():
+    facts = project([(DOMAIN, BOTH)], RECORDS, "app", reading(RECORDS))
+    assert [rule.scope.part for rule in expansion.book(RECORDS)["holds"]] == ["domain", "logic", "logic", "kernel"]
+    assert broken(facts, RECORDS, frozenset({DOMAIN})) == {DOMAIN: ("domain", "logic", "kernel")}

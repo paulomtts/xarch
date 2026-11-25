@@ -117,13 +117,13 @@ def test_an_id_of_a_check_xarch_has_is_refused_and_a_hint_may_name_a_check_of_th
 
 def test_the_same_rule_written_by_a_key_and_by_hand_finds_the_same(tmp_path):
     files = {"store/a.py": "class Thing: ...\nclass DocStore: ...\n"}
-    project(tmp_path, {}, files, names="*Store")
+    project(tmp_path, {}, files, holds={"classes": {"names": "*Store"}})
     by_key = json.loads(runner.invoke(app, ["check", "--format", "json"]).output)["violations"]
-    written = yaml.safe_load(json.loads(runner.invoke(app, ["profile", "explain", "parts.names", "--rule",
+    written = yaml.safe_load(json.loads(runner.invoke(app, ["profile", "explain", "parts.holds.classes.names", "--rule",
                                                             "--format", "json"]).output)["checks"])["checks"]
     ((name, body),) = written.items()
     project(tmp_path, {name: {**body, "examples": CHECK["examples"]}}, files)
     by_hand = json.loads(runner.invoke(app, ["check", "--format", "json"]).output)["violations"]
     assert [v["rule"] for v in by_key] == ["names"] and [v["rule"] for v in by_hand] == ["names-store"]
-    assert [{**v, "rule": "", "message": v["message"].replace("checks.names-store", "parts.store.names")}
+    assert [{**v, "rule": "", "message": v["message"].replace("checks.names-store", "parts.store.holds.classes.names")}
             for v in by_hand] == [{**v, "rule": ""} for v in by_key]

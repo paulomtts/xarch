@@ -47,7 +47,7 @@ def test_trailing_comments(text, lines):
 CUSTOM = """\
 name: layered
 parts:
-  api:   {path: "src/<module>/api", role: handlers, may_import: [store]}
+  api:   {path: "src/<module>/api", role: handlers, imports: {may: [store]}}
   store: {path: "src/<module>/store", role: database access}
 docs:
   entry: api
@@ -66,7 +66,7 @@ def write(path: Path, text: str) -> Path:
 @pytest.mark.parametrize("code, problems", [
     ("from app.src.billing.store import Repo\n", ()),
     ("from app.src.tax.store import Repo\n",
-     ("example (src/billing/api/handler.py): imports app.src.tax.store which api may not import (parts.api.may_import)",)),
+     ("example (src/billing/api/handler.py): imports app.src.tax.store which api may not import (parts.api.imports.may)",)),
 ])
 def test_a_custom_architecture_can_be_checked(tmp_path, code, problems):
     """Not checked unless asked."""

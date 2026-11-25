@@ -542,7 +542,7 @@ WordsResult = ChecksShown | WordsShown | WordShown | UnknownWords | NoWords | Ch
 
 @dataclass(frozen=True)
 class ExplainRule:
-    """The rules a key of the profile at location expands to (parts.names: of every part), as a profile would write
+    """The rules a key of the profile at location expands to (parts.holds: of every part), as a profile would write
     them as checks of its own."""
     address: str
     profile: str

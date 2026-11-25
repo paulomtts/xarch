@@ -46,7 +46,7 @@ def test_each_violation_carries_its_rule_file_line_message_and_fix_sorted_by_fil
          "hint": None},
         {"rule": "may-import", "file": "app/modules/docs/domain/clock.py", "line": 2,
          "message": "domain/ of modules/docs may not import platform/ (app.platform)",
-         "fix": "import only domain/, kernel/, kernel-logic/ in domain/ of modules/docs (parts.domain.may_import), or move this code to "
+         "fix": "import only domain/, kernel/, kernel-logic/ in domain/ of modules/docs (parts.domain.imports.may), or move this code to "
                 "adapters/, which may import it", "hint": None},
     ]
 
@@ -65,7 +65,7 @@ def test_the_text_output_prints_each_violation_with_its_fix_under_it(tmp_path):
     assert result.exit_code == 1
     assert result.stdout.splitlines()[:3] == [
         "app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)",
-        "    fix: import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may "
+        "    fix: import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to adapters/, which may "
         "import it",
         "1 violation(s) in 1 file(s)"]
 
@@ -93,7 +93,7 @@ def test_the_hint_of_a_profile_follows_the_fix_of_every_violation_of_its_rule_in
     lines = runner.invoke(app, ["check", "--profile", "arch/mine.yaml"]).stdout.splitlines()
     assert lines[:6] == [
         "app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)",
-        "    fix: import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may import it",
+        "    fix: import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to adapters/, which may import it",
         "    hint: the layers are in docs/project/architecture.md",
         "app/kernel/x.py:2: kernel/ may not import socket (parts.kernel.uses.never)",
         "    fix: do what needs socket outside kernel/, and hand kernel/ the result",

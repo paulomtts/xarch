@@ -7,6 +7,7 @@ from tests.modules.spec.profiles import covered, layered, parsed, problems
 from xarch.modules.spec.application.logic.docs_template import fill
 from xarch.modules.spec.domain.errors import InvalidArchitecture, InvalidTemplate
 from xarch.modules.spec.domain.values import TierExample
+from xarch.profile_values.placement import Target
 
 UNIT = "tests/src/billing/service/test_rules.py"
 API = "tests/src/test_api.py"
@@ -60,22 +61,42 @@ def with_docs(**docs) -> dict:
     return document
 
 
+TIER_USE = "use docs, folder, imports, litmus, plain_tables, proves, uses"
+"""What every unknown-key problem of a tier ends with."""
+NO_MAP = "must be a map of may, also, must and types_only, such as {must: [<part>]}"
+
+
+def with_imports(imports) -> dict:
+    """covered(), its integration tier writing the imports given."""
+    document = covered()
+    document["tiers"]["integration"]["imports"] = imports
+    return document
+
+
+def with_guard(imports) -> dict:
+    """covered(), with a third tier, guard, whose folder is architecture, writing the imports given."""
+    document = covered()
+    document["tiers"]["guard"] = {"folder": "architecture", "imports": imports}
+    return document
+
+
 @pytest.mark.parametrize("types_only, expected", [
-    pytest.param(["repo", "service"], ["layered.yaml: tiers.integration.types_only: no part named 'repo'"],
+    pytest.param(["repo", "service"], ["layered.yaml: tiers.integration.imports.types_only: no part named 'repo'"],
                  id="a part that does not exist is refused"),
-    pytest.param(["service", "service"], ["layered.yaml: tiers.integration.types_only: 'service' is listed twice"],
+    pytest.param(["service", "service"],
+                 ["layered.yaml: tiers.integration.imports.types_only: 'service' is listed twice"],
                  id="a part listed twice is refused"),
-    pytest.param("service", ["layered.yaml: tiers.integration.types_only: must be a list of part names"],
+    pytest.param("service", ["layered.yaml: tiers.integration.imports.types_only: must be a list of part names"],
                  id="a part given as one text is refused"),
-    pytest.param([], ["layered.yaml: tiers.integration.types_only: must be a list of part names"],
+    pytest.param([], ["layered.yaml: tiers.integration.imports.types_only: must be a list of part names"],
                  id="no part at all is refused"),
 ])
 def test_a_bad_types_only_entry_is_refused(types_only, expected):
-    assert problems(with_tier(types_only=types_only)) == expected
+    assert problems(with_imports({"types_only": types_only})) == expected
 
 
 def test_a_tier_with_no_types_only_has_none():
-    assert [tier.types_only for tier in parsed(covered()).tiers] == [(), ()]
+    assert [tier.imports_types_only for tier in parsed(covered()).tiers] == [(), ()]
 
 
 def test_a_litmus_of_blanks_is_refused():
@@ -318,4 +339,129 @@ def test_the_folders_of_tiers_overlap_neither_the_fakes_nor_each_other(first, se
 
 
 def test_a_tier_with_no_folder_has_no_allowance_of_its_own():
-    assert [tier.may_import for tier in parsed(covered()).tiers] == [None, None]
+    assert [tier.imports_may for tier in parsed(covered()).tiers] == [None, None]
+
+
+def test_the_group_gives_the_values_the_old_keys_gave_for_the_same_lists():
+    document = with_guard({"may": ["shared", "api@any"]})
+    document["tiers"]["integration"]["imports"] = {"also": ["service", "shared"], "must": ["api", "store"],
+                                                   "types_only": ["service", "store"]}
+    tiers = {tier.name: tier for tier in parsed(document).tiers}
+    integration = tiers["integration"]
+    assert (integration.imports_may, integration.imports_also, integration.imports_must, integration.imports_types_only) == (
+        None, (Target("service", "own"), Target("shared")), ("api", "store"), ("service", "store"))
+    assert tiers["guard"].imports_may == (Target("shared"), Target("api", "any"))
+
+
+def test_a_tier_with_no_imports_has_what_leaving_the_old_keys_out_gave():
+    assert [(t.imports_may, t.imports_also, t.imports_must, t.imports_types_only) for t in parsed(covered()).tiers] == [
+        (None, (), (), ()), (None, (), (), ())]
+
+
+def test_the_order_of_the_keys_of_the_group_does_not_matter_and_the_order_of_entries_is_kept():
+    first = parsed(with_imports({"types_only": ["store", "service"], "must": ["store", "api"]})).tiers[1]
+    second = parsed(with_imports({"must": ["store", "api"], "types_only": ["store", "service"]})).tiers[1]
+    assert first == second
+    assert (first.imports_must, first.imports_types_only) == (("store", "api"), ("store", "service"))
+
+
+@pytest.mark.parametrize("imports, problem", [
+    pytest.param({}, "tiers.integration.imports: says nothing: write may, also, must or types_only, or drop it",
+                 id="empty"),
+    pytest.param(["store"], f"tiers.integration.imports: {NO_MAP}", id="a list"),
+    pytest.param("store", f"tiers.integration.imports: {NO_MAP}", id="a string"),
+    pytest.param(True, f"tiers.integration.imports: {NO_MAP}", id="true"),
+    pytest.param(None, f"tiers.integration.imports: {NO_MAP}", id="null"),
+    pytest.param({"libraries": ["yaml"]},
+                 "tiers.integration.imports: unknown key 'libraries': use also, may, must, types_only", id="libraries"),
+    pytest.param({"never": "pure"}, "tiers.integration.imports: unknown key 'never': use also, may, must, types_only",
+                 id="never"),
+    pytest.param({"apply_never": True},
+                 "tiers.integration.imports: unknown key 'apply_never': use also, may, must, types_only",
+                 id="apply_never"),
+])
+def test_the_group_is_refused_when_written_wrong(imports, problem):
+    assert problems(with_imports(imports)) == [f"layered.yaml: {problem}"]
+
+
+@pytest.mark.parametrize("key, value, hint", [
+    pytest.param("may_import", ["shared"], "moved in 0.3.0: write imports: {may: [...]}", id="may_import"),
+    pytest.param("may_also_import", ["shared"], "moved in 0.3.0: write imports: {also: [...]}", id="may_also_import"),
+    pytest.param("must_import", ["store"], "moved in 0.3.0: write imports: {must: [...]}", id="must_import"),
+    pytest.param("types_only", ["store"], "moved in 0.3.0: write imports: {types_only: [<part>, ...]}",
+                 id="types_only"),
+])
+def test_an_old_tier_key_is_refused_with_the_form_that_replaces_it(key, value, hint):
+    assert problems(with_tier(**{key: value})) == [
+        f"layered.yaml: tiers.integration: unknown key '{key}': {hint}; {TIER_USE}"]
+
+
+def test_a_tier_writing_the_four_old_keys_gets_one_problem_for_each_in_sorted_order():
+    document = with_tier(types_only=["store"], may_import=["shared"], must_import=["store"], may_also_import=["shared"])
+    assert problems(document) == [
+        f"layered.yaml: tiers.integration: unknown key 'may_also_import': moved in 0.3.0: write imports: "
+        f"{{also: [...]}}; {TIER_USE}",
+        f"layered.yaml: tiers.integration: unknown key 'may_import': moved in 0.3.0: write imports: {{may: [...]}}; "
+        f"{TIER_USE}",
+        f"layered.yaml: tiers.integration: unknown key 'must_import': moved in 0.3.0: write imports: "
+        f"{{must: [...]}}; {TIER_USE}",
+        f"layered.yaml: tiers.integration: unknown key 'types_only': moved in 0.3.0: write imports: "
+        f"{{types_only: [<part>, ...]}}; {TIER_USE}"]
+
+
+def test_a_retired_key_beside_the_group_is_its_own_problem_and_the_group_is_still_read():
+    document = with_imports({"must": ["ghost"]})
+    document["tiers"]["integration"]["must_import"] = ["store"]
+    assert problems(document) == [
+        f"layered.yaml: tiers.integration: unknown key 'must_import': moved in 0.3.0: write imports: "
+        f"{{must: [...]}}; {TIER_USE}",
+        "layered.yaml: tiers.integration.imports.must: no part named 'ghost'"]
+
+
+def test_may_in_a_tier_with_no_folder_is_refused_at_its_address():
+    assert problems(with_imports({"may": ["shared"]})) == [
+        "layered.yaml: tiers.integration.imports.may: only a tier with a `folder` has an allowance of its own: "
+        "without one, its tests import what the part they mirror may"]
+
+
+@pytest.mark.parametrize("may, allowed", [
+    pytest.param([], (), id="nothing"),
+    pytest.param("everything", (Target("*"),), id="everything"),
+])
+def test_may_in_a_tier_with_a_folder_loads(may, allowed):
+    assert parsed(with_guard({"may": may})).tiers[2].imports_may == allowed
+
+
+def test_a_folder_tier_may_write_may_and_also_together():
+    guard = parsed(with_guard({"may": ["shared"], "also": ["store@any"]})).tiers[2]
+    assert (guard.imports_may, guard.imports_also) == ((Target("shared"),), (Target("store", "any"),))
+
+
+def test_an_empty_also_loads_and_adds_nothing():
+    assert parsed(with_imports({"also": []})).tiers[1].imports_also == ()
+
+
+@pytest.mark.parametrize("imports, problem", [
+    pytest.param({"also": "everything"}, "tiers.integration.imports.also: must be a list of targets such as "
+                 "[<part>, shared/text, api@any]: `everything` is not taken, name each target the tests may also "
+                 "import", id="also everything"),
+    pytest.param({"also": ["shared", "everything"]}, "tiers.integration.imports.also: `everything` is not taken, "
+                 "name each target the tests may also import", id="everything in a list of also"),
+    pytest.param({"also": [{"store": "types_only"}]}, "tiers.integration.imports.also: {'store': 'types_only'} is not "
+                 "a target: use <part>, <part>@any, optionally followed by /<path>", id="a mark in also"),
+    pytest.param({"must": "store"}, "tiers.integration.imports.must: must be a list of part names",
+                 id="must not a list"),
+    pytest.param({"must": []}, "tiers.integration.imports.must: must be a list of part names", id="must empty"),
+    pytest.param({"must": ["nowhere"]}, "tiers.integration.imports.must: no part named 'nowhere'",
+                 id="must of no part"),
+    pytest.param({"must": ["store", "store"]}, "tiers.integration.imports.must: 'store' is listed twice",
+                 id="must twice"),
+])
+def test_each_key_of_the_group_is_refused_with_today_s_text_at_its_new_address(imports, problem):
+    assert problems(with_imports(imports)) == [f"layered.yaml: {problem}"]
+
+
+def test_a_mark_in_a_folder_tier_s_may_is_refused_as_any_entry_that_is_no_target():
+    assert problems(with_guard({"may": [{"store": "types_only"}]})) == [
+        "layered.yaml: tiers.guard.imports.may: {'store': 'types_only'} is not a target: use <part>, <part>@any, "
+        "optionally followed by /<path>"]

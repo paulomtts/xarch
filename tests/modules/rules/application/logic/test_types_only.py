@@ -6,8 +6,9 @@ import pytest
 
 from tests.modules.rules.application.logic.checks import types_only as violations
 from tests.modules.rules.application.logic.checks import types_only_parts as part_violations
-from tests.modules.rules.builders import GUARD, PROFILE, RENDERING, in_tests, profile, source
+from tests.modules.rules.builders import GUARD, PROFILE, RENDERING, RULES, in_tests, profile, source
 from xarch.modules.rules.domain.parsed import Call, Use
+from xarch.profile_values.placement import Target
 
 RENDERING_TEST = "web/test_docs.py"
 CONTROLLER = ("app", "modules", "docs", "application", "controller", "DocumentController")
@@ -40,9 +41,9 @@ def test_a_call_of_anything_but_a_types_only_part_is_allowed(call):
 def test_a_call_of_a_types_only_part_is_reported():
     assert problems(RENDERING_TEST, Call(4, CONTROLLER), Call(7, (*CONTROLLER, "publish"))) == [
         "tests/web/test_docs.py:4: a rendering test uses controller/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.application.controller.DocumentController (tiers.rendering.types_only)",
+        "app.modules.docs.application.controller.DocumentController (tiers.rendering.imports.types_only)",
         "tests/web/test_docs.py:7: a rendering test uses controller/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.application.controller.DocumentController.publish (tiers.rendering.types_only)"]
+        "app.modules.docs.application.controller.DocumentController.publish (tiers.rendering.imports.types_only)"]
 
 
 @pytest.mark.parametrize("path, checked", [
@@ -66,7 +67,7 @@ def test_a_violation_names_its_rule():
     pytest.param(RENDERING_TEST, profile(tiers=(replace(RENDERING, may_touch="a fake controller, injected"),)),
                  "use controller/ here only as a type, and drive what you test through web/ (rendering tests may "
                  "touch: a fake controller, injected)", id="the tier's own words for what it may touch"),
-    pytest.param("architecture/test_rules.py", profile(tiers=(replace(GUARD, types_only=("controller",)),)),
+    pytest.param("architecture/test_rules.py", profile(tiers=(replace(GUARD, imports_types_only=("controller",)),)),
                  "use controller/ here only as a type, and test what it does from a tier that may call it",
                  id="a tier with no subject to drive"),
 ])
@@ -77,7 +78,7 @@ def test_a_violation_says_what_to_do(path, checked, fix):
 
 def reported(line: int, name: str = "app.modules.docs.application.controller.make_controller") -> str:
     return (f"tests/web/test_docs.py:{line}: a rendering test uses controller/ of modules/docs only as a type: it may "
-            f"not reference {name}, a function (tiers.rendering.types_only)")
+            f"not reference {name}, a function (tiers.rendering.imports.types_only)")
 
 
 @pytest.mark.parametrize("uses, calls, expected", [
@@ -93,11 +94,11 @@ def reported(line: int, name: str = "app.modules.docs.application.controller.mak
                  id="an attribute of the function is a reference to the function"),
     pytest.param((Use(5, MAKE, 6),), (Call(5, MAKE),),
                  ["tests/web/test_docs.py:5: a rendering test uses controller/ of modules/docs only as a type: it may "
-                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.types_only)"],
+                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.imports.types_only)"],
                  id="a call is reported as a call, once, not again as a reference"),
     pytest.param((Use(5, MAKE, 6), Use(5, MAKE, 6)), (Call(5, MAKE),),
                  ["tests/web/test_docs.py:5: a rendering test uses controller/ of modules/docs only as a type: it may "
-                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.types_only)",
+                  "not call app.modules.docs.application.controller.make_controller (tiers.rendering.imports.types_only)",
                   reported(5)],
                  id="a reference beside the call on its line is still reported"),
     pytest.param((Use(5, (*CONTROLLER[:-1], "DocumentController"), 6),), (), [],
@@ -136,7 +137,7 @@ def test_the_source_tree_has_to_say_the_name_is_a_function_else_the_check_stays_
     assert problems(RENDERING_TEST, uses=(Use(5, MAKE, 6),), app=[]) == []
 
 
-PARTS_ON = profile(types_only={"services": ("contract",)})
+PARTS_ON = profile(imports_types_only={"services": (Target("contract", "own"),)})
 SERVICE = "modules/docs/application/services/doc.py"
 RESULT = ("app", "modules", "docs", "contract", "Published")
 CONTRACT_FILE = source("modules/docs/contract/results.py", module_functions=("published",))
@@ -150,9 +151,9 @@ def part_problems(path: str = SERVICE, *calls: Call, checked=PARTS_ON, uses: tup
 def test_a_part_that_uses_a_part_only_as_a_type_may_not_call_it():
     assert part_problems(SERVICE, Call(4, RESULT), Call(5, (*RESULT, "of"))) == [
         f"app/{SERVICE}:4: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.contract.Published (parts.services.types_only)",
+        "app.modules.docs.contract.Published (parts.services.imports.may.types_only)",
         f"app/{SERVICE}:5: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
-        "app.modules.docs.contract.Published.of (parts.services.types_only)"]
+        "app.modules.docs.contract.Published.of (parts.services.imports.may.types_only)"]
 
 
 def test_the_fix_names_the_parts_that_may_call_it():
@@ -165,7 +166,7 @@ def test_a_part_may_not_reference_a_function_of_a_types_only_part():
     use = Use(6, ("app", "modules", "docs", "contract", "results", "published"), 6)
     assert part_problems(SERVICE, uses=(use,)) == [
         f"app/{SERVICE}:6: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not "
-        "reference app.modules.docs.contract.results.published, a function (parts.services.types_only)"]
+        "reference app.modules.docs.contract.results.published, a function (parts.services.imports.may.types_only)"]
 
 
 @pytest.mark.parametrize("path, call", [
@@ -179,3 +180,38 @@ def test_only_the_listed_parts_of_a_listing_part_are_held(path, call):
 
 def test_it_is_off_without_the_key():
     assert part_problems(SERVICE, Call(4, RESULT), checked=PROFILE) == []
+
+
+OTHER_RESULT = ("app", "modules", "billing", "contract", "Published")
+OTHER_CONTRACT = source("modules/billing/contract/results.py", module_functions=("published",))
+ANY_TOO = profile(rules={**RULES, "services": (*RULES["services"], Target("contract", "any"))},
+                  imports_types_only={"services": (Target("contract", "own"),)})
+
+
+def test_a_mark_on_the_own_instance_reads_the_own_instance_only():
+    assert part_problems(SERVICE, Call(4, RESULT), Call(5, OTHER_RESULT), checked=ANY_TOO,
+                         others=(CONTRACT_FILE, OTHER_CONTRACT)) == [
+        f"app/{SERVICE}:4: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
+        "app.modules.docs.contract.Published (parts.services.imports.may.types_only)"]
+
+
+def test_a_marked_entry_with_a_name_pattern_still_reads_every_name_it_reaches():
+    patterned = profile(imports_types_only={"services": (Target("contract", "own", (), "*Id"),)})
+    assert part_problems(SERVICE, Call(4, RESULT), checked=patterned) == [
+        f"app/{SERVICE}:4: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not call "
+        "app.modules.docs.contract.Published (parts.services.imports.may.types_only)"]
+
+
+def test_a_marked_entry_with_a_path_reads_below_its_path_only():
+    below = profile(imports_types_only={"services": (Target("contract", "own", ("results",)),)})
+    use = Use(6, ("app", "modules", "docs", "contract", "results", "published"), 6)
+    assert part_problems(SERVICE, Call(4, RESULT), uses=(use,), checked=below) == [
+        f"app/{SERVICE}:6: services/ of modules/docs uses contract/ of modules/docs only as a type: it may not "
+        "reference app.modules.docs.contract.results.published, a function (parts.services.imports.may.types_only)"]
+
+
+def test_the_fix_leaves_out_a_part_whose_entry_for_the_target_is_marked():
+    marked = profile(imports_types_only={"services": (Target("contract", "own"),), "controller": (Target("contract", "own"),)})
+    found = part_violations([source(SERVICE, calls=(Call(4, RESULT),))], marked, "app")
+    assert [v.fix for v in found] == [
+        "use contract/ here only as a type, and leave the call to adapters/ or web/, which may make it"]

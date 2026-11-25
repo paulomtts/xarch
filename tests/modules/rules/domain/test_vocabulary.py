@@ -57,6 +57,13 @@ def test_whether_a_class_is_a_record_needs_the_reader_to_say_it():
         ("class.record",), "the class is a record, as the language's reader decides")
 
 
+def test_whether_a_function_is_at_the_top_level_needs_the_reader_to_say_it():
+    kind = next(kind for kind in KINDS if kind.name == "function")
+    top = next(word for word in FILTERS if word.name == "top-level")
+    assert (kind.field_needs["top-level"], top.meaning) == (
+        ("function.top_level",), "the function is defined at the top level of its file, in no class")
+
+
 def test_whether_a_name_is_public_is_a_field_of_the_kinds_whose_names_the_language_decides_and_needs_the_fact():
     public = next(word for word in FILTERS if word.name == "public")
     carrying = [kind for kind in KINDS if kind.carries("public")]

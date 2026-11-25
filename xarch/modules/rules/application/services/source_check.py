@@ -51,7 +51,7 @@ class SourceCheckService:
             state.weak, tuple(FindingView(f.key, enforcement.detail(f.item)) for f in state.strict),
             tuple(ExcludedView(enforcement.excluded_folder(state.app, e), e.reason) for e in state.excluded),
             state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
-                                                  enforcement.approximation(a.address, a.fact, a.note or ""))
+                                                  enforcement.approximation(a.address, a.fact, a.note or "", a.unread))
                                   for a in state.approximate),
             tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
             state.known, state.translated,

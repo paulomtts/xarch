@@ -17,22 +17,18 @@ parts:
   core:
     path: core
     role: the rules
-    may_import: [api]
-    libraries: [yaml]
+    imports:
+      may: [{api: types_only}]
+      must: [api]
+      libraries: [yaml]
     uses: {never: pure}
     package_only: true
-    holds: functions
-    immutable: true
-    types_only: [api]
-    no_callbacks: true
-    names: "*"
-    must_import: [api]
+    holds: {functions: {names: "*"}, records: {names: "*", immutable: true}, exceptions: {names: "*"}}
     tests: unit
   api:
     path: api
     role: the api
-    built_by: [core]
-    holds: classes
+    holds: {classes: {names: "*", immutable: true, built_by: [core]}}
     tests: unit
 never:
   pure: [time.time]
@@ -41,18 +37,21 @@ reserved:
 tiers:
   unit:
     uses: {apply_never: true}
-    types_only: [api]
-    must_import: [core]
-    may_also_import: [api]
+    imports:
+      also: [api]
+      must: [core]
+      types_only: [api]
   guard:
     folder: architecture
-    may_import: [core]
+    imports:
+      may: [core]
 fakes: {folder: fakes, for: [api], prefix: Fake}
 guards:
   no-comments: {}
   closed-tree: {}
   dead-code: {untested: true, tests_only: true}
   pass-through: {parts: [core]}
+  no-callbacks: {parts: [core]}
   private-imports: {}
 """
 """A profile that sets every key the engine expands to rules, on a part, on a tier and as a guard."""

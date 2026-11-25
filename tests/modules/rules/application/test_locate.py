@@ -34,7 +34,7 @@ PROFILE = Profile(
     rules={"kernel": (), "domain": (Target("kernel"),)},
     folders=((), ("kernel",), ("modules",), ("modules", "*"), ("modules", "*", "domain")),
     tiers=(Tier("unit", (Target("kernel"), Target("domain", "own")), None, (), False, "a rule", "nothing", "Does it?"),),
-    libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
+    imports_libraries={"kernel": (), "domain": ()}, repeats=(Repeat("module", ("modules",)),),
     info={"kernel": PartInfo("primitives", "Is it a primitive?", "kernel/"),
           "domain": PartInfo("invariants", "Is it an invariant?", "domain/")}, language=PYTHON)
 KERNEL = InPart("app/kernel/ids.py", True, PartShown("kernel", "kernel/", "", "module", "primitives", "Is it a primitive?"),
@@ -91,7 +91,7 @@ def test_a_path_in_an_excluded_folder_is_ungoverned_and_says_why(path, then):
 
 
 def test_a_test_may_import_what_its_tier_s_tests_may_also_import_and_says_so():
-    tier = replace(PROFILE.tiers[0], may_also_import=(Target("kernel"),))
+    tier = replace(PROFILE.tiers[0], imports_also=(Target("kernel"),))
     also = replace(PROFILE, rules={"kernel": (), "domain": ()}, tiers=(tier,))
     found = locate({}, Locate(Path("tests/modules/documents/domain/test_doc.py"), Path("/src"), APP, "p", TESTS), also)
     assert isinstance(found, Located) and isinstance(found.where, InTests)

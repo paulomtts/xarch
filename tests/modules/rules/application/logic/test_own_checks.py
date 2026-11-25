@@ -151,3 +151,18 @@ def test_an_own_check_that_reads_the_package_file_as_written_needs_the_language_
         (OwnCheck(rule),),
         ("checks.exempting: needs file.package (a file stands for the folder that holds it), which the reader of Toy "
          "does not supply: read another kind of fact, or drop the check",))
+
+
+TOPPING = WrittenCheck(("function",), Scope(), Quantified(MAY_NOT, (WrittenTarget("exist"),)), (Saying("{name}", "f"),),
+                       keep=(Condition("top-level"),))
+TOPPING_RULE = Rule("topping", Scope(), ("function",), MAY_NOT, (Match("exist"),), (Saying("{name}", "f"),),
+                    keep=(Condition("top-level"),), key="checks.topping")
+
+
+def test_an_own_check_that_reads_whether_a_function_is_at_the_top_level_needs_the_reader_to_say_it():
+    untopped = CheckedLanguage("Toy", supplies=(Supply("function", EXACT),), member=".")
+    topped = replace(untopped, supplies=(Supply("function", EXACT), Supply("function.top_level", EXACT)))
+    assert made({"topping": TOPPING}, profile(language=untopped)) == MadeChecks((), (
+        "checks.topping: needs function.top_level (whether a function is defined at the top level of its file, in no "
+        "class), which the reader of Toy does not supply: read another kind of fact, or drop the check",))
+    assert made({"topping": TOPPING}, profile(language=topped)) == MadeChecks((OwnCheck(TOPPING_RULE),), ())

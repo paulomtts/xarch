@@ -45,12 +45,12 @@ def test_a_profile_names_its_language_and_the_skeleton_says_the_file_that_stands
 
 
 def test_the_standard_library_and_the_builtins_a_profile_is_checked_against_come_from_the_runtime():
-    named = BASE | {"language": "pascal", "parts": {"core": {"path": "core", "role": "r", "libraries": ["strutils"]}}}
+    named = BASE | {"language": "pascal", "parts": {"core": {"path": "core", "role": "r", "imports": {"libraries": ["strutils"]}}}}
     spec, _ = spec_controller({"base": named}, languages={"pascal": PASCAL}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert isinstance(checked, ProfileChecked)
     assert [problem.text for problem in checked.problems] == [
-        "base: parts.core.libraries: 'strutils' is in the standard library, which every part may import unless `reserved` names it"]
+        "base: parts.core.imports.libraries: 'strutils' is in the standard library, which every part may import unless `reserved` names it"]
 
 
 @pytest.mark.parametrize("languages, language", [
@@ -71,22 +71,27 @@ def test_the_skeleton_names_the_language_and_the_words_the_runtime_reserves():
 
 
 TOY = PASCAL | {"supplies": {"file": "exact", "import": "exact", "import.relative": "exact",
-                             "class": {"partial": "a class defined in a branch is not read"}, "public": "exact"}}
+                             "class": {"partial": "a class defined in a branch is not read"}, "public": "exact",
+                             "class.exception": "exact", "class.record": "exact", "function": "exact",
+                             "function.top_level": "exact"}}
+BRANCH = "a class defined in a branch is not read"
 
 
 def test_a_key_whose_check_the_reader_of_its_language_cannot_feed_is_refused_and_one_it_feeds_partly_is_approximate():
-    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r", "names": "*Rule",
-                                                          "no_callbacks": True}}}
+    named = BASE | {"language": "toy", "parts": {"core": {"path": "core", "role": "r",
+                                                          "holds": {"classes": {"names": "*Rule"}}}},
+                    "guards": {"no-callbacks": {"parts": ["core"]}}}
     spec, _ = spec_controller({"base": named}, languages={"toy": TOY}, runtime=RUNTIME)
     checked = spec.check_profile(CheckProfile(APP, "base"))
     assert [problem.text for problem in checked.problems] == [
-        "base: parts.core.no_callbacks: its check reads callback (each call of a function's own parameter, whether it "
+        "base: guards.no-callbacks: its check reads callback (each call of a function's own parameter, whether it "
         "is the receiver and whether it is annotated as a callable), which the language toy does not supply: drop "
-        "parts.core.no_callbacks, or check the app with a language whose reader supplies callback"]
-    spec, _ = spec_controller({"base": named | {"parts": {"core": {"path": "core", "role": "r", "names": "*Rule"}}}},
+        "guards.no-callbacks, or check the app with a language whose reader supplies callback"]
+    spec, _ = spec_controller({"base": {key: value for key, value in named.items() if key != "guards"}},
                               languages={"toy": TOY}, runtime=RUNTIME)
     assert spec.profile("base").approximate == (
-        Shortfall("parts.core.names", "class", "a class defined in a branch is not read"),)
+        Shortfall("parts.core.holds", "class", BRANCH), Shortfall("parts.core.holds.classes", "class", BRANCH),
+        Shortfall("parts.core.holds.classes.names", "class", BRANCH))
 
 
 def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads_its_lists_as_before():
@@ -101,13 +106,13 @@ def test_the_bundled_language_gives_its_package_pattern_and_its_member_and_reads
 
 def test_a_language_that_lists_its_standard_library_is_checked_with_its_lists_and_only_another_asks_the_runtime():
     runtime = FakeRuntime(frozenset({"strutils"}), frozenset({"writeln"}), frozenset({"begin"}))
-    listing = BASE | {"parts": {"core": {"path": "core", "role": "r", "libraries": ["fs"]}}}
+    listing = BASE | {"parts": {"core": {"path": "core", "role": "r", "imports": {"libraries": ["fs"]}}}}
     spec, _ = spec_controller({"base": BASE, "listing": listing}, languages={"listed": LISTED, "pascal": PASCAL},
                               runtime=runtime)
     checked = spec.check_profile(CheckProfile(APP, "listing"))
     assert isinstance(checked, ProfileChecked)
     assert [problem.text for problem in checked.problems] == [
-        "listing: parts.core.libraries: 'fs' is in the standard library, which every part may import unless `reserved` "
+        "listing: parts.core.imports.libraries: 'fs' is in the standard library, which every part may import unless `reserved` "
         "names it"]
     assert (spec.profile("base").language.standard_modules, spec.skeleton("base").reserved) == (
         frozenset({"fs", "path"}), frozenset({"class"}))

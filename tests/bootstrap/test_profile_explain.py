@@ -25,19 +25,19 @@ def test_with_no_key_the_whole_format_is_one_screen_with_the_shape_the_symbols_a
     assert result.exit_code == 0, result.output
     lines = result.output.splitlines()
     assert any(line.startswith("parts") and "required" in line and "enforced" in line for line in lines)
-    assert any(line.strip().startswith("parts.may_import") for line in lines)
+    assert any(line.strip().startswith("parts.imports") for line in lines)
     assert "symbols" in result.output and "<word>" in result.output and "@any" in result.output
     assert "smallest valid profile" in result.output and "\n  name: documents-app\n" in result.output
-    assert "xarch profile explain parts.may_import" in result.output
+    assert "xarch profile explain parts.imports.may" in result.output
     assert len(lines) < 100 and max(map(len, lines)) <= 120
 
 
 def test_a_key_is_explained_with_what_it_accepts_whether_check_enforces_it_through_which_rule_and_an_example():
-    result = runner.invoke(app, ["profile", "explain", "parts.may_import"])
+    result = runner.invoke(app, ["profile", "explain", "parts.imports.may"])
     assert result.exit_code == 0, result.output
-    assert result.output.splitlines()[0] == "parts.may_import"
-    for expected in ("in: parts.<part>", "accepts:", "required: no", "enforced: yes, by the rule `may-import`", "example:",
-                     "may_import: [core]", "keys: none"):
+    assert result.output.splitlines()[0] == "parts.imports.may"
+    for expected in ("in: parts.<part>.imports", "accepts:", "required: no", "enforced: yes, by the rule `may-import`", "example:",
+                     "may: [core]", "parts.imports.may.types_only"):
         assert expected in result.output
 
 
@@ -63,7 +63,7 @@ def test_a_key_that_names_something_xarch_ships_says_which():
 def test_a_key_the_format_does_not_have_is_refused_with_the_nearest_keys():
     result = runner.invoke(app, ["profile", "explain", "parts.may_imports"])
     assert result.exit_code == 2
-    assert "error: no key `parts.may_imports` in the format: the nearest are parts.may_import" in result.output
+    assert "error: no key `parts.may_imports` in the format: the nearest are parts.imports" in result.output
 
 
 def test_a_key_of_the_format_is_explained_in_a_project_whose_pyproject_cannot_be_read(tmp_path):
@@ -77,14 +77,14 @@ def test_a_key_of_the_format_is_explained_in_a_project_whose_pyproject_cannot_be
 def test_json_gives_the_shape_the_symbols_and_the_smallest_profile_and_for_a_key_the_fields_of_its_explanation():
     whole = json.loads(runner.invoke(app, ["profile", "explain", "--format", "json"]).output)
     assert whole["ok"] is True and "format" not in whole
-    assert {"key": "parts.may_import", "depth": 1, "meaning": "what the part may import besides itself",
+    assert {"key": "parts.imports", "depth": 1, "meaning": "what the part may and must import, and its outside packages",
             "required": False, "enforced": True, "read_by": None} in whole["shape"]
     assert {"key": "review", "depth": 0, "meaning": "what `xarch review` may send: never, mask", "required": False,
             "enforced": False, "read_by": "review"} in whole["shape"]
     assert whole["symbols"][0]["symbol"] == "<word>" and whole["smallest"].startswith("name: documents-app")
-    assert "xarch profile explain parts.may_import" in whole["deeper"]
-    key = json.loads(runner.invoke(app, ["profile", "explain", "parts.may_import", "--format", "json"]).output)
-    assert key["ok"] is True and key["key"] == "parts.may_import" and key["rules"] == ["may-import"]
+    assert "xarch profile explain parts.imports.may" in whole["deeper"]
+    key = json.loads(runner.invoke(app, ["profile", "explain", "parts.imports.may", "--format", "json"]).output)
+    assert key["ok"] is True and key["key"] == "parts.imports.may" and key["rules"] == ["may-import"]
     assert set(key) == {"ok", "key", "where", "meaning", "accepts", "required", "enforced", "read_by", "rules",
                         "example", "choices", "keys", "needs", "language"}
     assert key["read_by"] is None
@@ -201,9 +201,9 @@ def test_an_address_xarch_retired_is_refused_with_its_fixed_text_in_text_and_in_
 
 
 def test_a_key_of_the_format_is_explained_even_with_an_entry_at_its_address(monkeypatch):
-    retiring(monkeypatch, PART, "may_import", RENAMED)
-    result = runner.invoke(app, ["profile", "explain", "parts.may_import"])
-    assert (result.exit_code, result.output.splitlines()[0]) == (0, "parts.may_import")
+    retiring(monkeypatch, PART, "imports", RENAMED)
+    result = runner.invoke(app, ["profile", "explain", "parts.imports"])
+    assert (result.exit_code, result.output.splitlines()[0]) == (0, "parts.imports")
     assert RENAMED not in result.output
 
 
@@ -283,10 +283,54 @@ def test_never_says_an_entry_naming_a_list_includes_it_and_a_list_may_not_take_a
                  "place, in order, however deep, and the list may be written below",
                  "a list may not include itself, nor reach a name or a list twice",
                  "A list may not take the name of a package of the Python standard library, nor of a package the "
-                 "profile names in a part's `libraries` or in `reserved`, since an entry of that name would name the "
+                 "profile names in a part's `imports.libraries` or in `reserved`, since an entry of that name would name the "
                  "list"):
         assert said in accepts
     assert "  published: [pure, json.dumps]\n" in found["example"]
     assert "uses: {never: published}" in found["example"]
     shown = runner.invoke(app, ["profile", "explain", "never"])
     assert shown.exit_code == 0 and "published: [pure, json.dumps]" in shown.output
+
+
+def test_the_mark_is_a_key_with_its_text_and_its_rule():
+    found = runner.invoke(app, ["profile", "explain", "parts.imports.may.types_only", "--format", "json"])
+    shown = json.loads(found.output)
+    assert found.exit_code == 0 and shown["key"] == "parts.imports.may.types_only"
+    assert shown["meaning"] == "a target of imports.may the part may use only as a type"
+    assert shown["rules"] == ["types-only"]
+
+
+def test_an_old_part_key_answers_with_the_form_that_replaces_it():
+    found = runner.invoke(app, ["profile", "explain", "parts.may_import"])
+    assert found.exit_code == 2
+    assert "moved in 0.3.0: write imports: {may: [...]}" in found.output
+
+
+@pytest.mark.parametrize("address, key", [
+    pytest.param("tiers.imports.also", "tiers.imports.also", id="the plain address"),
+    pytest.param("tiers.<tier>.imports.must", "tiers.imports.must", id="with the placeholder"),
+    pytest.param("tiers.unit.imports.must", "tiers.imports.must", id="with a tier's name"),
+])
+def test_a_key_of_a_tier_s_group_is_explained_with_or_without_a_tier_name(address, key):
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 0 and json.loads(found.output)["key"] == key
+
+
+def test_the_group_of_a_tier_lists_its_keys_and_the_rules_they_feed():
+    shown = json.loads(runner.invoke(app, ["profile", "explain", "tiers.imports", "--format", "json"]).output)
+    assert shown["rules"] == ["tiers", "must-import", "types-only"]
+    assert json.loads(runner.invoke(app, ["profile", "explain", "tiers.imports.types_only", "--format",
+                                          "json"]).output)["rules"] == ["types-only"]
+
+
+@pytest.mark.parametrize("address, text", [
+    pytest.param("tiers.may_import", "moved in 0.3.0: write imports: {may: [...]}", id="may_import"),
+    pytest.param("tiers.may_also_import", "moved in 0.3.0: write imports: {also: [...]}", id="may_also_import"),
+    pytest.param("tiers.must_import", "moved in 0.3.0: write imports: {must: [...]}", id="must_import"),
+    pytest.param("tiers.types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}", id="types_only"),
+])
+def test_an_old_tier_key_answers_with_the_form_that_replaces_it(address, text):
+    said = runner.invoke(app, ["profile", "explain", address])
+    assert said.exit_code == 2 and f"error: no key `{address}` in the format: {text}; the nearest are " in said.output
+    found = runner.invoke(app, ["profile", "explain", address, "--format", "json"])
+    assert found.exit_code == 2 and json.loads(found.output)["retired"] == text

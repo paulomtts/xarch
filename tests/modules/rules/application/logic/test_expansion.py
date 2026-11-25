@@ -2,6 +2,7 @@
 scope (files, part, tier, filters about the file), the kinds it reads, its quantifier and its kinds of target; a key
 left out expands to no rule. Every rule is made, so none names a word the vocabulary does not hold or that does not
 apply to what it reads."""
+import re
 from dataclasses import replace
 
 import pytest
@@ -13,12 +14,13 @@ from xarch.profile_values.checks import Condition
 from xarch.profile_values.placement import Target
 
 ON = replace(PROFILE, private_imports=True, closed_tree=True, dead_code=True, untested=True, tests_only=True,
-             immutable=("logic",),
-             built_by={"services": ("bootstrap",)}, names={"services": ("*Service",)}, no_callbacks=("domain",),
-             holds={"domain": "classes", "logic": "functions"}, must_import={"adapters": (Target("platform"),)},
-             pass_through=("services",), types_only={"services": ("contract",)},
-             tiers=tuple(replace(t, must_import=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
-OFF = replace(PROFILE, libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
+             holds_immutable={"logic": ("records",)},
+             holds_built_by={"services": ("bootstrap",)}, holds_names={"services": {"classes": ("*Service",)}},
+             no_callbacks=("domain",), holds={"domain": ("classes",), "logic": ("functions", "records", "exceptions")},
+             imports_must={"adapters": (Target("platform"),)},
+             pass_through=("services",), imports_types_only={"services": (Target("contract"),)},
+             tiers=tuple(replace(t, imports_must=("domain",)) if t.name == "unit" else t for t in PROFILE.tiers))
+OFF = replace(PROFILE, imports_libraries=None, uses_never={}, tiers=(), package_only=(), no_comments=False, dead_code=False)
 
 
 def written(condition: Condition) -> str:
@@ -48,7 +50,7 @@ def shape(rule: Rule) -> str:
     pytest.param("types-only tiers", ["types-only: tests/*/rendering read call, function-reference may_not part"],
                  id="types-only tiers"),
     pytest.param("package-only", ["package-only: all/* read import-into-app may_not part"], id="package-only"),
-    pytest.param("types-only parts", ["types-only: app/services read call, function-reference may_not part"],
+    pytest.param("types-only parts", ["types-only: app/services read call, function-reference may_not place"],
                  id="types-only parts"),
     pytest.param("no-callbacks", ["no-callbacks: app/domain read callback may_not exist"], id="no-callbacks"),
     pytest.param("names", ["names: app/services read class may_only name"], id="names"),
@@ -91,3 +93,19 @@ def test_the_rules_that_read_whether_a_name_is_public_need_the_fact_and_those_of
         "private-imports": [True], "names": [True], "holds": [True, False], "tests-only": [True, True]}
     assert book["dead-code"] and book["untested"]
     assert not any("public" in rule.needs for rule in (*book["dead-code"], *book["untested"]))
+
+
+def test_the_rules_of_no_callbacks_are_keyed_by_the_guard_for_every_part():
+    rules = expansion.book(replace(ON, no_callbacks=("domain", "logic")))["no-callbacks"]
+    assert [(rule.scope.part, rule.key) for rule in rules] == [("domain", "guards.no-callbacks"),
+                                                               ("logic", "guards.no-callbacks")]
+
+
+def test_the_rules_of_a_tier_s_imports_are_keyed_by_their_addresses_in_the_group():
+    tiers = tuple(replace(t, imports_must=("controller",), imports_also=(Target("adapters", "own"),))
+                  if t.name == "integration" else t for t in PROFILE.tiers)
+    keys = [rule.key for rules in expansion.book(replace(PROFILE, tiers=tiers)).values() for rule in rules
+            if rule.id in ("types-only", "must-import", "tiers") and rule.key.startswith("tiers")]
+    assert "tiers.rendering.imports.types_only" in keys and "tiers.integration.imports.must" in keys
+    assert "tiers; tiers.integration.imports.also" in keys
+    assert not [key for key in keys if re.search(r"tiers\.[a-z]+\.(types_only|must_import|may_also_import)", key)]

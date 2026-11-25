@@ -7,6 +7,23 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The kinds `records` and `exceptions` of `holds`, narrower than `classes`: a record (`class.record`) or an exception
+  may be defined at the top level of a part that lists the kind, `records` with the settings `names` and `immutable`,
+  `exceptions` with `names`; `functions` takes `names` (`holds.functions.names`), which every public top-level
+  function, in no class, matches. A class is held to the settings of the narrowest kind listed that it fits, in the
+  order exceptions, records, classes, and to no other's: beside `exceptions: {names: "*Error"}`, an exception is named
+  `*Error` and not by `classes.names`, and is not held to `classes.built_by`. `records: {}` or `exceptions: {}` beside
+  `classes`, which already allows them, is refused (`says nothing beside classes ...: give it a setting, or drop it`).
+- A part's `holds` reads `function.top_level` only when the language supplies it: in a language that does not, a part
+  that does not list `functions` reads no functions, which `xarch profile explain parts.holds` and the enforcement
+  section of `check` (an `approximate` item at `parts.<part>.holds`) say: `holds reads no top-level functions: the
+  language <title> does not supply function.top_level`. A part listing `functions` or `records` there is refused with
+  the needs text at `parts.<part>.holds.functions` or `.records`.
+
+- The fact `function.top_level`, whether a function is defined at the top level of its file, in no class, which
+  `parts.<part>.holds`, `guards.dead-code.tests_only` and a check of your own or an eval whose filter reads
+  `top-level` (negated or not) need; a language that does not supply it is refused them with the needs text. Python
+  supplies it exactly.
 - The fact `class.record`, whether a class is a record, as the language writes one, which `parts.<part>.holds` and a
   check of your own whose filter is `record` need, in place of `class.methods` and `function.returns`; a language
   that does not supply it is refused them with the needs text. The reader says it of each class (`Class.record`),
@@ -25,7 +42,7 @@ All notable changes to this project are written here. The format follows
   comment is a doc comment.
 - The fact `file.package`, that a file stands for the folder holding it, which a language supplies exactly when its
   data file gives `package_files` and which is never written under `supplies` (`supplies: file.package follows
-  package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `must_import` and
+  package_files: drop it from supplies`). `parts.<part>.package_only`, a part's `imports.must` and
   `guards.dead-code.untested` need it, and so does a check of your own whose filter `package-file` (or
   `target-inside-part`) is written as is; `not package-file` needs nothing. Python supplies it.
 - A list of `never` may include another: an entry that is exactly the name of another list of the block puts that
@@ -36,9 +53,73 @@ All notable changes to this project are written here. The format follows
   that reaches a name twice (`'<name>' is listed in never.<list>, which never.<list> includes: drop it here`), and
   one named like a package of the standard library or one the profile names (`a list may not take the name of a
   package ...: rename it`). A part naming a list of lists is told `a list may include others`.
+- `profile check` lists a `types_only` mark dropped from an entry of a part's `imports.may`, whose target the part
+  still may import and no mark of the part covers, under the key `imports.may.types_only`: `<part> may now call
+  <target>, which it used only as a type (parts.<part>.imports.may.types_only)`.
 
 ### Changed
 
+- A part's `may_import`, `must_import` and `libraries` move into one group, `imports: {may, must, libraries}`, with
+  the same meaning: `may` what the part may import besides itself (or `everything`), `must` the targets each of its
+  files imports one of, each an entry of `may`, `libraries` its outside packages. A part's `types_only` becomes a mark
+  on its entry of `imports.may`, `{<target>: types_only}`, such as `may: [ports, {contract: types_only}]`, read on what
+  the entry reaches (its part, instance and path; a name pattern narrows only what may be imported), not on the part
+  in any instance. Findings name the new addresses (`parts.<part>.imports.may`,
+  `.imports.must`, `.imports.libraries`, `.imports.may.types_only`), and so do `profile explain` and the `Loosened`
+  keys of `profile check` (`imports.may`, `imports.libraries`, `imports.must`). The old keys are refused with the form
+  that replaces them (`unknown key 'may_import': moved in 0.3.0: write imports: {may: [...]}`, and the same for
+  `must_import`, `libraries` and `types_only`); `profile explain parts.may_import` says the same. Rule ids and `where`'s
+  JSON fields do not change.
+- A tier's `may_import`, `may_also_import`, `must_import` and `types_only` move into one group, `imports: {may, also,
+  must, types_only}`, with the same meaning: `may` what the tests in the tier's `folder` may import (only for a tier
+  with a `folder`), `also` what its tests may import besides what the part they mirror may, `must` the parts one of
+  which each of its test files reaches, `types_only` the parts its tests may import only as types. Findings name the
+  new addresses (`tiers.<tier>.imports.types_only`, `tiers.<tier>.imports.must`, and `tiers.<tier>.imports.also` beside
+  `tiers`), and so do `profile explain` and the `Loosened` keys of `profile check` (`imports.types_only`,
+  `imports.also`). The old keys are refused with the form that replaces them (`unknown key 'may_also_import': moved in
+  0.3.0: write imports: {also: [...]}`, and the same for `may_import`, `must_import` and `types_only`); `profile
+  explain tiers.may_import` says the same. Rule ids and `where`'s JSON fields do not change.
+- `holds` is a map of kinds, `{classes, functions, records, exceptions}`, each `{}` or its settings: a kind listed may
+  exist at the top level of a file of the part, one not listed may not, and no `holds` allows every kind. `names`,
+  `immutable` and `built_by` leave the part for the kinds: `holds: {classes: {names: "*Service", built_by:
+  [bootstrap]}}`, `holds: {functions: {}, records: {immutable: true}, exceptions: {}}`. `holds: classes` is
+  `holds: {classes: {}}` and `holds: functions` is `holds: {functions: {}, records: {}, exceptions: {}}`; written as
+  one word, `holds` is refused with that map (`parts.<part>.holds: 'functions': holds as one word was removed in
+  0.3.0: write holds: {functions: {}, records: {}, exceptions: {}}, which allows what holds: functions allowed`), and
+  so are the flat keys on a part (`unknown key 'names': moved in 0.3.0: write it under the kind it names, such as
+  holds: {classes: {names: "*Service"}}`, and the like for `immutable` and `built_by`) and a setting under a kind that
+  does not take it (`unknown key 'immutable': a setting of classes and records`), which `xarch profile explain
+  <old address>` also gives. Every bundled profile, xarch's own and the corpora profiles write the map.
+- Findings name the nested keys: `(parts.<part>.holds.classes.names)`, `(parts.<part>.holds.classes.built_by)`,
+  `(parts.<part>.holds.records.immutable)` and the like, in place of `(parts.<part>.names)`, `(parts.<part>.built_by)`
+  and `(parts.<part>.immutable)`; `xarch profile explain parts.holds.classes.names --rule` gives the rules. A class in
+  a part of functions, records and exceptions is said to be where the part `holds functions, records and exceptions`;
+  a definition a part does not allow is said as the narrowest kind it fits (`is a function at the top level`, `is a
+  class`, `is a record`, `is an exception`).
+- In a part of functions, `immutable` (now under `records`) reads its records only, and `names` its records and
+  exceptions, so a plain class there, already listed by `holds`, is no longer listed a second time; the generated
+  docs' `immutable` line says "every record of" those parts. `review` rules out the same parts for every file of a
+  bundled profile as before; a part is named once whichever of its rules a file breaks.
+- `evals.placement.alike` compares the kinds `holds` lists and the `immutable` of each, in place of `holds` and
+  `immutable` as part keys: the refusal says `write the same uses.never, and list the same kinds with the same
+  immutable under holds, for each, or drop the group`.
+
+- A profile's keys are held to the facts their checks read at any depth, in every scope a key opens and in each
+  entry of a list (addressed by its index from 0, as `<list>.0.<key>`), by one walk of the key table in place of a
+  walk of the file's scopes one by one; a key written with no value configures nothing, as one set to `false` does.
+  The refusals of a profile with several keys short of facts are now listed in the order the key table lists the
+  keys, each key before those of the scope it opens.
+- `no_callbacks` on a part is now the guard `no-callbacks: {parts: [<part>, ...]}`, which lists the parts whose
+  functions call none of their parameters annotated as callables, as `pass-through` lists its parts; it reads the same
+  code and still fails `check`. A part writing `no_callbacks` is refused at load: `parts.<part>: unknown key
+  'no_callbacks': moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}`. Its findings name
+  `(guards.no-callbacks)` in place of `(parts.<part>.no_callbacks)`, `guards off` lists `no-callbacks` for a profile
+  that leaves it out, and its line in the generated docs sits among the guard lines, after `pass-through`'s in the
+  bundled profiles, which write `no-callbacks: {parts: [domain, logic]}`.
+- An eval of your own is now held to the facts it reads, as a check of your own is: one that reads a fact the
+  language's reader does not supply is refused at its address, `evals.<name>: needs <fact> (<what it is>), which the
+  reader of <language> does not supply: read another kind of fact, or drop the eval`, in `xarch profile check` and
+  when its facts are kept, and its examples are not read.
 - A language's data file writes what makes a class an immutable record as marks, each a map of one of four forms,
   as interface marks are: `{base: <outside name>}`, `{decorator: <outside name>, keywords: {<name>: <value>}}`
   (keywords left out: the decorator however it is written), `{fields: <word>}` or `{type: <outside name>}`. Python

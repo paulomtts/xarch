@@ -22,11 +22,11 @@ def whole(module: str) -> Import:
 PROFILE = {
     "name": "layered",
     "parts": {"shared": {"path": "shared", "role": "code every module uses"},
-              "store": {"path": "src/<module>/store", "role": "database access", "may_import": ["sql", "shared/text"]},
+              "store": {"path": "src/<module>/store", "role": "database access", "imports": {"may": ["sql", "shared/text"]}},
               "sql": {"path": "src/<module>/store/sql", "role": "queries"},
               "service": {"path": "src/<module>/service", "role": "business logic",
-                          "may_import": ["store", "api@any"]},
-              "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "may_import": "everything"}},
+                          "imports": {"may": ["store", "api@any"]}},
+              "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "imports": {"may": "everything"}}},
 }
 PATHS = {"shared": "shared/x.py", "store": "src/billing/store/x.py", "sql": "src/billing/store/sql/x.py",
          "service": "src/billing/service/x.py", "api": "src/billing/api.py"}
@@ -66,15 +66,15 @@ def test_an_import_the_rules_forbid_is_reported_once_with_its_rule():
         shared=(frm("app.src", "billing"),),
     ) == [
         "example (src/billing/service/x.py): imports app.src.tax.store which service may not import "
-        "(parts.service.may_import)",
+        "(parts.service.imports.may)",
         "example (src/billing/service/x.py): imports app.shared which service may not import "
-        "(parts.service.may_import)",
-        "example (src/billing/store/x.py): imports app.shared.other which store may not import (parts.store.may_import)",
+        "(parts.service.imports.may)",
+        "example (src/billing/store/x.py): imports app.shared.other which store may not import (parts.store.imports.may)",
         "example (src/billing/store/x.py): imports app.src.billing.service which store may not import "
-        "(parts.store.may_import)",
+        "(parts.store.imports.may)",
         "example (src/billing/store/sql/x.py): imports app.src.billing.store.repo which sql may not import "
-        "(parts.sql.may_import)",
-        "example (shared/x.py): imports app.src.billing which shared may not import (parts.shared.may_import)",
+        "(parts.sql.imports.may)",
+        "example (shared/x.py): imports app.src.billing which shared may not import (parts.shared.imports.may)",
     ]
 
 
@@ -83,13 +83,13 @@ def test_a_part_may_import_itself_in_its_own_instance_and_not_in_another_without
         shared=(frm("app.shared", "x"),),
         sql=(frm("app.src.billing.store.sql.queries", "Q"), frm("app.src.tax.store.sql", "Q")),
     ) == [
-        "example (src/billing/store/sql/x.py): imports app.src.tax.store.sql which sql may not import (parts.sql.may_import)"]
+        "example (src/billing/store/sql/x.py): imports app.src.tax.store.sql which sql may not import (parts.sql.imports.may)"]
 
 
 def test_relative_imports_resolve_from_the_examples_path():
     assert check(service=(frm("rules", "cap", up=0), frm("store", "Repo", up=1), frm("tax.store", "T", up=2))) == [
         "example (src/billing/service/x.py): imports app.src.tax.store which service may not import "
-        "(parts.service.may_import)"]
+        "(parts.service.imports.may)"]
 
 
 def test_an_example_in_no_part_or_not_valid_python_is_reported_and_other_files_are_not_checked():
@@ -112,7 +112,7 @@ def test_every_python_file_of_an_example_project_is_checked_by_its_path_and_test
              "notes.md": ()}
     assert example_problems(architecture, texts) == [
         "example (src/billing/store/x.py): imports app.src.billing.api which store may not import "
-        "(parts.store.may_import)",
+        "(parts.store.imports.may)",
         "example (tests/src/billing/test_y.py): is not valid Python: invalid syntax (line 1)",
         "example (other/x.py): lies in no part of the architecture"]
 
@@ -123,18 +123,18 @@ INTEGRATION = "src/billing/service/test_api.py"
 
 def test_a_tier_example_under_tests_is_only_parsed_and_one_in_a_part_obeys_its_rules():
     document = covered(docs={"examples": ["ex"]})
-    document["parts"]["service"]["may_import"] = []
+    document["parts"]["service"]["imports"] = {"may": []}
     document["tiers"]["unit"]["docs"] = {"example": UNIT}
     document["tiers"]["integration"]["docs"] = {"example": INTEGRATION}
     architecture = parsed(document, folders={"ex": (UNIT, INTEGRATION)})
     texts = {UNIT: (frm("app.src.tax.store", "anything"),), INTEGRATION: (frm("app.src.tax.store", "x"),)}
     assert example_problems(architecture, texts) == [
         "example (src/billing/service/test_api.py): imports app.src.tax.store which service may not import "
-        "(parts.service.may_import)"]
+        "(parts.service.imports.may)"]
     assert example_problems(architecture, {**texts, UNIT: Unparsable(1, "invalid syntax")}) == [
         "example (tests/src/billing/service/test_rules.py): is not valid Python: invalid syntax (line 1)",
         "example (src/billing/service/test_api.py): imports app.src.tax.store which service may not import "
-        "(parts.service.may_import)"]
+        "(parts.service.imports.may)"]
 
 
 def test_the_examples_read_are_those_of_any_ending_of_the_language_of_the_app():

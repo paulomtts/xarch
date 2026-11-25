@@ -26,7 +26,7 @@ PARSED = {
 APP = {"kernel/errors.py": SourceFile("", (), (), classes=(Class(1, "DomainError", exception=True),)),
        "modules/docs/domain/document.py": SourceFile("", (), (), classes=(Class(1, "Document"),))}
 DOMAIN, LOGIC, INIT = "modules/docs/domain/x.py", "modules/docs/application/logic/x.py", "modules/docs/domain/__init__.py"
-HOLDS = {"domain": "classes", "logic": "functions"}
+HOLDS = {"domain": ("classes",), "logic": ("functions", "records", "exceptions")}
 
 
 def holds(command: AskHolds):
@@ -64,3 +64,14 @@ def test_holds(given, when, then):
 def test_a_file_given_stands_in_place_of_the_file_of_the_app_at_its_path():
     found = holds(AskHolds("mine", "app", (("modules/docs/domain/document.py", "functions"),), ROOT))
     assert found == HoldsAsked((HoldsOf("modules/docs/domain/document.py", ("domain",)),))
+
+
+def test_a_part_of_records_alone_is_ruled_out_once_by_a_file_of_a_public_function_and_a_class():
+    profiles = FakeProfiles({"mine": profile(holds={"domain": ("classes",), "logic": ("records",)})})
+    parsed = {"both": SourceFile("", (), (), classes=(Class(1, "Document", methods=(Method(2, "title", None),)),),
+                                 functions=(Function(5, "validate"),)),
+              "values": SourceFile("", (), (), classes=(Class(1, "Found", record=True),),
+                                   functions=(Function(3, "_found", returns_named=frozenset({"Found"}), public=False),))}
+    found = controller(FakeSourceTree(ROOT, APP, parsed=parsed), profiles).holds(
+        AskHolds("mine", "app", ((LOGIC, "both"), (DOMAIN, "values"))))
+    assert found == HoldsAsked((HoldsOf(LOGIC, ("domain", "logic")), HoldsOf(DOMAIN)))

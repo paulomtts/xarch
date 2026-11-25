@@ -12,11 +12,11 @@ def problems(path: str, *imports, checked=PROFILE) -> list[str]:
 
 
 def message(path: str, line: int, label: str, part: str, package: str) -> str:
-    return f"app/{path}:{line}: {label} may not import the outside package {package} (parts.{part}.libraries)"
+    return f"app/{path}:{line}: {label} may not import the outside package {package} (parts.{part}.imports.libraries)"
 
 
 def test_a_part_listed_as_everything_may_import_any_outside_package_while_another_part_still_may_not():
-    checked = profile(libraries={**PROFILE.libraries, "bootstrap": (EVERYTHING,)})
+    checked = profile(imports_libraries={**PROFILE.imports_libraries, "bootstrap": (EVERYTHING,)})
     assert problems("bootstrap/app.py", imp(1, "anything", "x"), imp(2, "fastapi"), checked=checked) == []
     assert problems("platform/sql.py", imp(1, "anything", "x"), checked=checked) == [
         message("platform/sql.py", 1, "platform/", "platform", "anything")]
@@ -55,12 +55,12 @@ def test_libraries(path, imports, expected):
 
 
 def test_without_libraries_in_the_profile_nothing_is_checked():
-    assert problems("kernel/ids.py", imp(1, "yaml"), checked=profile(libraries=None)) == []
+    assert problems("kernel/ids.py", imp(1, "yaml"), checked=profile(imports_libraries=None)) == []
 
 
 def test_the_apps_package_is_the_root_it_is_given():
     assert [str(v) for v in violations([source("kernel/ids.py", imp(1, "app.kernel", "x"))], PROFILE, "shop")] == [
-        "app/kernel/ids.py:1: kernel/ may not import the outside package app (parts.kernel.libraries)"]
+        "app/kernel/ids.py:1: kernel/ may not import the outside package app (parts.kernel.imports.libraries)"]
 
 
 def test_a_violation_names_its_rule():
@@ -69,20 +69,20 @@ def test_a_violation_names_its_rule():
 
 @pytest.mark.parametrize("path, imports, fix", [
     pytest.param("platform/sql.py", [imp(3, "fastapi", "FastAPI")],
-                 "move the code that needs fastapi to web/, bootstrap/, which may import it (parts.web.libraries)",
+                 "move the code that needs fastapi to web/, bootstrap/, which may import it (parts.web.imports.libraries)",
                  id="a package listed for another part names that part"),
     pytest.param("web/routes.py", [imp(3, "sqlmodel", "SQLModel")],
                  "move the code that needs sqlmodel to platform/, adapters/, bootstrap/, which may import it "
-                 "(parts.platform.libraries)", id="a package listed for several parts names them all"),
+                 "(parts.platform.imports.libraries)", id="a package listed for several parts names them all"),
     pytest.param("platform/sql.py", [imp(3, "requests")],
-                 "use the standard library or a package listed in parts.platform.libraries, since requests is listed for "
+                 "use the standard library or a package listed in parts.platform.imports.libraries, since requests is listed for "
                  "no part", id="a package no part lists"),
 ])
 def test_a_violation_says_what_to_do(path, imports, fix):
     assert [(v.rule, v.fix) for v in violations([source(path, *imports)], PROFILE, "app")] == [("libraries", fix)]
 
 
-RESERVING = profile(libraries={**PROFILE.libraries, "adapters": ("sqlmodel", "ast")},
+RESERVING = profile(imports_libraries={**PROFILE.imports_libraries, "adapters": ("sqlmodel", "ast")},
                     reserved={"ast": "only the reader parses the language", "tokenize": "the reader's"})
 
 
@@ -91,13 +91,13 @@ RESERVING = profile(libraries={**PROFILE.libraries, "adapters": ("sqlmodel", "as
                  id="a reserved module the part lists, and another standard module"),
     pytest.param("modules/docs/application/logic/rule.py", [imp(1, "ast"), imp(2, "ast", "parse"), imp(3, "json")],
                  ["app/modules/docs/application/logic/rule.py:1: logic/ of modules/docs may not import ast, which the "
-                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.libraries)",
+                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.imports.libraries)",
                   "app/modules/docs/application/logic/rule.py:2: logic/ of modules/docs may not import ast, which the "
-                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.libraries)"],
+                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.imports.libraries)"],
                  id="a reserved module a part does not list is reported at each import"),
     pytest.param("modules/docs/application/logic/rule.py", [imp(1, "ast.nodes")],
                  ["app/modules/docs/application/logic/rule.py:1: logic/ of modules/docs may not import ast, which the "
-                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.libraries)"],
+                  "profile reserves: only the reader parses the language (reserved.ast; parts.logic.imports.libraries)"],
                  id="what lies below a reserved module is it"),
 ])
 def test_a_reserved_module_of_the_standard_library_is_imported_only_by_the_parts_that_list_it(path, imports, expected):
@@ -108,6 +108,6 @@ def test_a_reserved_module_says_where_its_code_belongs_or_that_no_part_may_impor
     listed = violations([source("kernel/x.py", imp(1, "ast"))], RESERVING, "app")[0]
     unlisted = violations([source("kernel/x.py", imp(1, "tokenize"))], RESERVING, "app")[0]
     assert (listed.rule, listed.fix) == ("libraries", "move the code that needs ast to adapters/, which may import it "
-                                                      "(parts.adapters.libraries)")
+                                                      "(parts.adapters.imports.libraries)")
     assert unlisted.fix == ("list tokenize in the libraries of the part it is reserved for, and keep the code that "
                             "needs it there")

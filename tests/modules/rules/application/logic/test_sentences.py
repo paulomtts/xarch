@@ -33,7 +33,7 @@ TARGETED = replace(RULE, facts=("import", "import-into-app"), targets=(Match("pl
                                   Match("outside")))
 NAMED = replace(RULE, facts=("class",), targets=(Match("name", words=("*Repo", "*Store")),))
 SERVICES = replace(RULE, scope=Scope(part="services"))
-ALSO = replace(PROFILE, tiers=tuple(replace(tier, may_also_import=(Target("web"),)) for tier in PROFILE.tiers))
+ALSO = replace(PROFILE, tiers=tuple(replace(tier, imports_also=(Target("web"),)) for tier in PROFILE.tiers))
 
 
 @pytest.mark.parametrize("name, file, kind, rule, profile, hit, printed", [
@@ -50,23 +50,28 @@ ALSO = replace(PROFILE, tiers=tuple(replace(tier, may_also_import=(Target("web")
     pytest.param("tier", DOMAIN, "file", RULE, PROFILE, None, ["unit"], id="tier: the tier that tests a file of the app"),
     pytest.param("tier", TEST, "file", RULE, PROFILE, None, ["unit"], id="tier: a test's own"),
     pytest.param("mirrored_parts", TEST, "file", RULE, PROFILE, None, ["domain/"], id="mirrored_parts"),
-    pytest.param("mirrored_may_import", TEST, "file", RULE, PROFILE, None, ["parts.domain.may_import"],
+    pytest.param("mirrored_may_import", TEST, "file", RULE, PROFILE, None, ["parts.domain.imports.may"],
                  id="mirrored_may_import"),
     pytest.param("mirrored_may_import", TEST, "file", RULE, ALSO, None,
-                 ["parts.domain.may_import; tiers.unit.may_also_import"],
+                 ["parts.domain.imports.may; tiers.unit.imports.also"],
                  id="mirrored_may_import: with what its tier's tests may also import"),
     pytest.param("own_folder", TEST, "file", RULE, PROFILE, None, ["tests/modules/docs"], id="own_folder"),
     pytest.param("tests_folder", DOMAIN, "file", RULE, PROFILE, None, ["tests/modules/docs/domain"], id="tests_folder"),
     pytest.param("language", DOMAIN, "file", RULE, PROFILE, None, ["Python"], id="language"),
     pytest.param("importable_parts", DOMAIN, "file", RULE, PROFILE, None, ["domain/, kernel/"], id="importable_parts"),
     pytest.param("faked_parts", DOMAIN, "file", RULE, PROFILE, None, ["ports"], id="faked_parts"),
-    pytest.param("parts_holding_functions", DOMAIN, "file", RULE, replace(PROFILE, holds={"logic": "functions"}), None,
-                 ["a part that holds functions: logic/"], id="parts_holding_functions"),
+    pytest.param("parts_holding_functions", DOMAIN, "file", RULE, replace(PROFILE, holds={"logic": ("functions",)}),
+                 None, ["a part that holds functions: logic/"], id="parts_holding_functions"),
     pytest.param("parts_holding_functions", DOMAIN, "file", RULE,
-                 replace(PROFILE, holds={"logic": "functions", "kernel": "functions"}), None,
-                 ["a part that holds functions: logic/, kernel/"], id="parts_holding_functions: several parts"),
+                 replace(PROFILE, holds={"logic": ("functions", "records"), "domain": ("classes",),
+                                         "kernel": ("classes", "functions")}), None,
+                 ["a part that holds functions: logic/, kernel/"],
+                 id="parts_holding_functions: the parts that list functions"),
     pytest.param("parts_holding_classes", DOMAIN, "file", RULE, PROFILE, None, ["a part that holds classes"],
                  id="parts_holding_classes"),
+    pytest.param("parts_holding_classes", DOMAIN, "file", RULE,
+                 replace(PROFILE, holds={"logic": ("functions", "records"), "domain": ("classes",)}), None,
+                 ["a part that holds classes: domain/"], id="parts_holding_classes: the parts that list classes"),
     pytest.param("name", DOMAIN, "class", RULE, PROFILE, None, ["Doc", "DocError", "Shown", "Frozen", "Loose", "Pair"], id="name"),
     pytest.param("qualified_name", DOMAIN, "function", RULE, PROFILE, None, ["make", "Doc.get", "Doc.put"],
                  id="qualified_name"),

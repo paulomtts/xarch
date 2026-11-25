@@ -109,7 +109,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "target_part_name": lambda found, facts, profile: _target_part_name(found),
     "target_package": lambda found, facts, profile: _package(found, facts),
     "built_by": lambda found, facts, profile: " or ".join(
-        f"{p}/" for p in profile.built_by.get(_target_part_name(found), ())),
+        f"{p}/" for p in profile.holds_built_by.get(_target_part_name(found), ())),
     "allowed_names": lambda found, facts, profile: " or ".join(
         narrowed(found.read.place, found.fact.at, profile)),
     "disallowed_name": lambda found, facts, profile: _disallowed_name(found),
@@ -136,16 +136,16 @@ def _package(found: Found, facts: Facts) -> str:
 
 
 def _holding(profile: Profile, kind: str) -> str:
-    """A part that holds the kind, naming the first SHOWN of those the profile has."""
-    parts = [f"{name}/" for name, holds in profile.holds.items() if holds == kind][:SHOWN]
+    """A part that holds the kind, naming the first SHOWN of those whose `holds` lists it."""
+    parts = [f"{name}/" for name, kinds in profile.holds.items() if kind in kinds][:SHOWN]
     return f"a part that holds {kind}: {', '.join(parts)}" if parts else f"a part that holds {kind}"
 
 
 def _mirrored_may_import(found: Found, profile: Profile) -> str:
     """The keys of what the parts a test mirrors may import, then of what its tier's tests may also import, if set."""
     tier = next((t for t in profile.tiers if t.name == found.read.tier), None)
-    parts = ", ".join(f"parts.{p}.may_import" for p in found.read.mirrors)
-    return f"{parts}; tiers.{tier.name}.may_also_import" if tier is not None and tier.may_also_import else parts
+    parts = ", ".join(f"parts.{p}.imports.may" for p in found.read.mirrors)
+    return f"{parts}; tiers.{tier.name}.imports.also" if tier is not None and tier.imports_also else parts
 
 
 def _tier_fix(found: Found, profile: Profile) -> str:
@@ -160,11 +160,11 @@ def _tier_fix(found: Found, profile: Profile) -> str:
 
 
 def _caller_fix(found: Found, profile: Profile) -> str:
-    """Use the part as a type only and leave the call to a part that may make it: one that may import it and does
-    not list it as a type only, named from the profile."""
+    """Use the part as a type only and leave the call to a part that may make it: one whose `imports.may` reaches it
+    by an entry with no mark, named from the profile."""
     src, dst = found.rule.scope.named_part, found.fact.at.part if found.fact.at is not None else None
     owners = [name for name, targets in profile.rules.items() if name not in (src, dst)
-              and any(t.part == dst for t in targets) and dst not in profile.types_only.get(name, ())]
+              and any(t.part == dst and t not in profile.imports_types_only.get(name, ()) for t in targets)]
     shown = [f"{name}/" for name in owners[:OWNERS]]
     if not shown:
         return f"use {dst}/ here only as a type, and leave the call to code outside {src}/"
@@ -176,7 +176,7 @@ def _caller_fix(found: Found, profile: Profile) -> str:
 def _owners(found: Found, profile: Profile) -> list[str]:
     top = _top(found)
     own = found.read.place.part if found.read.place is not None else None
-    return [name for name, packages in (profile.libraries or {}).items() if top in packages and name != own]
+    return [name for name, packages in (profile.imports_libraries or {}).items() if top in packages and name != own]
 
 
 def _permitted(found: Found, profile: Profile) -> list[str]:

@@ -114,14 +114,16 @@ everything else is optional, and a key left out means off):
 ```
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {files*, functions*, skips, table, mocks}
-parts*:   {<part>: {path*, role*, litmus, may_import, must_import, libraries, uses: {never}, tests | untested,
-                    package_only, folders, holds, immutable, types_only, no_callbacks, names, built_by, shared}}
+parts*:   {<part>: {path*, role*, litmus, imports: {may, must, libraries}, uses: {never}, tests | untested,
+                    package_only, folders, shared,
+                    holds: {classes: {names, immutable, built_by}, functions: {names}, records: {names, immutable},
+                            exceptions: {names}}}}
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
-tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, types_only, folder, may_import, may_also_import,
-                    must_import, docs}}
+tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
+                    docs}}
 fakes:    {folder*, for*, prefix}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
-           pass-through, private-imports}
+           pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
                   once_per, cases, examples*}}
@@ -156,7 +158,11 @@ encoding declaration, the keywords of the statements that branch and of the expr
 (`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
 `{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
 "True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
-reader supplies, which `holds` and the filter `record` read.
+reader supplies, which `holds`, its kind `records` and the filter `record` read. Whether a function is defined at the
+top level of its file, in no class, is the fact `function.top_level` a reader supplies, which the kinds `functions` and
+`records` of `holds`, `guards.dead-code.tests_only` and the filter `top-level` read; `holds` itself reads it only when
+the language supplies it, so that in a language without it a part that does not list `functions` reads no functions,
+which `profile explain parts.holds` and the enforcement section say.
 The rest of what a check knows of the language is one adapter, the reader that turns source into facts
 (`modules/rules/adapters/fs_source_tree.py`), and the platform; spec reads the docs' examples through that reader too.
 `tests/architecture/test_language_seam.py` fails when any other file of xarch names the language or writes one of
@@ -166,11 +172,13 @@ The data file also says what its reader supplies, under `supplies`: each fact of
 `class.fields`, `callback`, ...; `xarch/profile_values/capabilities.py` lists them), graded
 `exact` or `{partial: <what it misses>}`. Every key that configures a check needs the facts that check reads, which
 `xarch profile explain <key>` shows under `needs:` (a check of your own needs those of its kinds of fact and of the
-fields its words read, as `xarch profile explain kinds.<kind>` shows). A profile that sets a key whose facts its language does not
+fields its words read, as `xarch profile explain kinds.<kind>` shows). A key is held to its facts wherever it sits: in
+a scope any key opens, however deep, and in each entry of a list, which a problem names by its index from 0
+(`<list>.0.<key>`). A profile that sets a key whose facts its language does not
 supply is refused when it loads, naming the key, the fact and what to do; a key whose facts are supplied only partly
 runs, and is listed under `approximate` in the enforcement section, which `--strict` fails on. Python's reader
 supplies every fact exactly. One fact is never written under `supplies`: `file.package`, that a file stands for the
-folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `must_import`,
+folder holding it, follows `package_files`, and the keys whose check reads it (`package_only`, a part's `imports.must`,
 `guards.dead-code.untested`) are refused under a language that has none.
 
 The smallest valid profile is a name and one part (it runs `structure`, the import rules, `libraries` and `syntax`):
@@ -188,10 +196,11 @@ The symbols:
 - `<unit>` in a `path`: a repeating folder, one instance per name (`xarch new` takes the word). A profile may have
   several, each with a word of its own and one parent; a path holds one, so one cannot sit inside another. A last step with a dot
   (`controller.py`) makes the part a file.
-- In `may_import`, a bare name is that part in the importer's own instance of its repeating folder; `store@any` any
+- In `imports.may`, a bare name is that part in the importer's own instance of its repeating folder; `store@any` any
   instance, and the only way to name a part of another repeating folder, which has no own instance; `store/schema`
   only that path below the part; `store:*Id` only the names that match the pattern, imported by name;
-  `everything` no limit (also for `libraries`). A part may always import itself.
+  `everything` no limit (also for `imports.libraries`); an entry written `{store: types_only}` is a target the part
+  may import only to use as a type. A part may always import itself.
 
 This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
 enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same
@@ -199,7 +208,7 @@ table the loader does, so it cannot drift from what is accepted:
 
 ```
 xarch profile explain                      # the whole format, symbols and smallest profile
-xarch profile explain parts.may_import     # one key; also: guards.no-duplicates, testing, tiers.folder, ...
+xarch profile explain parts.imports.may    # one key; also: guards.no-duplicates, testing, tiers.folder, ...
 xarch profile explain --profile web        # a profile's folder tree and import table, for a human to approve
 xarch profile new mine --from web          # copy a bundled profile into architecture/mine/, with its files
 xarch profile check [NAME|FILE]            # validate a profile without an app
@@ -212,7 +221,7 @@ by; `{"ok", "key", "profile", "rules", "checks", "needs"}` for a key with
 `--rule`, `needs` the facts its rules read; `{"ok", "shape", "symbols", "smallest", "deeper"}` for the whole) and
 exits 2 for a key the format does not have, naming the nearest (in JSON, `nearest` the format's keys and `words` the
 words of a check). The key may be written with or without the placeholder
-steps (`parts.may_import` or `parts.<part>.may_import`). `--profile NAME|FILE` (or `--configured`, the project's profile)
+steps (`parts.imports.may` or `parts.<part>.imports.may`). `--profile NAME|FILE` (or `--configured`, the project's profile)
 prints the folder tree with each folder's role and the table of what each part may import, as the generated docs show
 them.
 
@@ -266,7 +275,7 @@ The whole vocabulary, from the same table the engine reads, is the command:
 xarch profile explain checks               # how a check is written and read, with a whole one as an example
 xarch profile explain filters              # a category of words: kinds, quantifiers, targets, filters, variables
 xarch profile explain filters.public       # one word: what it means, what it applies to, an example
-xarch profile explain parts.names --rule   # the rules a key of your profile expands to, written as checks
+xarch profile explain parts.holds --rule   # the rules a key of your profile expands to, written as checks
 ```
 
 ## What check checks
@@ -284,15 +293,15 @@ that switches or configures each (`-` for none: the rule is always on):
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts.path`, `parts.folders` |
-| `may-import` | an import between parts that the importing part's `may_import` does not allow, or a name its pattern does not match | `parts.may_import` |
-| `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.libraries`, `reserved` |
+| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match | `parts.imports.may` |
+| `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
-| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.may_import`, `tiers.may_also_import`, `parts.tests` |
+| `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
-| `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.types_only`, `parts.types_only` |
+| `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
-| `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.must_import`, `tiers.must_import` |
+| `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.imports.must`, `tiers.imports.must` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier | `guards.scenario-coverage`, `tiers.plain_tables` |
 | `no-comments` | a comment of the language in the app or its tests (`#` for Python), but a doc comment and those its tools read | `guards.no-comments` |
 | `stand-ins` | a read port without a fake, or a mock without a spec or with a read port's | `guards.stand-ins`, `fakes` |
@@ -301,16 +310,16 @@ that switches or configures each (`-` for none: the rule is always on):
 | `no-twins` | two public classes in parts of different names that declare the same fields in the same order: one type written twice; with `min_renamed`, also a copy that renamed a field, and with `min_subset`, one that kept at least half of the other's fields in its order; with `translated`, a pair is no twin when a file of a listed part builds one of the two through an import, imports the other (from the file defining it, or from one that takes it from there), and holds one function that names both; a class a file builds where it defines it is built through no import, and translates nothing; each pair so accepted is named in the enforcement section | `guards.no-twins` |
 | `dead-code` | a port no other file names, a fake no test uses; with `untested`, a file no test of its tier reaches, and with `tests_only`, a public class or top-level function no other file of the app names (only the tests, or nothing, use it), but those `known` accepts, which the enforcement section names instead, each listed as `weak` only; an entry of `known` whose file defines no such name, whose name another file of the app names, or that no test names in its code (a string of a test does not count), is listed as `weak` too | `guards.dead-code`, `fakes` |
 | `pass-through` | a method that only forwards its arguments to a collaborator, or returns an attribute of what that call answers; never a violation: listed as `weak`, and fails only `--strict` | `guards.pass-through` |
-| `holds` | a public function at the top level of a part that holds classes, or a class (whatever its name) in one that holds functions; listed as `weak`, and fails only `--strict` | `parts.holds` |
-| `immutable` | a class of a part that lists `immutable` that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.immutable` |
-| `no-callbacks` | a function of a part that calls one of its own parameters annotated as a callable | `parts.no_callbacks` |
-| `names` | a public class of a part whose name matches none of the part's patterns | `parts.names` |
-| `built-by` | a call of the constructor of a part's class from a part it does not list | `parts.built_by` |
+| `holds` | a public function at the top level of a part whose `holds` does not list `functions`, or a class (whatever its name) of one that does not list `classes`, but an exception or a record when it lists that kind, each said as the narrowest kind it fits; listed as `weak`, and fails only `--strict` | `parts.holds` |
+| `immutable` | a class a part holds to `classes`, or a record it holds to `records`, when that kind sets `immutable`, that is no immutable record as the language's data file says one is made, an exception aside; listed as `weak`, and fails only `--strict` | `parts.holds.classes.immutable`, `parts.holds.records.immutable` |
+| `no-callbacks` | a function of a part the guard lists that calls one of its own parameters annotated as a callable | `guards.no-callbacks` |
+| `names` | a public class, top-level function, record or exception of a part whose name matches none of the patterns of the kind it is held to, a class being held to the narrowest kind listed that it fits | `parts.holds.<kind>.names` |
+| `built-by` | a call of the constructor of a class a part holds to `classes` from a part their `built_by` does not list | `parts.holds.classes.built_by` |
 | `private-imports` | an import of a name another file of the app or its tests keeps private (for Python, one starting with `_`) | `guards.private-imports` |
 | `shared` | a public name of a part declared shared that fewer users use than it says (a user: an instance of a repeating folder, or a part outside them; tests not read) | `parts.shared` |
 
 A key left out means its check is off. For what a key means, accepts and exactly checks, run
-`xarch profile explain <key>` (for example `xarch profile explain guards.no-duplicates`, `parts.must_import`,
+`xarch profile explain <key>` (for example `xarch profile explain guards.no-duplicates`, `parts.imports.must`,
 `never` or `tiers`); it reads the table the loader reads, so it cannot drift. A violation's `fix:` says what to do
 about that finding, and a profile's `hints` add its own advice after it.
 
@@ -327,7 +336,7 @@ file(s)`, then the enforcement section (below). Paths are relative to the folder
 
 ```
 app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)
-    fix: import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to adapters/, which may import it
+    fix: import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to adapters/, which may import it
     hint: the layers are in docs/project/architecture.md
 1 violation(s) in 1 file(s)
 ```
@@ -381,9 +390,10 @@ how many facts it read in the project.
   `test-tree`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
   profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
-  `{"key", "part", "what", "sentence"}` with `key` one of `may_import`, `libraries`, `uses.never`, `untested`,
-  `types_only`, `may_also_import`, `uses.apply_never`, `testing.skips`, `files.pinned`, `reserved`, `must_import`, `litmus`, `known`,
-  `translated` (the `sentence` names the full address, such as `parts.kernel.may_import`); `excluded` items
+  `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
+  `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `files.pinned`,
+  `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
+  `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
   `no-twins` accepts as a translation (`guards.no-twins.translated`): the function that names both, where it is, the
@@ -409,7 +419,7 @@ its own enforcement. In text, a line with nothing to report is left out:
 enforcement
   profile:     arch/mine.yaml (custom; closest bundled: web)
     guards off:  no-comments, closed-tree
-    may_import:  kernel may also import platform (parts.kernel.may_import)
+    imports.may: kernel may also import platform (parts.kernel.imports.may)
   ungoverned:  1 Python file outside every part (app/scripts/)
   excluded:    app/examples/ (example sources the docs show)
   known:       app/bootstrap/wiring.py:12: build_app is public, a test names it and no other file of the app does, which the profile accepts (guards.dead-code.known)
@@ -426,10 +436,10 @@ enforcement
   most resembles (the first by name on a tie); one sharing no part resembles none, and nothing is compared. `guards off` lists every guard xarch has that the profile does not switch on, for a bundled profile
   too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
   line names that key. For a custom file, each way it is looser than the one it resembles, compared only where both use the same
-  name: a target added to a part's `may_import`, an outside package added to its `libraries` (or `everything`), a
-  name of its `uses.never` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
-  `types_only`, a target added to a tier's `may_also_import`, a tier no longer `uses.apply_never`, a name dropped from `testing.skips`, a `files` entry no longer
-  `pinned`, a target added to a part's `must_import` or the key dropped, a part redefined without the `litmus` the
+  name: a target added to a part's `imports.may`, a `types_only` mark dropped from an entry of it, an outside package
+  added to its `imports.libraries` (or `everything`), a name of its `uses.never` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
+  `imports.types_only`, a target added to a tier's `imports.also`, a tier no longer `uses.apply_never`, a name dropped from `testing.skips`, a `files` entry no longer
+  `pinned`, a target added to a part's `imports.must` or the key dropped, a part redefined without the `litmus` the
   other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part
   `guards.no-twins.translated` lists that the other's does not, a line under `evals.placement.lines` set below the
   other's, an entry of `review.never` or `review.mask` the other holds and this one drops. A profile that says `based_on: <bundled name>` is compared with that one, else with the one sharing the
@@ -495,7 +505,7 @@ tested by:       unit tier: tests/modules/documents/adapters/test_db_document_re
 ```
 
 For a path in the app: its part and the instance of its repeating folder, the part's role and litmus test, what it may
-import (its `may_import`, in the words of the docs' rules table), the outside packages it may import (`libraries`: `none`,
+import (its `imports.may`, in the words of the docs' rules table), the outside packages it may import (`imports.libraries`: `none`,
 a list, or `any outside package`), the names it never uses (`never uses`, from its `uses.never`), and the tier that
 tests it with the file its test would be in (a part that is one file, such as a controller, has its test by use case:
 `test_<use case>.py`; a part no tier tests says why). A path in no part is `ungoverned`, with the parts near it (those
@@ -751,19 +761,20 @@ probability on each part as answered. `review calibrate` holds a group to its li
 own part is the group's sum, an example of one part reading at or above the line of another part of its group crosses
 nothing, and its report says of each part of a group that it was held with the others; changing the groups makes the
 record of placement stale. Each name must be a part, a group needs two parts or more, each named once, and a part is in
-one group at most; the parts of a group must have the same `uses.never`, `holds` and `immutable`, since parts `check`
-tells apart by rule are not alike. A group hides every doubt between its parts: name only parts one file truly cannot
-tell apart. `xarch profile explain evals.placement.alike` says it in full.
+one group at most; the parts of a group must have the same `uses.never`, and the same kinds with the same `immutable`
+under `holds`, since parts `check` tells apart by rule are not alike. A group hides every doubt between its parts:
+name only parts one file truly cannot tell apart. `xarch profile explain evals.placement.alike` says it in full.
 
 ### Parts a file cannot lie in: ruled out by `holds`
 
 The decision model judges a file by what it is about, and a part's rules say what may lie there: a file of plain
 functions that validates profile documents reads as the part holding profile values, though that part holds classes
-(`parts.<part>.holds: classes`) and the file could not lie there without breaking the rule. So each part whose `holds`
-the file would break were it to lie there is ruled out of its answer: the probability on it is dropped, and what
+(`parts.<part>.holds: {classes: {}}`) and the file could not lie there without breaking the rule: a file rules a part
+out when it defines at the top level a kind that part does not list. So each part whose `holds` the file would break
+were it to lie there is ruled out of its answer: the probability on it is dropped, and what
 remains is read as summing to 1 again. Whether the file would break a part's `holds` is decided by the very rule `check`
 runs in that part, on the file as `check` reads it with the rest of the app (an exception class and a record a
-function of the file returns are allowed in a part of functions, as there; a package file breaks none). The file's own
+function of the file returns are allowed in a part that lists them, as there; a package file breaks none). The file's own
 part is never ruled out (when the file breaks it, `check` says so); a part the answer puts nothing on is left as it is;
 and an answer that would leave nothing (its own part at 0, every other part ruled out) is read as it was answered.
 
@@ -1057,7 +1068,7 @@ guard test, skip a test. It is static text (it names the app folder with `{{app}
 sorting, absolute imports only, a return annotation on public functions (which `stand-ins` needs on a port's methods),
 the pytest-style rules, no `print`, no naive datetime and no unused `noqa`, for Python 3.13 and a line length of 140.
 What differs by part (which imports, names or outside packages a part may use) is the profile's job, via
-`may_import`, `libraries` and `uses.never`; `xarch check` does not run the linter.
+`imports.may`, `imports.libraries` and `uses.never`; `xarch check` does not run the linter.
 
 The guard test, `tests/architecture/test_rules.py`, runs `python -m xarch check --app <project>/<app>` with the
 interpreter running the test, and fails with `xarch check`'s output as its message, so every guard runs with the

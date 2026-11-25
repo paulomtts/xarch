@@ -58,7 +58,7 @@ def made(written: Mapping[str, WrittenCheck], profile: Profile) -> MadeChecks:
         except RuleRefused as refused:
             problems += [f"checks.{name}.{problem}" for problem in refused.problems]
             continue
-        lacking = _supplied(name, rule, profile.language)
+        lacking = unsupplied(f"checks.{name}", rule, profile.language, "check")
         problems += lacking
         if not lacking:
             found.append(OwnCheck(rule, check.flagged, check.clean))
@@ -75,13 +75,15 @@ def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule
                 elsewhere=quantified.by_another_file)
 
 
-def _supplied(name: str, rule: Rule, language: CheckedLanguage) -> list[str]:
-    """A problem for each fact the rule needs that the language's reader does not supply."""
+def unsupplied(address: str, rule: Rule, language: CheckedLanguage, what: str) -> list[str]:
+    """A problem at address for each fact the rule needs that the language's reader does not supply at all, its fix
+    to drop what the rule is made of (the check, the eval); none when the language's data file does not say what its
+    reader supplies. A fact supplied partly is no problem."""
     if language.supplies is None:
         return []
     supplies = {s.fact: s for s in language.supplies}
-    return [f"checks.{name}: needs {short.fact} ({FACTS[short.fact]}), which the reader of {language.title} does "
-            "not supply: read another kind of fact, or drop the check"
+    return [f"{address}: needs {short.fact} ({FACTS[short.fact]}), which the reader of {language.title} does not "
+            f"supply: read another kind of fact, or drop the {what}"
             for short in shortfalls(rule.key, rule.needs, supplies) if short.note is None]
 
 

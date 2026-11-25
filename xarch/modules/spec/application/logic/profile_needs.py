@@ -1,73 +1,91 @@
 """What the keys a profile sets need of the language's reader: every key that configures a check needs the facts of
-the source that check reads (see capabilities and key_table). A key set to false configures nothing. A key whose
-language does not supply one of its facts is a problem of the profile, naming the key, the fact and what to do; one
-whose language supplies a fact partly is kept, and listed as approximate where the check is run.
+the source that check reads (see capabilities and key_table). One walk of the key table finds those keys however deep
+they sit: from the file's keys into the scope each key opens, and from there as far down as the table's scopes go, into
+a mapping, each entry of a map of names (parts.<part>) and each entry of a list (docs.naming[]), which is addressed by
+its index from 0 (<list>.0.<key>). A list of entries each a target or a map of one to its mode (imports.may) holds the
+scope of its modes: a mode an entry carries is set. A key set to false or null configures nothing, but a guard, which
+its name alone configures. A key whose language does not supply one of its facts is a problem of the profile, naming the
+key, the fact and what to do; one whose language supplies a fact partly is kept, and listed as approximate where the
+check is run. A fact a key's check reads only when the language supplies it (see Key.when_supplied) is no problem when
+it is not: the key is kept, its check reads less, and it is listed as approximate in a sentence that says so.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator, Mapping
+from dataclasses import replace
 from typing import Any
 
 from xarch.kernel.logic.capabilities import shortfalls
-from xarch.modules.spec.application.logic.key_lookup import keys_of
-from xarch.modules.spec.domain.profile_keys import GUARD, PART, PROFILE, TESTING, TIER, Key
+from xarch.modules.spec.domain.key_table import KEYS, SLOTS
+from xarch.modules.spec.domain.profile_keys import GUARD, PROFILE, SCOPES, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import FACTS, Shortfall
 
-
-def _configured(document: Mapping[Any, Any], presets: Mapping[str, Any]) -> Iterator[tuple[str, Key]]:
-    """Each key the document sets that needs facts, with its address in the file, in the order of the file's scopes:
-    the file, its parts, its tiers, its testing (a preset by what the preset holds), its guards, each with the keys of
-    its own map that need facts and are set, a part's and a tier's then those of each group one of its keys opens
-    (`uses`)."""
-    yield from _set(document, keys_of(PROFILE), "")
-    for scope, held in ((PART, "parts"), (TIER, "tiers")):
-        entries = document.get(held)
-        for name, value in entries.items() if isinstance(entries, Mapping) else ():
-            if isinstance(value, Mapping):
-                yield from _set(value, keys_of(scope), f"{held}.{name}.")
-                yield from _grouped(value, keys_of(scope), f"{held}.{name}.")
-    testing = document.get("testing")
-    testing = presets.get(testing) if isinstance(testing, str) else testing
-    if isinstance(testing, Mapping):
-        yield from _set(testing, keys_of(TESTING), "testing.")
-    guards = document.get("guards")
-    for key in keys_of(GUARD) if isinstance(guards, Mapping) else ():
-        if key.name in guards:
-            yield f"guards.{key.name}", key
-            held = guards[key.name]
-            for nested in _guard_keys(key.name) if isinstance(held, Mapping) else ():
-                if nested.needs and held.get(nested.name) not in (None, False):
-                    yield f"guards.{key.name}.{nested.name}", nested
+_NAMED = re.compile(r"\.<[^.>]*>$")
+"""The end of the address of a scope whose entries the profile names (parts.<part>): a placeholder step."""
 
 
-def _guard_keys(name: str) -> tuple[Key, ...]:
-    return keys_of(f"{GUARD}.{name}")
+def _configured(mapping: Mapping[Any, Any], scope: str, at: str, presets: Mapping[str, Any],
+                keys: tuple[Key, ...]) -> Iterator[tuple[str, Key]]:
+    """Each key of the table that the mapping of the scope sets and that needs facts, with its address in the file (at
+    is the mapping's address and a dot, "" for the file), in the order of the table, each followed by those of the
+    scope it opens: depth first. A key the mapping does not hold, or holds as false or null, configures nothing, and
+    nothing below it is walked; a guard is configured by its name alone. The file's testing, written as the name of a
+    preset, is walked as the preset's mapping."""
+    for key in (key for key in keys if key.scope == scope):
+        value = mapping.get(key.name)
+        if key.name not in mapping or (scope != GUARD and (value is None or value is False)):
+            continue
+        address = f"{at}{key.name}"
+        if key.needs:
+            yield address, key
+        if scope == PROFILE and key.name == "testing" and isinstance(value, str):
+            value = presets.get(value)
+        for where, held in _held(value, SCOPES.get(key.opens, key.opens), address) if key.opens else ():
+            yield from _configured(held, key.opens, f"{where}.", presets, keys)
 
 
-def _set(mapping: Mapping[Any, Any], keys: tuple[Key, ...], prefix: str) -> Iterator[tuple[str, Key]]:
-    for key in keys:
-        if key.needs and key.name in mapping and mapping[key.name] is not False:
-            yield f"{prefix}{key.name}", key
+def _held(value: Any, where: str, address: str) -> list[tuple[str, Mapping[Any, Any]]]:
+    """The mappings a key's value holds for the scope it opens, each with its address, by the shape the scope's
+    address (where) says: for one ending in [], a list, each entry by its index from 0, every entry counted; for one
+    ending in a placeholder step, a mapping of names the profile chooses, each entry by its name; else the mapping
+    itself. A value of another shape, and an entry that is no mapping, hold none."""
+    if where.endswith("[]"):
+        entries = [(f"{address}.{index}", entry) for index, entry in enumerate(value)] if isinstance(value, list) else []
+    elif _NAMED.search(where):
+        entries = [(f"{address}.{name}", entry) for name, entry in value.items()] if isinstance(value, Mapping) else []
+    else:
+        entries = [(address, _modes(value) if isinstance(value, list) else value)]
+    return [(found, entry) for found, entry in entries if isinstance(entry, Mapping)]
 
 
-def _grouped(mapping: Mapping[Any, Any], keys: tuple[Key, ...], prefix: str) -> Iterator[tuple[str, Key]]:
-    """The keys that need facts set in each group a key of the mapping opens, one level down, such as a part's
-    `uses`; a group that is no mapping sets none."""
-    for key in keys:
-        group = mapping.get(key.name)
-        if key.opens and isinstance(group, Mapping):
-            yield from _set(group, keys_of(key.opens), f"{prefix}{key.name}.")
+def _modes(entries: list[Any]) -> dict[str, bool]:
+    """A list whose entries are each a value or a one-key map of a value to its mode (imports.may), as the map of the
+    modes its entries carry, each set: the keys of the scope it opens are its modes."""
+    return {mode: True for entry in entries if isinstance(entry, Mapping) for mode in entry.values()
+            if isinstance(mode, str)}
 
 
-def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Language) -> list[Shortfall]:
-    """The facts the keys the document sets need that its language supplies partly or not at all; none when no
-    language is known."""
+def short(document: Mapping[Any, Any], presets: Mapping[str, Any], language: Language, *,
+          keys: tuple[Key, ...] = (*KEYS, *SLOTS)) -> list[Shortfall]:
+    """The facts the keys the document sets need that its language supplies partly or not at all, in the order of the
+    walk (see _configured); none when no language is known. keys is the table walked: every key of the format unless
+    another is given."""
     if language.checked.supplies is None:
         return []
     supplies = {supply.fact: supply for supply in language.checked.supplies}
-    return [found for address, key in _configured(document, presets)
+    return [read_less(found, key, language) for address, key in _configured(document, PROFILE, "", presets, keys)
             for found in shortfalls(address, key.needs, supplies)]
+
+
+def read_less(found: Shortfall, key: Key, language: Language) -> Shortfall:
+    """The shortfall of a fact the key's check reads only when the language supplies it, which it does not, said as
+    what the check then reads less; any other as it is."""
+    if found.note is not None or found.fact not in key.when_supplied:
+        return found
+    return replace(found, note=f"{key.without}: the language {language.checked.title} does not supply {found.fact}",
+                   unread=True)
 
 
 def refused(found: list[Shortfall], language: Language) -> list[str]:

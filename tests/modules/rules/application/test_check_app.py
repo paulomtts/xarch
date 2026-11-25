@@ -37,11 +37,11 @@ from xarch.profile_values.placement import Repeat, Target
 ROOT = Path("/src/pkg")
 PROFILE = Profile({"kernel": ("kernel",), "platform": ("platform",)},
                   {"kernel": (), "platform": (Target("kernel"),)}, ((), ("kernel",), ("platform",)),
-                  libraries={"kernel": (), "platform": ()}, hints={"may-import": "ask first"})
+                  imports_libraries={"kernel": (), "platform": ()}, hints={"may-import": "ask first"})
 BAD = {"kernel/x.py": [Import(1, ("pkg", "platform", "io"))], "platform/io.py": []}
 GOOD = {"kernel/x.py": [], "platform/io.py": [Import(1, ("pkg", "kernel", "x"))]}
 IMPORT = Violation("pkg/kernel/x.py", 1, "kernel/ may not import platform/ (pkg.platform.io)", "may-import",
-                   "import only kernel/ in kernel/ (parts.kernel.may_import), or move this code to a part that may "
+                   "import only kernel/ in kernel/ (parts.kernel.imports.may), or move this code to a part that may "
                    "import platform/")
 MISSING = Violation("pkg", 0, "missing kernel/logic/", "structure", "create pkg/kernel/logic/")
 
@@ -94,7 +94,7 @@ def entered(entry: str) -> Profile:
              entry: (Target(entry), Target("kernel"))}
     folders = ((), ("kernel",), ("platform",), ("modules",), ("modules", "*"), ("modules", "*", "domain"),
                ("modules", "*", "application"), ("modules", "*", "application", "services"), (entry,))
-    return Profile(parts, rules, folders, libraries={name: () for name in parts}, repeats=(Repeat("module", ("modules",)),))
+    return Profile(parts, rules, folders, imports_libraries={name: () for name in parts}, repeats=(Repeat("module", ("modules",)),))
 
 
 ENTERED = FakeProfiles({"cli": entered("cli"), "web": entered("web")})
@@ -111,7 +111,7 @@ def checked(files, profiles: FakeProfiles = ENTERED, profile: str = "cli", root:
 def test_the_app_is_imported_as_the_package_its_folder_names():
     files = {"kernel/x.py": [Import(1, ("xarch", "platform"), names=("sql",))]}
     assert [str(v) for v in checked(files, root=Path("/src/app")).violations] == [
-        "app/kernel/x.py:1: kernel/ may not import the outside package xarch (parts.kernel.libraries)"]
+        "app/kernel/x.py:1: kernel/ may not import the outside package xarch (parts.kernel.imports.libraries)"]
     assert [str(v) for v in checked(files, root=Path("/src/xarch")).violations] == [
         "xarch/kernel/x.py:1: kernel/ may not import platform/ (xarch.platform)"]
 
@@ -192,6 +192,15 @@ def test_a_key_whose_check_reads_a_fact_partly_is_listed_as_approximate_and_fail
     said = "parts.services.names reads class only partly: a class defined in a branch is not read"
     assert result.enforcement.approximate == (
         ApproximateView("parts.services.names", "class", "a class defined in a branch is not read", said),)
+    assert result.enforcement.strict == (FindingView("approximate", said),)
+
+
+def test_a_part_that_reads_no_top_level_functions_for_want_of_the_fact_is_listed_as_approximate_by_its_sentence():
+    said = "holds reads no top-level functions: the language Toy does not supply function.top_level"
+    unread = Shortfall("parts.domain.holds", "function.top_level", said, True)
+    profiles = FakeProfiles({"cli": replace(entered("cli"), approximate=(unread,))})
+    result = checked({"kernel/x.py": []}, profiles)
+    assert result.enforcement.approximate == (ApproximateView("parts.domain.holds", "function.top_level", said, said),)
     assert result.enforcement.strict == (FindingView("approximate", said),)
 
 

@@ -11,12 +11,12 @@ from xarch.modules.spec.domain.values import FileType
 
 PARTS = {
     "store": {"path": "src/<module>/store", "role": "database access", "litmus": "Does it touch the database?",
-              "may_import": ["shared/text"], "folders": {"sql": "the queries"}},
+              "imports": {"may": ["shared/text"]}, "folders": {"sql": "the queries"}},
     "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
-                "may_import": ["store", "api@any", "shared"]},
+                "imports": {"may": ["store", "api@any", "shared"]}},
     "api": {"path": "src/<module>/api.py", "role": "HTTP handlers", "litmus": "Does it parse a request?",
-            "may_import": "everything"},
-    "shared": {"path": "shared", "role": "code every module uses", "litmus": "Is it shared?", "may_import": []},
+            "imports": {"may": "everything"}},
+    "shared": {"path": "shared", "role": "code every module uses", "litmus": "Is it shared?", "imports": {"may": []}},
 }
 NAMING = [{"kind": "service", "where": ["service/"], "pattern": "thing and `Service`",
            "example": ["BillingService", "TaxService"]}]
@@ -73,13 +73,13 @@ def test_the_rules_table_lists_each_part_in_order_without_itself():
 
 
 def test_a_part_naming_its_own_kind_in_any_module_shows_it():
-    table = filled("{{rules_table}}", parts=parts(store={"may_import": ["store@any"]}))
+    table = filled("{{rules_table}}", parts=parts(store={"imports": {"may": ["store@any"]}}))
     assert table.splitlines()[2] == "| `store/` | any module's `store/` |"
 
 
 def test_consecutive_targets_in_one_scope_share_their_phrase():
-    table = filled("{{rules_table}}", parts=parts(service={"may_import": ["store", "api", "shared", "store@any",
-                                                                          "api@any"]}))
+    table = filled("{{rules_table}}", parts=parts(service={"imports": {"may": ["store", "api", "shared", "store@any",
+                                                                                    "api@any"]}}))
     assert table.splitlines()[3] == (
         "| `service/` | its own module's `store/` and `api.py`, `shared/`, any module's `store/` and `api.py` |")
 
@@ -215,9 +215,9 @@ def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
 
 TWO = {
     "service": {"path": "src/<module>/service", "role": "business logic", "litmus": "Does it decide?",
-                "may_import": ["hooks@any", "shared"]},
+                "imports": {"may": ["hooks@any", "shared"]}},
     "hooks": {"path": "ext/<plugin>/hooks", "role": "what a plugin runs", "litmus": "Does a plugin run it?",
-              "may_import": ["service@any", "manifest", "shared"], "libraries": ["yaml"]},
+              "imports": {"may": ["service@any", "manifest", "shared"], "libraries": ["yaml"]}},
     "manifest": {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares", "litmus": "Does it declare?"},
     "shared": {"path": "shared", "role": "code both use", "litmus": "Is it shared?"},
 }
@@ -255,7 +255,7 @@ def test_the_guards_name_every_repeating_folder():
     assert two("{{guards}}").splitlines() == [
         "- `structure`: every folder and file of the layout exists, in the app and in every `src/<name>/` and "
         "`ext/<name>/`.",
-        "- `may-import`: every import between parts is one that the `may_import` of the importing part allows "
+        "- `may-import`: every import between parts is one that the `imports.may` of the importing part allows "
         "(architecture.md, section 5).",
         "- `libraries`: a part imports only the outside packages listed for it (`hooks/`: yaml); the standard "
         "library is always allowed, and tests are not checked.",
@@ -285,6 +285,29 @@ def test_a_shared_part_is_said_in_the_guards():
     lines = [line for line in filled("{{guards}}", parts=parts(shared={"shared": 2})).splitlines() if "`shared`" in line]
     assert lines == ["- `shared`: every public name of `shared/` is used by at least 2 users (each instance of a repeating "
                      "folder, or each part outside them; tests not read), or it belongs to the one that uses it."]
+
+
+CALLBACKS = ("- `no-callbacks`: no function of `store/` and `service/` calls a parameter annotated as a callable: it is "
+             "handed values, never a way to fetch them.")
+PRIVATE = ("- `private-imports`: no file of the app or its tests imports a name that starts with `_` from another file "
+           "of them.")
+
+
+def test_the_no_callbacks_line_is_a_guard_line_after_the_part_lines():
+    lines = filled("{{guards}}", parts=parts(service={"holds": {"functions": {}, "records": {}, "exceptions": {}}}),
+                   guards={"no-callbacks": {"parts": ["store", "service"]}, "private-imports": {}}).splitlines()
+    assert lines[-2:] == [CALLBACKS, PRIVATE]
+    assert [line for line in lines if "`no-callbacks`" in line] == [CALLBACKS]
+
+
+def test_the_no_callbacks_line_follows_the_order_the_profile_writes_its_guards_in():
+    lines = filled("{{guards}}", guards={"no-callbacks": {"parts": ["store", "service"]},
+                                         "pass-through": {"parts": ["service"]}}).splitlines()
+    assert [line.split(":")[0] for line in lines[-2:]] == ["- `no-callbacks`", "- `pass-through`"]
+
+
+def test_a_profile_without_the_guard_has_no_no_callbacks_line():
+    assert "`no-callbacks`" not in filled("{{guards}}", guards={"private-imports": {}})
 
 
 def test_a_quoted_file_of_any_ending_of_the_language_of_the_app_is_fenced_with_the_language_s_name():
@@ -321,3 +344,55 @@ def test_the_private_imports_line_of_a_language_that_gives_no_prefix_says_the_ru
     assert lines == ["- `private-imports`: no file of the app or its tests imports a name another file of them keeps "
                      "private."]
     assert "``" not in lines[0]
+
+
+LOGIC = {"functions": {}, "records": {"immutable": True}, "exceptions": {}}
+ENFORCED = "listed in the enforcement section, and fails `check --strict` only."
+
+
+def keyed(key: str, **changes) -> list[str]:
+    """The lines of the guards the parts changed as given say for the key."""
+    return [line for line in filled("{{guards}}", parts=parts(**changes)).splitlines() if line.startswith(f"- `{key}`")]
+
+
+def test_the_holds_line_says_the_two_bundled_forms_as_it_always_has():
+    assert keyed("holds", store={"holds": {"classes": {}}}, service={"holds": LOGIC}, shared={"holds": {"classes": {}}}) == [
+        "- `holds`: a file of `store/` and `shared/` defines classes, never a public function at the top level; a file "
+        "of `service/` defines functions, never a class (a private one too) but exceptions and the records its "
+        f"functions return; {ENFORCED}"]
+
+
+def test_the_holds_line_says_any_other_group_by_the_kinds_it_allows_after_the_bundled_forms():
+    assert keyed("holds", store={"holds": {"functions": {}, "records": {}}}, service={"holds": {"classes": {}}},
+                 shared={"holds": {"classes": {}, "functions": {}}}) == [
+        "- `holds`: a file of `service/` defines classes, never a public function at the top level; a file of `store/` "
+        "holds functions and records and no other kind at the top level; a file of `shared/` holds classes and "
+        f"functions and no other kind at the top level; {ENFORCED}"]
+
+
+def test_the_immutable_lines_say_the_parts_of_immutable_classes_then_those_of_immutable_records():
+    assert keyed("immutable", store={"holds": {"classes": {"immutable": True}}}, service={"holds": LOGIC}) == [
+        "- `immutable`: every class of `store/` is an immutable record, as the Python data file marks one, or an "
+        f"exception; {ENFORCED}",
+        f"- `immutable`: every record of `service/` is an immutable record, as the Python data file marks one; {ENFORCED}"]
+
+
+def test_the_names_lines_say_each_kind_named_in_the_order_of_the_kinds():
+    holds = {"classes": {"names": "*Service"}, "functions": {"names": ["is_*", "has_*"]},
+             "exceptions": {"names": "*Error"}}
+    assert keyed("names", service={"holds": holds}, store={"holds": {"records": {"names": "*Row"}}}) == [
+        "- `names`: every record of `store/` is named `*Row`.",
+        "- `names`: every class of `service/` but its exceptions is named `*Service`.",
+        "- `names`: every function of `service/` at the top level is named `is_*` or `has_*`.",
+        "- `names`: every exception of `service/` is named `*Error`."]
+
+
+def test_the_names_line_of_classes_beside_records_and_exceptions_leaves_both_out():
+    holds = {"classes": {"names": "*Service"}, "records": {"immutable": True}, "exceptions": {"names": "*Error"}}
+    assert keyed("names", service={"holds": holds})[0] == (
+        "- `names`: every class of `service/` but its records and exceptions is named `*Service`.")
+
+
+def test_the_built_by_line_reads_the_built_by_of_classes():
+    assert keyed("built-by", service={"holds": {"classes": {"built_by": ["api"]}}}) == [
+        "- `built-by`: only code of `api.py` builds a class of `service/`; tests are not read."]

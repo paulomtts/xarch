@@ -14,9 +14,17 @@ from dataclasses import dataclass, field
 PROFILE = "profile"
 PART = "part"
 PART_USES = "part.uses"
+PART_IMPORTS = "part.imports"
+PART_IMPORTS_MAY = "part.imports.may"
+PART_HOLDS = "part.holds"
+PART_HOLDS_CLASSES = "part.holds.classes"
+PART_HOLDS_FUNCTIONS = "part.holds.functions"
+PART_HOLDS_RECORDS = "part.holds.records"
+PART_HOLDS_EXCEPTIONS = "part.holds.exceptions"
 TIER = "tier"
 TIER_DOCS = "tier.docs"
 TIER_USES = "tier.uses"
+TIER_IMPORTS = "tier.imports"
 TESTING = "testing"
 TABLE = "testing.table"
 MOCKS = "testing.mocks"
@@ -28,6 +36,7 @@ NO_DUPLICATES = "guard.no-duplicates"
 NO_TWINS = "guard.no-twins"
 DEAD_CODE = "guard.dead-code"
 PASS_THROUGH = "guard.pass-through"
+NO_CALLBACKS = "guard.no-callbacks"
 DOCS = "docs"
 PAGE = "docs.page"
 NAMING = "docs.naming"
@@ -41,9 +50,17 @@ SCOPES = {
     PROFILE: "the file",
     PART: "parts.<part>",
     PART_USES: "parts.<part>.uses",
+    PART_IMPORTS: "parts.<part>.imports",
+    PART_IMPORTS_MAY: "parts.<part>.imports.may",
+    PART_HOLDS: "parts.<part>.holds",
+    PART_HOLDS_CLASSES: "parts.<part>.holds.classes",
+    PART_HOLDS_FUNCTIONS: "parts.<part>.holds.functions",
+    PART_HOLDS_RECORDS: "parts.<part>.holds.records",
+    PART_HOLDS_EXCEPTIONS: "parts.<part>.holds.exceptions",
     TIER: "tiers.<tier>",
     TIER_DOCS: "tiers.<tier>.docs",
     TIER_USES: "tiers.<tier>.uses",
+    TIER_IMPORTS: "tiers.<tier>.imports",
     TESTING: "testing",
     TABLE: "testing.table",
     MOCKS: "testing.mocks",
@@ -55,6 +72,7 @@ SCOPES = {
     NO_TWINS: "guards.no-twins",
     DEAD_CODE: "guards.dead-code",
     PASS_THROUGH: "guards.pass-through",
+    NO_CALLBACKS: "guards.no-callbacks",
     DOCS: "docs",
     PAGE: "docs.pages.<path>",
     NAMING: "docs.naming[]",
@@ -93,6 +111,9 @@ class Key:
     needs: the facts of the source (see capabilities) the check it configures reads: a profile that sets it is
         refused when its language's reader does not supply one of them
     read_by: READ_BY_REVIEW for a key that `check` never reads and another command does; "" for every other
+    when_supplied: the facts of needs its check reads only when the language supplies them: a profile that sets the
+        key is not refused for one the language does not supply, and the check then reads less, which without says
+        in a few words
     """
     scope: str
     name: str
@@ -103,6 +124,8 @@ class Key:
     choices: str = ""
     needs: tuple[str, ...] = ()
     read_by: str = ""
+    when_supplied: tuple[str, ...] = ()
+    without: str = ""
 
     @property
     def where(self) -> str:
@@ -143,16 +166,20 @@ class Catalogue:
 
 @dataclass(frozen=True)
 class Retired:
-    """A name xarch no longer reads, and what a profile writes instead.
+    """A name xarch no longer reads, or a value it no longer reads under a key it still has, and what a profile writes
+    instead.
 
     scope: one of SCOPES or HELD (GUARD for a guard's name), or RULE_ID for a rule id written under `hints`
     name: the name as a profile writes it
-    text: the whole hint, fixed and one line, said after the name in the refusal, such as "renamed in 0.3.0: write
-        tests"
+    text: the whole hint, fixed and one line, said after the name (after the value, for an entry of a value) in the
+        refusal, such as "renamed in 0.3.0: write tests"
+    value: for an entry of a value, the value the key no longer takes, such as `functions` under holds; "" for an entry
+        of a name
     """
     scope: str
     name: str
     text: str
+    value: str = ""
 
 
 RETIRED: tuple[Retired, ...] = (
@@ -164,5 +191,32 @@ RETIRED: tuple[Retired, ...] = (
     Retired(PART, "never", "a key of uses: write uses: {never: <list>}"),
     Retired(TIER, "apply_never", "a key of uses: write uses: {apply_never: true}"),
     Retired(RULE_ID, "rules", "renamed in 0.3.0: write may-import"),
+    Retired(PART, "no_callbacks", "moved in 0.3.0: write guards: {no-callbacks: {parts: [<part>, ...]}}"),
+    Retired(PART, "immutable", "moved in 0.3.0: write it under the kind it applies to, such as holds: {records: "
+                               "{immutable: true}}"),
+    Retired(PART, "names", 'moved in 0.3.0: write it under the kind it names, such as holds: {classes: {names: '
+                           '"*Service"}}'),
+    Retired(PART, "built_by", "moved in 0.3.0: write holds: {classes: {built_by: [<part>, ...]}}"),
+    Retired(PART_HOLDS_FUNCTIONS, "immutable", "a setting of classes and records"),
+    Retired(PART_HOLDS_FUNCTIONS, "built_by", "a setting of classes"),
+    Retired(PART_HOLDS_RECORDS, "built_by", "a setting of classes"),
+    Retired(PART_HOLDS_EXCEPTIONS, "immutable", "a setting of classes and records"),
+    Retired(PART_HOLDS_EXCEPTIONS, "built_by", "a setting of classes"),
+    Retired(PART, "holds", "holds as one word was removed in 0.3.0: write holds: {functions: {}, records: {}, "
+                           "exceptions: {}}, which allows what holds: functions allowed", "functions"),
+    Retired(PART, "holds", "holds as one word was removed in 0.3.0: write holds: {classes: {}}", "classes"),
+    Retired(PART, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
+    Retired(PART, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
+    Retired(PART, "libraries", "moved in 0.3.0: write imports: {libraries: [...]}"),
+    Retired(PART, "types_only", "moved in 0.3.0: write it as the mode of its entry in imports.may, such as "
+                                "[{ports: types_only}]"),
+    Retired(PART_IMPORTS, "never", "a key of uses, beside imports: write uses: {never: <list>}"),
+    Retired(PART_IMPORTS, "types_only", "write it as the mode of its entry in imports.may, such as "
+                                        "[{ports: types_only}]"),
+    Retired(TIER, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
+    Retired(TIER, "may_also_import", "moved in 0.3.0: write imports: {also: [...]}"),
+    Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
+    Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
 )
-"""Every key, guard and rule id xarch has retired: a profile writing one is refused with the entry's text."""
+"""Every key, guard and rule id xarch has retired, and every value a key it still has no longer takes: a profile
+writing one is refused with the entry's text."""

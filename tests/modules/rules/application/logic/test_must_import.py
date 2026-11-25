@@ -11,11 +11,11 @@ from tests.modules.rules.builders import GUARD, INTEGRATION, RENDERING, imp, in_
 from xarch.modules.rules.domain.parsed import Function
 from xarch.profile_values.placement import Target
 
-REQUIRED = profile(must_import={"adapters": (Target("platform"), Target("contract", "any"))})
+REQUIRED = profile(imports_must={"adapters": (Target("platform"), Target("contract", "any"))})
 CODE = (Function(3, "get", statements=2),)
 DIR = "modules/docs/adapters"
 MESSAGE = ("app/modules/docs/adapters/{name}.py: adapters/ of modules/docs imports nothing from platform/ or contract/ "
-           "and no outside package, though each of its files must (parts.adapters.must_import)")
+           "and no outside package, though each of its files must (parts.adapters.imports.must)")
 
 
 def problems(*files, checked=REQUIRED) -> list[str]:
@@ -88,10 +88,10 @@ def test_the_violation_is_for_the_whole_file_and_says_what_to_do():
                          "code to a part that need not")
 
 
-WIRED = profile(tiers=(replace(INTEGRATION, must_import=("controller",)), RENDERING, GUARD))
+WIRED = profile(tiers=(replace(INTEGRATION, imports_must=("controller",)), RENDERING, GUARD))
 TEST = "modules/docs/application/test_publish.py"
 TEST_MESSAGE = ("tests/modules/docs/application/{name}: a test of the integration tier imports nothing from controller/, directly "
-                "or through test code it imports (tiers.integration.must_import)")
+                "or through test code it imports (tiers.integration.imports.must)")
 
 
 APP = [source("modules/docs/application/controller.py")]

@@ -105,31 +105,48 @@ def test_strict_fails_on_every_finding_and_lists_them(tmp_path):
 def test_a_custom_copy_of_a_bundled_profile_is_compared_with_it(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text().replace("  no-comments: {}\n", "")
-    (tmp_path / "arch/mine.yaml").write_text(text.replace("    path: kernel\n", "    path: kernel\n    may_import: [platform]\n"))
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("    path: kernel\n", "    path: kernel\n    imports:\n      may: [platform]\n"))
     result = check("--profile", "arch/mine.yaml")
     assert result.exit_code == 0, result.stdout
     assert result.stdout.splitlines()[2:5] == [
         "  profile:     arch/mine.yaml (custom; closest bundled: web)",
         "    guards off:  no-comments",
-        "    may_import:  kernel may also import platform (parts.kernel.may_import)"]
+        "    imports.may: kernel may also import platform (parts.kernel.imports.may)"]
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 1
     assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-comments"]
 
 
+def test_a_copy_of_a_bundled_profile_that_leaves_no_callbacks_out_shows_it_off_and_fails_strict(tmp_path):
+    shutil.copytree(BUNDLED, tmp_path / "arch")
+    text = (BUNDLED / "web.yaml").read_text()
+    assert "  no-callbacks: {parts: [domain, logic]}\n" in text
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("  no-callbacks: {parts: [domain, logic]}\n", ""))
+    result = check("--profile", "arch/mine.yaml")
+    assert result.exit_code == 0, result.stdout
+    assert result.stdout.splitlines()[2:4] == [
+        "  profile:     arch/mine.yaml (custom; closest bundled: web)",
+        "    guards off:  no-callbacks"]
+    strict = check("--profile", "arch/mine.yaml", "--strict")
+    assert strict.exit_code == 1
+    assert strict.stdout.splitlines()[-2:] == ["strict:      1 finding fails the check", "    guards off: no-callbacks"]
+    profile = json.loads(check("--profile", "arch/mine.yaml", "--format", "json").stdout)["enforcement"]["profile"]
+    assert (profile["guards_off"], profile["baseline_off"]) == (["no-callbacks"], [])
+
+
 def test_how_a_custom_profile_differs_from_the_closest_bundled_one_is_shown_and_never_fails_strict(tmp_path):
     shutil.copytree(BUNDLED, tmp_path / "arch")
     text = (BUNDLED / "web.yaml").read_text()
-    (tmp_path / "arch/mine.yaml").write_text(text.replace("    path: kernel\n", "    path: kernel\n    may_import: [platform]\n"))
+    (tmp_path / "arch/mine.yaml").write_text(text.replace("    path: kernel\n", "    path: kernel\n    imports:\n      may: [platform]\n"))
     strict = check("--profile", "arch/mine.yaml", "--strict")
     assert strict.exit_code == 0, strict.stdout
-    assert "    may_import:  kernel may also import platform (parts.kernel.may_import)" in strict.stdout.splitlines()
+    assert "    imports.may: kernel may also import platform (parts.kernel.imports.may)" in strict.stdout.splitlines()
     assert "strict" not in strict.stdout
     document = json.loads(check("--profile", "arch/mine.yaml", "--strict", "--format", "json").stdout)
     assert document["ok"] is True and document["enforcement"]["strict_failures"] == []
     assert document["enforcement"]["profile"]["looser"] == [
-        {"key": "may_import", "part": "kernel", "what": "platform",
-         "sentence": "kernel may also import platform (parts.kernel.may_import)"}]
+        {"key": "imports.may", "part": "kernel", "what": "platform",
+         "sentence": "kernel may also import platform (parts.kernel.imports.may)"}]
 
 
 def test_a_custom_profile_whose_tier_no_longer_applies_the_never_lists_is_looser_under_uses_apply_never(tmp_path):

@@ -12,8 +12,8 @@ APP = Path("/p/app")
 PRESET = {"files": ["test_*.py"], "functions": "test_*"}
 MINE = {"name": "mine", "testing": "kit", "parts": {
     "core": {"path": "core", "role": "rules", "uses": {"never": "pure"}},
-    "store": {"path": "store", "role": "storage", "may_import": ["core"], "libraries": ["sqlmodel", "requests"]},
-    "edge": {"path": "edge", "role": "entry", "may_import": "everything", "libraries": "everything"}},
+    "store": {"path": "store", "role": "storage", "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
+    "edge": {"path": "edge", "role": "entry", "imports": {"may": "everything", "libraries": "everything"}}},
     "never": {"pure": ["socket"]}}
 
 
@@ -56,4 +56,5 @@ def test_a_profile_says_which_bundled_profile_it_is_based_on_and_is_compared_wit
 def test_based_on_a_bundled_profile_the_looseness_is_listed_against_it():
     origin = controller(MINE | {"based_on": "base"}).origin("mine.yaml")
     assert origin.closest == "base"
-    assert Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)") in origin.looser
+    assert Loosened("imports.libraries", "store", "requests",
+                    "store may also import requests (parts.store.imports.libraries)") in origin.looser

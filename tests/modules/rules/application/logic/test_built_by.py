@@ -1,12 +1,13 @@
-"""The built-by check on hand-made source files: only the parts a part lists in `built_by` call the constructor of a
-class defined in it."""
+"""The built-by check on hand-made source files: only the parts the classes of a part's `holds` list in `built_by` call
+the constructor of a class defined in it and held to classes; a class held to a narrower kind listed beside them is
+not."""
 import pytest
 
 from tests.modules.rules.application.logic.checks import built_by as violations
 from tests.modules.rules.builders import profile, source
 from xarch.modules.rules.domain.parsed import Call, Class
 
-ON = profile(built_by={"services": ("bootstrap",)})
+ON = profile(holds={"services": ("classes",)}, holds_built_by={"services": ("bootstrap",)})
 SERVICE_FILE = source("modules/docs/application/services/doc.py", classes=(Class(3, "DocService"),))
 DOC_SERVICE = ("app", "modules", "docs", "application", "services", "doc", "DocService")
 
@@ -20,7 +21,7 @@ def test_a_part_that_is_not_listed_may_not_build_its_classes():
                         SERVICE_FILE], ON, "app")
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("app/modules/docs/application/controller.py:5: controller/ of modules/docs builds DocService, a class of "
-         "services/ of modules/docs, which only bootstrap/ may build (parts.services.built_by)", "built-by",
+         "services/ of modules/docs, which only bootstrap/ may build (parts.services.holds.classes.built_by)", "built-by",
          "take DocService as a parameter of the constructor, and build it in bootstrap/")]
 
 
@@ -41,8 +42,23 @@ def test_what_is_no_class_of_the_part_or_is_built_by_a_listed_part_is_fine(path,
 def test_the_part_itself_counts_as_any_other():
     assert problems("modules/docs/application/services/other.py", Call(5, DOC_SERVICE)) == [
         "app/modules/docs/application/services/other.py:5: services/ of modules/docs builds DocService, a class of "
-        "services/ of modules/docs, which only bootstrap/ may build (parts.services.built_by)"]
+        "services/ of modules/docs, which only bootstrap/ may build (parts.services.holds.classes.built_by)"]
 
 
 def test_it_is_off_without_the_key():
     assert problems("modules/docs/application/controller.py", Call(5, DOC_SERVICE), checked=profile()) == []
+
+
+ERRORS = ("app", "modules", "docs", "application", "services", "errors")
+
+
+def test_a_class_held_to_a_narrower_kind_beside_classes_is_not_held_to_their_built_by():
+    errors = source("modules/docs/application/services/errors.py",
+                    classes=(Class(1, "Refused", exception=True), Class(3, "Plain")))
+    building = source("modules/docs/application/controller.py",
+                      calls=(Call(5, (*ERRORS, "Refused")), Call(6, (*ERRORS, "Plain"))))
+    both = profile(holds={"services": ("classes", "exceptions")}, holds_built_by={"services": ("bootstrap",)})
+    assert [str(v) for v in violations([building, errors], both, "app")] == [
+        "app/modules/docs/application/controller.py:6: controller/ of modules/docs builds Plain, a class of services/ "
+        "of modules/docs, which only bootstrap/ may build (parts.services.holds.classes.built_by)"]
+    assert len(violations([building, errors], ON, "app")) == 2

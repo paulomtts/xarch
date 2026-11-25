@@ -19,6 +19,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
     Eval         an eval of the profile's own, which the module that reviews asks and the checking module holds to its
                  examples statically; YES_NO, SCORE and CHOICE its answer forms, READS what one question may be asked
                  of
+    Held         one kind of definition a part's `holds` lists, with its settings, which the checking module holds a
+                 part's files to; KINDS the kinds, in the order they are read and said
 """
 from __future__ import annotations
 
@@ -40,6 +42,24 @@ LINE = 0.3
 """The line of a part the profile writes none for under `evals.placement.lines`: below it, the probability review's
 decision model puts on the part a file sits in reads as doubtful there. In the trials it caught about nine in ten
 plainly misplaced files and doubted about one well-placed file in ten."""
+
+
+KINDS = ("classes", "functions", "records", "exceptions")
+"""The kinds of definition a part's `holds` lists, in the order they are read and said: every class defined at the top
+level of a file, every public function defined there, in no class, a record and an exception; a record and an
+exception are classes too, narrower than every class."""
+
+
+@dataclass(frozen=True)
+class Held:
+    """One kind of definition a part's `holds` lists, one of KINDS, with its settings: the patterns one of which every
+    public definition held to the kind matches (`*` for any text; empty: any name); whether every class held to it, but
+    an exception, is an immutable record; and the only parts whose code may build a class held to it (empty: any
+    part). A setting the kind does not take stays at its default."""
+    kind: str
+    names: tuple[str, ...] = ()
+    immutable: bool = False
+    built_by: tuple[str, ...] = ()
 
 
 YES_NO, SCORE, CHOICE = "yes-no", "score", "choice"
@@ -86,14 +106,18 @@ class Eval:
 class Loosened:
     """One way a profile is looser than the bundled profile it is compared with. key is what loosened:
 
-        may_import      part may also import what (a target as written)
-        libraries       part may also import the outside package what; with no part, outside packages are unchecked
-        must_import     part may also meet must_import with the target what; with no what, it has none now
+        imports.may     part may also import what (a target as written)
+        imports.may.types_only
+                        part may now call what, a target it used only as a type
+        imports.libraries
+                        part may also import the outside package what; with no part, outside packages are unchecked
+        imports.must    part may also meet imports.must with the target what; with no what, it has none now
         uses.never      part no longer forbids what
         untested        part is newly marked untested
         litmus          part has no litmus, though the bundled profile gives it one (LITMUS)
-        types_only      the tests of tier part may now call what
-        may_also_import the tests of tier part may also import what (a target as written)
+        imports.types_only
+                        the tests of tier part may now call what
+        imports.also    the tests of tier part may also import what (a target as written)
         uses.apply_never the tests of tier part are no longer held to their part's never list
         testing.skips   what is no longer counted as a skip
         files.pinned    the init file what is no longer pinned

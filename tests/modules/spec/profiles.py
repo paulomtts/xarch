@@ -32,10 +32,12 @@ def layered(**changes) -> dict:
     return {
         "name": "layered",
         "parts": {
-            "api": {"path": "src/<module>/api", "role": "HTTP handlers", "may_import": ["service"]},
-            "service": {"path": "src/<module>/service", "role": "business logic", "may_import": ["store", "shared"]},
-            "store": {"path": "src/<module>/store", "role": "database access", "may_import": ["shared"],
-                      "libraries": ["sqlmodel"]},
+            "api": {"path": "src/<module>/api", "role": "HTTP handlers",
+                    "imports": {"may": ["service"]}},
+            "service": {"path": "src/<module>/service", "role": "business logic",
+                        "imports": {"may": ["store", "shared"]}},
+            "store": {"path": "src/<module>/store", "role": "database access",
+                      "imports": {"may": ["shared"], "libraries": ["sqlmodel"]}},
             "shared": {"path": "shared", "role": "shared code"},
         },
     } | changes
@@ -46,7 +48,7 @@ def two_folders(**changes) -> dict:
     document = layered()
     document["parts"]["hooks"] = {"path": "ext/<plugin>/hooks", "role": "what a plugin runs"}
     document["parts"]["manifest"] = {"path": "ext/<plugin>/manifest.py", "role": "what a plugin declares",
-                                     "may_import": ["hooks"]}
+                                     "imports": {"may": ["hooks"]}}
     return document | changes
 
 

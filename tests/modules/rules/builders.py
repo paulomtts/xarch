@@ -129,7 +129,7 @@ UNIT = CheckedTier("unit", (Target("kernel"), *own("domain", "logic", "adapters"
                 apply_never=True)
 INTEGRATION = CheckedTier("integration", own("controller", "services", "ports", "contract"),
                        ("modules", "docs", "application"))
-RENDERING = CheckedTier("rendering", (Target("web"),), ("web",), types_only=("controller",))
+RENDERING = CheckedTier("rendering", (Target("web"),), ("web",), imports_types_only=("controller",))
 GUARD = CheckedTier("guard", (), ("architecture",))
 NOW = ("datetime", "datetime", "now")
 MOCK = ("unittest", "mock", "Mock")
@@ -137,8 +137,8 @@ AUTOSPEC = ("unittest", "mock", "create_autospec")
 TABLE = CaseTable(("pytest", "mark", "parametrize"), ("pytest", "param"), "id", ("argnames", "argvalues"))
 PROFILE = Profile(
     parts=PARTS, rules=RULES, folders=FOLDERS, tiers=(UNIT, INTEGRATION, RENDERING, GUARD),
-    libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
-               "bootstrap": ("sqlmodel", "fastapi")},
+    imports_libraries={"platform": ("sqlmodel",), "adapters": ("sqlmodel",), "web": ("fastapi",),
+                       "bootstrap": ("sqlmodel", "fastapi")},
     fakes=Fakes(("fakes",), ("ports",), "Fake"), repeats=(MODULES,), package_only=("contract",),
     scenarios=ScenarioCoverage("contract", "integration", "Result", ("given", "when", "then"), TABLE, "test_{name}.py"),
     no_comments=True,

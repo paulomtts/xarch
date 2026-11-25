@@ -32,7 +32,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
                            note after it, in parentheses)
     {{guards}}             one line per check `xarch check` runs: the structure, the rules, the libraries (with
                            `libraries`), what each part may not use (with `uses.never`), the tiers (with `tiers`), types-only
-                           (one line per tier with `types_only`), the test tree and the cycles (with a repeating folder),
+                           (one line per tier with `imports.types_only`), the test tree and the cycles (with a repeating folder),
                            then each guard of `guards`, in order
     {{tier_examples}}      each tier's example test in one block, under its header line `# <tier>: <path>` (its note
                            after the path, in parentheses), as {{example:...}} writes them; a tier with no example
@@ -54,12 +54,12 @@ import bisect
 import re
 from collections.abc import Callable, Mapping
 
-from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.imports import shown_target, targets_phrase
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic.layout_walk import docs_name, is_file
 from xarch.modules.spec.domain.errors import InvalidTemplate
-from xarch.modules.spec.domain.published import DEFAULT_TESTS
+from xarch.modules.spec.domain.published import DEFAULT_TESTS, KINDS, Held
 from xarch.modules.spec.domain.values import (
     NAME,
     Architecture,
@@ -70,6 +70,7 @@ from xarch.modules.spec.domain.values import (
     Guard,
     Language,
     Layout,
+    NoCallbacks,
     NoDuplicates,
     NoTwins,
     PackageOnly,
@@ -184,14 +185,14 @@ def _doc_lines(docs: tuple[Doc, ...], folder: tuple[str, ...], indent: str) -> l
 
 
 def _rules_table(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
-    rows = [f"| `{docs_name(architecture, part)}` | {_may_import(architecture, part)} |"
+    rows = [f"| `{docs_name(architecture, part)}` | {_imports_may_phrase(architecture, part)} |"
             for part in architecture.parts.values()]
     return "\n".join(["| Part | May import |", "|---|---|", *rows])
 
 
-def _may_import(architecture: Architecture, part: Part) -> str:
+def _imports_may_phrase(architecture: Architecture, part: Part) -> str:
     """What a part may import besides itself, in the order of its rule."""
-    return may_import(architecture.rules.get(part.name, ()), _folders(architecture), architecture.words())
+    return targets_phrase(architecture.rules.get(part.name, ()), _folders(architecture), architecture.words())
 
 
 def _folders(architecture: Architecture) -> dict[str, str]:
@@ -401,11 +402,11 @@ def _quoted(names: list[str]) -> str:
 
 def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
     lines = [_structure_line(architecture),
-             "`may-import`: every import between parts is one that the `may_import` of the importing part allows "
+             "`may-import`: every import between parts is one that the `imports.may` of the importing part allows "
              "(architecture.md, section 5)."]
-    if architecture.libraries is not None:
+    if architecture.imports_libraries is not None:
         listed = "; ".join(f"`{docs_name(architecture, architecture.parts[name])}`: {_packages(packages)}"
-                           for name, packages in architecture.libraries.items() if packages)
+                           for name, packages in architecture.imports_libraries.items() if packages)
         reserved = "; ".join(f"`{name}`: {reason}" for name, reason in architecture.reserved.items())
         but = f" but what `reserved` names ({reserved})" if reserved else ""
         lines.append(f"`libraries`: a part imports only the outside packages listed for it ({listed}); the standard "
@@ -422,8 +423,8 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
                      "part and what it may import (a test in a folder that mirrors no part, its tier's subject and "
                      f"what that may import){fakes}; it imports no other test file.")
         for tier in architecture.tiers:
-            if tier.types_only:
-                shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.types_only])
+            if tier.imports_types_only:
+                shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.imports_types_only])
                 lines.append(f"`types-only`: a {tier.name} test uses {shown} only as a type: it may import it and "
                              "annotate with it, and never calls it.")
         plain = [tier.name for tier in architecture.tiers if tier.plain_tables]
@@ -437,8 +438,8 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
                      "others, from it; each cycle is reported once, with the imports that close it.")
-    lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.must_import]
-    lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.must_import]
+    lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.imports_must]
+    lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.imports_must]
     lines += _part_lines(architecture)
     lines += [_guard_line(architecture, guard) for guard in architecture.guards]
     return "\n".join(f"- {line}" for line in lines)
@@ -533,6 +534,10 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
             return (f"`pass-through`: a method of {shown} whose whole body forwards to one call on a collaborator, or "
                     "returns an attribute of what that call answers, is listed in the enforcement section, and fails "
                     "`check --strict` only.")
+        case NoCallbacks(parts):
+            shown = _and([f"`{docs_name(architecture, architecture.parts[p])}`" for p in parts])
+            return (f"`no-callbacks`: no function of {shown} calls a parameter annotated as a callable: it is handed "
+                    "values, never a way to fetch them.")
         case ClosedTree():
             language = architecture.language
             return (f"`closed-tree`: every {language.checked.title} file of the app lies in a part, or is the package file "
@@ -545,7 +550,7 @@ def _guard_line(architecture: Architecture, guard: Guard) -> str:
 
 
 def _tier_must_import_line(architecture: Architecture, tier: Tier) -> str:
-    wanted = _or([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.must_import])
+    wanted = _or([f"`{docs_name(architecture, architecture.parts[p])}`" for p in tier.imports_must])
     return (f"`must-import`: every {tier.name} test imports from {wanted}, directly or through test code that is no "
             "test file.")
 
@@ -558,46 +563,75 @@ def _part_lines(architecture: Architecture) -> list[str]:
     parts = list(architecture.parts.values())
     lines: list[str] = []
     for part in parts:
-        if part.types_only:
-            lines.append(f"`types-only`: {shown([part.name])} uses {shown(list(part.types_only))} only as a type: it "
+        if part.imports_types_only:
+            lines.append(f"`types-only`: {shown([part.name])} uses "
+                         f"{shown(list(dict.fromkeys(t.part for t in part.imports_types_only)))} only as a type: it "
                          "imports it to annotate and never calls it.")
-    holds = {kind: [p.name for p in parts if p.holds == kind] for kind in ("classes", "functions")}
-    if any(holds.values()):
-        said = []
-        if holds["classes"]:
-            said.append(f"a file of {shown(holds['classes'])} defines classes, never a public function at the top level")
-        if holds["functions"]:
-            said.append(f"a file of {shown(holds['functions'])} defines functions, never a class (a private one too) but "
-                        "exceptions and the records its functions return")
+    groups: dict[tuple[str, ...], list[str]] = {_CLASSES: [], _FUNCTIONS: []}
+    for part in parts:
+        if part.holds:
+            groups.setdefault(_allowed(part.holds), []).append(part.name)
+    said = [f"a file of {shown(names)} {_HELD.get(allowed) or _holding(allowed)}" for allowed, names in groups.items()
+            if names]
+    if said:
         lines.append(f"`holds`: {'; '.join(said)}; listed in the enforcement section, and fails `check --strict` "
                      "only.")
-    immutable = [p.name for p in parts if p.immutable]
-    if immutable:
-        lines.append(f"`immutable`: every class of {shown(immutable)} is an immutable record, as the "
-                     f"{architecture.language.checked.title} data file marks one, or an exception; listed in the "
-                     "enforcement section, and fails `check --strict` only.")
-    callbacks = [p.name for p in parts if p.no_callbacks]
-    if callbacks:
-        lines.append(f"`no-callbacks`: no function of {shown(callbacks)} calls a parameter annotated as a callable: it "
-                     "is handed values, never a way to fetch them.")
+    title = architecture.language.checked.title
+    for kind, said_of in (("classes", f"every class of {{parts}} is an immutable record, as the {title} data file marks "
+                                      "one, or an exception"),
+                          ("records", f"every record of {{parts}} is an immutable record, as the {title} data file "
+                                      "marks one")):
+        immutable = [p.name for p in parts if any(held.kind == kind and held.immutable for held in p.holds)]
+        if immutable:
+            lines.append(f"`immutable`: {said_of.format(parts=shown(immutable))}; listed in the enforcement section, "
+                         "and fails `check --strict` only.")
     for part in parts:
-        if part.names:
-            lines.append(f"`names`: every class of {shown([part.name])} is named "
-                         f"{_or([f'`{n}`' for n in part.names])}.")
+        lines += [f"`names`: {_named(held, part.holds, shown([part.name]))} is named "
+                  f"{_or([f'`{n}`' for n in held.names])}." for held in part.holds if held.names]
     for part in parts:
         if part.shared is not None:
             lines.append(f"`shared`: every public name of {shown([part.name])} is used by at least {part.shared} users "
                          "(each instance of a repeating folder, or each part outside them; tests not read), or it "
                          "belongs to the one that uses it.")
     for part in parts:
-        if part.built_by:
-            lines.append(f"`built-by`: only code of {shown(list(part.built_by))} builds a class of "
+        built_by = next((held.built_by for held in part.holds if held.kind == "classes"), ())
+        if built_by:
+            lines.append(f"`built-by`: only code of {shown(list(built_by))} builds a class of "
                          f"{shown([part.name])}; tests are not read.")
     return lines
 
 
+_CLASSES, _FUNCTIONS = ("classes",), ("functions", "records", "exceptions")
+_HELD = {_CLASSES: "defines classes, never a public function at the top level",
+         _FUNCTIONS: "defines functions, never a class (a private one too) but exceptions and the records its "
+                     "functions return"}
+"""How the docs say the two forms of `holds` the bundled profiles write: a part of classes, and one of functions."""
+_EVERY = {"classes": "every class", "functions": "every function", "records": "every record",
+          "exceptions": "every exception"}
+
+
+def _allowed(holds: tuple[Held, ...]) -> tuple[str, ...]:
+    """The kinds a part's `holds` allows at the top level, in the order of KINDS: classes covers records and
+    exceptions."""
+    kinds = [held.kind for held in holds]
+    return tuple(kind for kind in KINDS if kind in kinds and not ("classes" in kinds and kind in ("records",
+                                                                                                    "exceptions")))
+
+
+def _holding(allowed: tuple[str, ...]) -> str:
+    return f"holds {_and(list(allowed))} and no other kind at the top level"
+
+
+def _named(held: Held, holds: tuple[Held, ...], part: str) -> str:
+    """What the names of a kind of a part read, in words: classes, but the narrower kinds listed beside them."""
+    if held.kind == "functions":
+        return f"every function of {part} at the top level"
+    narrower = [h.kind for h in holds if h.kind in ("records", "exceptions")] if held.kind == "classes" else []
+    return f"{_EVERY[held.kind]} of {part}{f' but its {_and(narrower)}' if narrower else ''}"
+
+
 def _must_import_line(architecture: Architecture, part: Part) -> str:
-    wanted = may_import(part.must_import, _folders(architecture), architecture.words()).replace(" and ", " or ")
+    wanted = targets_phrase(part.imports_must, _folders(architecture), architecture.words()).replace(" and ", " or ")
     return (f"`must-import`: every file of `{docs_name(architecture, part)}` imports from {wanted}, or an outside "
             "package, or reaches one through a file of its own part; a package file and a file with no code of its own "
             "are exempt.")

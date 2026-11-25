@@ -1,7 +1,7 @@
 """How a custom profile is looser than a bundled one, on hand-made architectures, as the origin of the custom one says
 it: a rule's target is shown as the file writes it, and each way is said naming the key that says it. The sentence of
 each way a profile is looser is asserted here or in tests/modules/spec/application/test_origin.py (a package added to
-`libraries`, a part that may import any outside package, a `must_import` target added or the key dropped)."""
+`imports.libraries`, a part that may import any outside package, an `imports.must` target added or the key dropped)."""
 from dataclasses import replace
 
 import pytest
@@ -27,11 +27,11 @@ def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
 ])
 def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
     custom = layered()
-    custom["parts"]["api"]["may_import"] = written
+    custom["parts"]["api"]["imports"] = {"may": written}
     stricter = layered()
-    stricter["parts"]["api"]["may_import"] = []
+    stricter["parts"]["api"]["imports"] = {"may": []}
     assert loosened(parsed(custom), parsed(stricter)) == (
-        Loosened("may_import", "api", shown, f"api may also import {shown} (parts.api.may_import)"),)
+        Loosened("imports.may", "api", shown, f"api may also import {shown} (parts.api.imports.may)"),)
 
 
 @pytest.mark.parametrize("target", [
@@ -41,7 +41,7 @@ def test_a_target_added_to_a_rule_is_shown_as_written(written, shown):
 ])
 def test_a_target_below_one_the_bundled_profile_allows_is_not_looser(target):
     custom = layered()
-    custom["parts"]["service"]["may_import"] = ["store", "shared", target]
+    custom["parts"]["service"]["imports"] = {"may": ["store", "shared", target]}
     assert loosened(parsed(custom), parsed(layered())) == ()
 
 
@@ -54,27 +54,28 @@ def test_the_bundled_profile_a_profile_says_it_is_based_on_wins_over_the_one_sha
 
 
 def test_a_profile_that_checks_no_outside_package_is_looser_than_one_that_does():
-    assert loosened(replace(parsed(layered()), libraries=None), parsed(layered())) == (
-        Loosened("libraries", "", "", "outside packages are not checked"),)
+    assert loosened(replace(parsed(layered()), imports_libraries=None), parsed(layered())) == (
+        Loosened("imports.libraries", "", "", "outside packages are not checked"),)
 
 
 def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
-    parts = {**PARTS, "core": {**PARTS["core"], "may_import": ["store"], "libraries": ["yaml"]},
-             "store": {"path": "store", "role": "storage", "may_import": ["core"],
-                       "libraries": ["sqlmodel", "requests"], "untested": "trust me"}}
+    parts = {**PARTS, "core": {**PARTS["core"], "imports": {"may": ["store"], "libraries": ["yaml"]}},
+             "store": {"path": "store", "role": "storage",
+                       "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}, "untested": "trust me"}}
     custom = {**BASE, "parts": parts, "never": {"pure": ["socket"]},
-              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                        | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
+              "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
+                        | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
               "testing": {**TESTING, "skips": ["pytest.mark.skip"]}, "guards": {},
               "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     assert loosened(parsed(custom), parsed(BASE)) == (
-        Loosened("may_import", "core", "store", "core may also import store (parts.core.may_import)"),
-        Loosened("libraries", "core", "yaml", "core may also import yaml (parts.core.libraries)"),
-        Loosened("libraries", "store", "requests", "store may also import requests (parts.store.libraries)"),
+        Loosened("imports.may", "core", "store", "core may also import store (parts.core.imports.may)"),
+        Loosened("imports.libraries", "core", "yaml", "core may also import yaml (parts.core.imports.libraries)"),
+        Loosened("imports.libraries", "store", "requests", "store may also import requests (parts.store.imports.libraries)"),
         Loosened("uses.never", "core", "time.time", "core no longer forbids time.time (parts.core.uses.never)"),
         Loosened("untested", "store", "", "store is newly marked untested (parts.store.untested)"),
-        Loosened("types_only", "unit", "store", "the unit tests may now call store (tiers.unit.types_only)"),
-        Loosened("may_also_import", "unit", "edge", "the unit tests may also import edge (tiers.unit.may_also_import)"),
+        Loosened("imports.types_only", "unit", "store",
+                 "the unit tests may now call store (tiers.unit.imports.types_only)"),
+        Loosened("imports.also", "unit", "edge", "the unit tests may also import edge (tiers.unit.imports.also)"),
         Loosened("uses.apply_never", "unit", "",
                  "the unit tests are no longer held to their part's never list (tiers.unit.uses.apply_never)"),
         Loosened("testing.skips", "", "pytest.mark.xfail",
@@ -85,10 +86,10 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
 
 @pytest.mark.parametrize("bundled, custom, found", [
     pytest.param([], ["shared/text", "store@any"], (
-        Loosened("may_also_import", "unit", "shared/text",
-                 "the unit tests may also import shared/text (tiers.unit.may_also_import)"),
-        Loosened("may_also_import", "unit", "store@any",
-                 "the unit tests may also import store@any (tiers.unit.may_also_import)")),
+        Loosened("imports.also", "unit", "shared/text",
+                 "the unit tests may also import shared/text (tiers.unit.imports.also)"),
+        Loosened("imports.also", "unit", "store@any",
+                 "the unit tests may also import store@any (tiers.unit.imports.also)")),
                  id="each target the bundled tier does not give is looser, shown as written"),
     pytest.param(["shared", "store"], ["shared/text", "store"], (),
                  id="a target the bundled tier's covers is not looser"),
@@ -96,8 +97,8 @@ def test_every_way_a_profile_is_looser_than_another_is_found_in_order():
 ])
 def test_what_a_tiers_tests_may_also_import_beyond_the_bundled_tier_is_looser(bundled, custom, found):
     base, mine = covered(), covered()
-    base["tiers"]["unit"]["may_also_import"] = bundled
-    mine["tiers"]["unit"]["may_also_import"] = custom
+    base["tiers"]["unit"]["imports"] = {"also": bundled}
+    mine["tiers"]["unit"]["imports"] = {"also": custom}
     assert loosened(parsed(mine), parsed(base)) == found
 
 
@@ -162,17 +163,18 @@ def test_a_part_whose_line_is_below_the_one_the_base_gives_it_is_looser_and_a_hi
 def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
     """Each case of LOOSER is reached by one of these pairs (custom, base), and each key is said its own way."""
     store = {key: value for key, value in PARTS["store"].items() if key != "tests"}
-    every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me", "libraries": ["sqlmodel", "requests"]},
-                               "core": {**PARTS["core"], "may_import": ["store"]}},
+    every = {**BASE, "parts": {**PARTS, "store": store | {"untested": "trust me",
+                               "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
+                               "core": {**PARTS["core"], "imports": {"may": ["store"]}}},
              "never": {"pure": ["socket"]}, "testing": {**TESTING, "skips": ["pytest.mark.skip"]},
-             "tiers": {"unit": {key: value for key, value in TIER.items() if key != "types_only"}
-                       | {"uses": {"apply_never": False}, "may_also_import": ["edge"]}},
+             "tiers": {"unit": {key: value for key, value in TIER.items() if key != "imports"}
+                       | {"uses": {"apply_never": False}, "imports": {"also": ["edge"]}}},
              "files": {"tests/test_rules.py": {"from": "guard.py"}}}
     litmus = layered()
     litmus["parts"]["api"]["litmus"] = "Does it answer a request?"
     pairs = [
         (parsed(every), parsed(BASE)),
-        (parsed(BASE), parsed({**BASE, "parts": part("store", must_import=["core"])})),
+        (parsed(BASE), parsed({**BASE, "parts": part("store", imports={"may": ["core"], "must": ["core"], "libraries": ["sqlmodel"]})})),
         (parsed(layered()), parsed(litmus)),
         (parsed(layered()), parsed(layered(reserved={"ast": "the reader's"}))),
         (parsed(covered(guards={"dead-code": {"tests_only": True, "known": ["shared/wiring.py:build"]}},
@@ -180,7 +182,43 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(covered(guards={"no-twins": {"translated": ["api"]}})), parsed(covered())),
         (parsed(layered()), parsed(layered(review={"never": ["src/drafts"], "mask": ["Northwind"]}))),
         (parsed(layered(evals={"placement": {"lines": {"store": 0.2}}})), parsed(layered())),
+        (parsed(marked(["store", "shared"])), parsed(marked(["store", {"shared": "types_only"}]))),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
     assert [item.key for item in found if "is no longer reserved" in item.sentence] == ["reserved"]
+
+
+MARK = "imports.may.types_only"
+"""The key a types_only mark dropped from an entry of a part's imports.may is listed under."""
+
+
+def marked(may) -> dict:
+    """layered(), its part service allowed may."""
+    document = layered()
+    document["parts"]["service"]["imports"]["may"] = may
+    return document
+
+
+@pytest.mark.parametrize("base, custom, found", [
+    pytest.param(["store", {"shared": "types_only"}], ["store", "shared"],
+                 [(MARK, "service", "shared", "service may now call shared, which it used only as a type "
+                                             "(parts.service.imports.may.types_only)")],
+                 id="a mark dropped from an entry that stays"),
+    pytest.param(["store", {"shared": "types_only"}], ["store"], [], id="the entry dropped with its mark"),
+    pytest.param(["store", {"shared": "types_only"}], ["store", {"shared": "types_only"}], [], id="the mark kept"),
+    pytest.param(["store", {"shared/x": "types_only"}], ["store", {"shared": "types_only"}], [],
+                 id="a wider mark covers it"),
+    pytest.param(["store", {"shared": "types_only"}], "everything",
+                 [(MARK, "service", "shared", "service may now call shared, which it used only as a type "
+                                             "(parts.service.imports.may.types_only)")],
+                 id="everything over a mark"),
+])
+def test_a_mark_dropped_while_its_target_stays_allowed_is_looser(base, custom, found):
+    assert [(item.key, item.part, item.what, item.sentence)
+            for item in loosened(parsed(marked(custom)), parsed(marked(base))) if item.key == MARK] == found
+
+
+def test_a_tier_s_looser_keys_are_those_of_its_group_and_the_old_words_are_gone():
+    assert LOOSER.index("imports.types_only") < LOOSER.index("imports.also") < LOOSER.index("uses.apply_never")
+    assert not {"types_only", "may_also_import"} & set(LOOSER)

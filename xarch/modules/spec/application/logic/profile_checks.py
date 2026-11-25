@@ -598,7 +598,7 @@ def reserved_modules(value: Any, problems: list[str], language: Language) -> dic
             problems.append(f"reserved: {name!r} is not a package name the language {language.checked.title} allows")
         elif name not in language.standard_names:
             problems.append(f"reserved: {name!r} is not in the {language.checked.title} standard library: an outside package "
-                            "is imported only by the parts whose `libraries` list it already")
+                            "is imported only by the parts whose `imports.libraries` list it already")
         elif not line(reason):
             problems.append(f"reserved.{name}: must say in one line why it is reserved")
         else:

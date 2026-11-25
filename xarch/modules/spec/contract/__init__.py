@@ -13,6 +13,7 @@ from xarch.modules.spec.domain.published import (
     DEFAULT_APP,
     DEFAULT_TESTS,
     EXAMPLE_APP,
+    KINDS,
     LINE,
     LITMUS,
     READS,
@@ -21,6 +22,7 @@ from xarch.modules.spec.domain.published import (
     DocFile,
     Entry,
     Eval,
+    Held,
     Loosened,
     Origin,
     ProjectFile,
@@ -33,7 +35,7 @@ from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
-__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "ExampleFile", "ExamplesRead", "ExamplesResult",
+__all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "Held", "KINDS", "ExampleFile", "ExamplesRead", "ExamplesResult",
            "DEFAULT_APP", "DEFAULT_TESTS", "EXAMPLE_APP", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs",
            "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
@@ -92,27 +94,21 @@ class ProjectFiles:
 class PartView:
     """One part of a profile as a check reads it: its name; its path as a pattern, `*` standing for the instance of a
     repeating folder; what it may import besides itself; its role, litmus test, how the docs name it (shown) and why no
-    tier tests it; the names it may not use; what each of its files must import one of; what its files define
-    (holds); the parts it may use as types only; whether it calls none of its own parameters; the patterns its public
-    classes match; the parts that alone may build its classes; for a part there to be shared, the fewest users
-    each of its public names must have; and whether every class it defines, but an exception, is an immutable
-    record."""
+    tier tests it; the names it may not use; what each of its files must import one of; the kinds its files may
+    define at the top level, each with its settings (holds; empty: every kind); the targets it may use as types only;
+    and for a part there to be shared, the fewest users each of its public names must have."""
     name: str
     pattern: tuple[str, ...]
-    may_import: tuple[Target, ...]
+    imports_may: tuple[Target, ...]
     role: str = ""
     litmus: str = ""
     shown: str = ""
     untested: str = ""
     uses_never: tuple[tuple[str, ...], ...] = ()
-    must_import: tuple[Target, ...] = ()
-    holds: str = ""
-    types_only: tuple[str, ...] = ()
-    no_callbacks: bool = False
-    names: tuple[str, ...] = ()
-    built_by: tuple[str, ...] = ()
+    imports_must: tuple[Target, ...] = ()
+    holds: tuple[Held, ...] = ()
+    imports_types_only: tuple[Target, ...] = ()
     shared: int | None = None
-    immutable: bool = False
 
 
 @dataclass(frozen=True)
@@ -121,8 +117,8 @@ class GuardsView:
     comments, stand-ins, the closed tree, the fewest statements of a duplicate, the fewest fields of a twin (and of a
     renamed copy and of a partial one, and the parts whose files translate a pair, which is then no twin), dead code
     (and with it the files no test of their tier reaches, the public names only the tests use, and those of them the
-    profile accepts, each `<file below the app>:<name>`), the parts whose forwarding methods are listed, and private
-    imports."""
+    profile accepts, each `<file below the app>:<name>`), the parts whose forwarding methods are listed, the parts
+    whose functions call none of their parameters annotated as callables, and private imports."""
     package_only: tuple[str, ...] = ()
     scenarios: ScenarioCoverage | None = None
     no_comments: bool = False
@@ -138,6 +134,7 @@ class GuardsView:
     tests_only: bool = False
     tests_only_known: tuple[str, ...] = ()
     pass_through: tuple[str, ...] = ()
+    no_callbacks: tuple[str, ...] = ()
     private_imports: bool = False
 
 
@@ -158,7 +155,7 @@ class ProfileView:
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
-    libraries: dict[str, tuple[str, ...]] | None = None
+    imports_libraries: dict[str, tuple[str, ...]] | None = None
     repeats: tuple[Repeat, ...] = ()
     guards: GuardsView = GuardsView()
     fakes: Fakes | None = None
@@ -261,7 +258,7 @@ class FilesTaken:
 
 @dataclass(frozen=True)
 class Shown:
-    """One key of the format, as a line: key is its address as a person types it (parts.may_import), depth how far
+    """One key of the format, as a line: key is its address as a person types it (parts.imports.may), depth how far
     below the keys of the file it sits; read_by the command other than `check` that alone reads it ("" for none)."""
     key: str
     depth: int
@@ -279,7 +276,7 @@ class Symbol:
 
 @dataclass(frozen=True)
 class Explain:
-    """Explain the format of a profile: the whole of it, or the key at an address such as parts.may_import."""
+    """Explain the format of a profile: the whole of it, or the key at an address such as parts.imports.may."""
     key: str | None = None
 
 

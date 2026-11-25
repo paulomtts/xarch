@@ -19,10 +19,18 @@ from xarch.modules.spec.domain.profile_keys import (
     GUARD,
     MOCKS,
     NAMING,
+    NO_CALLBACKS,
     NO_DUPLICATES,
     NO_TWINS,
     PAGE,
     PART,
+    PART_HOLDS,
+    PART_HOLDS_CLASSES,
+    PART_HOLDS_EXCEPTIONS,
+    PART_HOLDS_FUNCTIONS,
+    PART_HOLDS_RECORDS,
+    PART_IMPORTS,
+    PART_IMPORTS_MAY,
     PART_USES,
     PASS_THROUGH,
     PLACEMENT,
@@ -34,12 +42,13 @@ from xarch.modules.spec.domain.profile_keys import (
     TESTING,
     TIER,
     TIER_DOCS,
+    TIER_IMPORTS,
     TIER_USES,
     Key,
 )
 
 _GUARD_SCOPES = {"scenario-coverage": SCENARIO_COVERAGE, "no-duplicates": NO_DUPLICATES, "no-twins": NO_TWINS,
-                 "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH}
+                 "dead-code": DEAD_CODE, "pass-through": PASS_THROUGH, "no-callbacks": NO_CALLBACKS}
 
 
 def _guard(name: str) -> Key:
@@ -69,33 +78,46 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "path", True, rules=("structure", "may-import")),
     Key(PART, "role", True, False),
     Key(PART, "litmus", False, False),
-    Key(PART, "may_import", rules=("may-import",)),
-    Key(PART, "must_import", rules=("must-import",)),
-    Key(PART, "types_only", rules=("types-only",)),
-    Key(PART, "holds", rules=("holds",)),
-    Key(PART, "immutable", rules=("immutable",)),
-    Key(PART, "no_callbacks", rules=("no-callbacks",)),
-    Key(PART, "names", rules=("names",)),
-    Key(PART, "built_by", rules=("built-by",)),
+    Key(PART, "imports", rules=("may-import", "must-import", "libraries"), opens=PART_IMPORTS),
+    Key(PART, "holds", rules=("holds",), opens=PART_HOLDS, when_supplied=("function.top_level",),
+        without="holds reads no top-level functions"),
     Key(PART, "shared", rules=("shared",)),
-    Key(PART, "libraries", rules=("libraries",)),
     Key(PART, "uses", opens=PART_USES),
     Key(PART, "tests", rules=("tiers",)),
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
     Key(PART, "folders", rules=("structure",)),
 
+    Key(PART_IMPORTS, "may", rules=("may-import",), opens=PART_IMPORTS_MAY),
+    Key(PART_IMPORTS, "must", rules=("must-import",)),
+    Key(PART_IMPORTS, "libraries", rules=("libraries",)),
+
+    Key(PART_IMPORTS_MAY, "types_only", rules=("types-only",)),
+
     Key(PART_USES, "never", rules=("never-use",)),
+
+    Key(PART_HOLDS, "classes", rules=("holds",), opens=PART_HOLDS_CLASSES),
+    Key(PART_HOLDS, "functions", rules=("holds",), opens=PART_HOLDS_FUNCTIONS),
+    Key(PART_HOLDS, "records", rules=("holds",), opens=PART_HOLDS_RECORDS),
+    Key(PART_HOLDS, "exceptions", rules=("holds",), opens=PART_HOLDS_EXCEPTIONS),
+
+    Key(PART_HOLDS_CLASSES, "names", rules=("names",)),
+    Key(PART_HOLDS_CLASSES, "immutable", rules=("immutable",)),
+    Key(PART_HOLDS_CLASSES, "built_by", rules=("built-by",)),
+
+    Key(PART_HOLDS_FUNCTIONS, "names", rules=("names",)),
+
+    Key(PART_HOLDS_RECORDS, "names", rules=("names",)),
+    Key(PART_HOLDS_RECORDS, "immutable", rules=("immutable",)),
+
+    Key(PART_HOLDS_EXCEPTIONS, "names", rules=("names",)),
 
     Key(TIER, "proves", False, False),
     Key(TIER, "litmus", False, False),
     Key(TIER, "uses", opens=TIER_USES),
     Key(TIER, "plain_tables", rules=("scenario-coverage",)),
-    Key(TIER, "types_only", rules=("types-only",)),
-    Key(TIER, "must_import", rules=("must-import",)),
     Key(TIER, "folder", rules=("tiers", "test-tree")),
-    Key(TIER, "may_import", rules=("tiers",)),
-    Key(TIER, "may_also_import", rules=("tiers",)),
+    Key(TIER, "imports", rules=("tiers", "must-import", "types-only"), opens=TIER_IMPORTS),
     Key(TIER, "docs", False, False, opens=TIER_DOCS),
 
     Key(TIER_DOCS, "subject", False, False),
@@ -107,6 +129,11 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER_DOCS, "helpers", False, False),
 
     Key(TIER_USES, "apply_never", rules=("never-use",)),
+
+    Key(TIER_IMPORTS, "may", rules=("tiers",)),
+    Key(TIER_IMPORTS, "also", rules=("tiers",)),
+    Key(TIER_IMPORTS, "must", rules=("must-import",)),
+    Key(TIER_IMPORTS, "types_only", rules=("types-only",)),
 
     Key(TESTING, "files", True, rules=("tiers", "test-tree")),
     Key(TESTING, "functions", True, rules=("scenario-coverage", "stand-ins")),
@@ -140,6 +167,7 @@ _KEYS: tuple[Key, ...] = (
     _guard("no-twins"),
     _guard("dead-code"),
     _guard("pass-through"),
+    _guard("no-callbacks"),
     _guard("private-imports"),
 
     Key(SCENARIO_COVERAGE, "results", True, rules=("scenario-coverage",)),
@@ -160,6 +188,8 @@ _KEYS: tuple[Key, ...] = (
     Key(DEAD_CODE, "known", rules=("dead-code",)),
 
     Key(PASS_THROUGH, "parts", True, rules=("pass-through",)),
+
+    Key(NO_CALLBACKS, "parts", True, rules=("no-callbacks",)),
 
     Key(DOCS, "entry", False, False),
     Key(DOCS, "pages", False, False, opens=PAGE),
@@ -193,27 +223,34 @@ _NEVER_USE = (*_IMPORTS, "use", "method_call", "import.resolved")
 _TYPES_ONLY = ("call", "use", "module_functions", "import.resolved")
 NEEDS: dict[str, tuple[str, ...]] = {
     "fakes": ("class", "class.interface"),
-    "parts.<part>.may_import": _IMPORTS,
-    "parts.<part>.must_import": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
-    "parts.<part>.types_only": _TYPES_ONLY,
-    "parts.<part>.holds": ("class", "class.exception", "class.record", "function", "public"),
-    "parts.<part>.no_callbacks": ("callback",),
-    "parts.<part>.immutable": ("class", "class.exception", "class.immutable"),
-    "parts.<part>.names": ("class", "public"),
-    "parts.<part>.built_by": ("class", "call", "import.resolved"),
+    "parts.<part>.imports.may": _IMPORTS,
+    "parts.<part>.imports.must": (*_IMPORTS, "import.standard", "function.statements", "file", "file.package"),
+    "parts.<part>.imports.may.types_only": _TYPES_ONLY,
+    "parts.<part>.holds": ("class", "class.exception", "class.record", "function", "function.top_level", "public"),
+    "parts.<part>.holds.classes": ("class", "public"),
+    "parts.<part>.holds.classes.names": ("class", "public"),
+    "parts.<part>.holds.classes.immutable": ("class", "class.exception", "class.immutable"),
+    "parts.<part>.holds.classes.built_by": ("class", "call", "import.resolved"),
+    "parts.<part>.holds.functions": ("function", "function.top_level", "public"),
+    "parts.<part>.holds.functions.names": ("function", "function.top_level", "public"),
+    "parts.<part>.holds.records": ("class", "class.record", "function.top_level"),
+    "parts.<part>.holds.records.names": ("class", "class.exception", "class.record", "public"),
+    "parts.<part>.holds.records.immutable": ("class", "class.exception", "class.record", "class.immutable"),
+    "parts.<part>.holds.exceptions": ("class", "class.exception"),
+    "parts.<part>.holds.exceptions.names": ("class", "class.exception", "public"),
     "parts.<part>.shared": (*_IMPORTS, "import.mentioned", "use", "class", "class.named", "function", "function.named",
                             "module_functions", "constant", "import.resolved", "public"),
-    "parts.<part>.libraries": (*_IMPORTS, "import.standard"),
+    "parts.<part>.imports.libraries": (*_IMPORTS, "import.standard"),
     "parts.<part>.uses.never": _NEVER_USE,
     "parts.<part>.package_only": (*_IMPORTS, "file.package"),
     "reserved": (*_IMPORTS, "import.standard"),
     "tiers": (*_IMPORTS, "file"),
     "tiers.<tier>.uses.apply_never": _NEVER_USE,
-    "tiers.<tier>.types_only": _TYPES_ONLY,
-    "tiers.<tier>.must_import": (*_IMPORTS, "function.statements", "file"),
+    "tiers.<tier>.imports.types_only": _TYPES_ONLY,
+    "tiers.<tier>.imports.must": (*_IMPORTS, "function.statements", "file"),
     "tiers.<tier>.plain_tables": ("function.tables", "function.blocks", "function.expressions"),
-    "tiers.<tier>.may_import": _IMPORTS,
-    "tiers.<tier>.may_also_import": _IMPORTS,
+    "tiers.<tier>.imports.may": _IMPORTS,
+    "tiers.<tier>.imports.also": _IMPORTS,
     "testing.skips": ("use", "import.resolved"),
     "testing.table": ("function.tables",),
     "testing.mocks": ("call", "parameter_call", "import.resolved"),
@@ -231,10 +268,11 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "guards.dead-code": ("class", "class.interface", "named"),
     "guards.dead-code.untested": (*_IMPORTS, "function.statements", "class", "class.exception", "function", "file",
                                   "file.package"),
-    "guards.dead-code.tests_only": ("class", "class.exception", "function", "named", "public"),
+    "guards.dead-code.tests_only": ("class", "class.exception", "function", "function.top_level", "named", "public"),
     "guards.dead-code.known": ("class", "class.exception", "function", "function.named", "constant", "named", *_IMPORTS,
                                "public"),
     "guards.pass-through": ("function", "function.forwards"),
+    "guards.no-callbacks": ("callback",),
     "guards.private-imports": (*_IMPORTS, "public"),
 }
 """The facts of the source each key that configures a check needs, by its address."""

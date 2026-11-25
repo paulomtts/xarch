@@ -10,8 +10,8 @@ _PLACEHOLDER = re.compile(r"\.?<[^>]*>|\[\]")
 
 
 def plain(address: str) -> str:
-    """The address as a person types it: without the placeholder steps and `[]`, parts.<part>.may_import being
-    parts.may_import."""
+    """The address as a person types it: without the placeholder steps and `[]`, parts.<part>.imports.may being
+    parts.imports.may."""
     return _PLACEHOLDER.sub("", address)
 
 
@@ -35,8 +35,16 @@ def required_of(scope: str) -> tuple[str, ...]:
 
 
 def retired(scope: str, name: str) -> str:
-    """The fixed text of the entry of the table of retired names for the name in the scope; "" when it has none."""
-    return next((entry.text for entry in RETIRED if entry.scope == scope and entry.name == name), "")
+    """The fixed text of the entry of the table of retired names for the name in the scope; "" when it has none. An
+    entry of a value is no entry of its key's name."""
+    return next((entry.text for entry in RETIRED if entry.scope == scope and entry.name == name and not entry.value), "")
+
+
+def retired_value(scope: str, name: str, value: object) -> str:
+    """The fixed text of the entry of the table of retired names for the value written under the key of that name in
+    the scope; "" when it has none."""
+    return next((entry.text for entry in RETIRED if (entry.scope, entry.name) == (scope, name) and entry.value
+                 and entry.value == value), "")
 
 
 def retired_at(address: str) -> str:
@@ -45,7 +53,7 @@ def retired_at(address: str) -> str:
     entry of a map of ids the id's placeholder or any id in its step; "" when no entry is there. A rule id has no
     address."""
     written = address.strip().strip(".")
-    return next((entry.text for entry in RETIRED if _at(entry, plain(written), written)), "")
+    return next((entry.text for entry in RETIRED if not entry.value and _at(entry, plain(written), written)), "")
 
 
 def _at(entry: Retired, typed: str, written: str) -> bool:

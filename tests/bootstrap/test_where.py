@@ -166,7 +166,7 @@ def test_a_path_in_an_excluded_folder_says_it_is_excluded_and_why(tmp_path):
 
 
 def test_a_part_that_may_import_every_outside_package_says_so_in_words(tmp_path):
-    (tmp_path / "wide.yaml").write_text("name: wide\nparts:\n  glue: {path: glue, role: the glue, libraries: everything}\n")
+    (tmp_path / "wide.yaml").write_text("name: wide\nparts:\n  glue: {path: glue, role: the glue, imports: {libraries: everything}}\n")
     (tmp_path / "app/glue").mkdir()
     assert lines("app/glue/x.py", "--profile", "wide.yaml")["libraries"] == "any outside package"
     assert document("app/glue/x.py", "--profile", "wide.yaml")["libraries"] == ["*"]

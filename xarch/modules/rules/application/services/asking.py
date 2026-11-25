@@ -20,7 +20,7 @@ class AskingService:
         profile = self._profiles.profile(cmd.profile)
         if cmd.asked not in profile.asked:
             raise ChecksRefused((f"evals.{cmd.asked}: the profile writes no eval of its own of this id",))
-        rule, problems = made(cmd.asked, profile.asked[cmd.asked])
+        rule, problems = made(cmd.asked, profile.asked[cmd.asked], profile.language)
         if rule is None:
             raise ChecksRefused(tuple(problems))
         parsed = [(path, self._tree.parsed(text, profile.language.standard_modules, private=profile.language.private,

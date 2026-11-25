@@ -22,7 +22,7 @@ from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.outcomes import Known
 
 APP = Path("/src/app")
-NAMED = profile(names={"services": ("*Service",)})
+NAMED = profile(holds_names={"services": {"classes": ("*Service",)}})
 
 
 def explain(given: FakeProfiles):
@@ -47,14 +47,14 @@ WORKED = ("no-todo: reads comment\nno-todo.flagged: documents/notes: ' TODO: spl
     pytest.param(FakeProfiles({"named": NAMED}), ExplainWords("quantifiers.may_only", APP),
                  WordShown("quantifiers.may_only", "quantifiers", "may_only",
                            "a kept fact that matches none of the targets is a finding", applies_to=APPLIES,
-                           example_key="parts.kernel.may_import", example_profile="named",
+                           example_key="parts.kernel.imports.may", example_profile="named",
                            example="may-import: reads import-into-app\n"),
                  id="a word is explained in full, with a rule of the profile the project knows that uses it"),
     pytest.param(FakeProfiles({"bundled": profile(), "mine": NAMED}, known=Known("mine", ("bundled",))),
                  ExplainWords("quantifiers.may_only", APP),
                  WordShown("quantifiers.may_only", "quantifiers", "may_only",
                            "a kept fact that matches none of the targets is a finding", applies_to=APPLIES,
-                           example_key="parts.kernel.may_import", example_profile="mine",
+                           example_key="parts.kernel.imports.may", example_profile="mine",
                            example="may-import: reads import-into-app\n"),
                  id="the profile in force is searched for an example before the bundled ones"),
     pytest.param(FakeProfiles({}, known=ProfileUnusable(f"cannot read {APP.parent}/pyproject.toml: bad")),
@@ -78,7 +78,7 @@ def test_a_category_is_its_words_each_in_a_line():
 
 def test_a_word_s_example_is_the_first_rule_of_the_first_profile_written_with_it():
     found = explain(FakeProfiles({"none": profile(), "named": NAMED}))(ExplainWords("filters.public", APP))
-    assert (found.example_key, found.example_profile) == ("parts.services.names", "named")
+    assert (found.example_key, found.example_profile) == ("parts.services.holds.classes.names", "named")
     assert found.example.splitlines() == ["names: reads class"]
 
 
@@ -111,4 +111,4 @@ def test_a_slot_of_a_check_is_explained_with_what_it_accepts_and_a_check_written
     assert explain(FakeProfiles({}))(ExplainWords("checks.kep")) == UnknownWords(
         "checks.kep", ("checks.keep", "checks.except", "checks.read"))
     found = explain(FakeProfiles({"any": profile()}))(ExplainWords("checks.may_only", APP))
-    assert found.example_key == "parts.kernel.may_import"
+    assert found.example_key == "parts.kernel.imports.may"

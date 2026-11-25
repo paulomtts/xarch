@@ -102,7 +102,7 @@ def test_the_numbers_review_s_keys_say_are_filled_in_from_the_values_spec_holds(
 
 @pytest.mark.parametrize("address", [
     pytest.param("parts.<part>.holds", id="holds"),
-    pytest.param("parts.<part>.names", id="names"),
+    pytest.param("parts.<part>.holds.classes.names", id="names"),
     pytest.param("guards.private-imports", id="private-imports"),
 ])
 def test_the_texts_that_say_a_public_name_say_it_by_the_reader_and_never_by_the_prefix(address):

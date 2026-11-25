@@ -138,7 +138,7 @@ def test_new_refuses_the_folder_of_a_kind_in_place_of_its_word_and_says_what_to_
 def test_a_project_may_check_against_its_own_architecture_file(tmp_path):
     (tmp_path / "layered.yaml").write_text(
         'name: layered\n'
-        'parts: {lib: {path: lib, role: shared}, api: {path: "modules/<module>/api", role: handlers, may_import: [lib]}}\n')
+        'parts: {lib: {path: lib, role: shared}, api: {path: "modules/<module>/api", role: handlers, imports: {may: [lib]}}}\n')
     write_pyproject(tmp_path, "layered.yaml")
     assert runner.invoke(app, ["init"]).exit_code == 0
     assert runner.invoke(app, ["new", "module", "orders"]).exit_code == 0

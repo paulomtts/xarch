@@ -81,6 +81,7 @@ supplies:
   class.interface: exact
   class.record: exact
   function: exact
+  function.top_level: exact
   function.statements: exact
   function.shape: exact
   function.signature: exact

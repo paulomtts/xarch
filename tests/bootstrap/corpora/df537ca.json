@@ -253,8 +253,8 @@
 "libraries",
 "xarch/modules/spec/application/logic/example_imports.py",
 17,
-"logic/ of modules/spec may not import ast, which the profile reserves: only the reader adapter parses the checked language, so that another language needs one new reader (reserved.ast; parts.logic.libraries)",
-"move the code that needs ast to adapters/, which may import it (parts.adapters.libraries)"
+"logic/ of modules/spec may not import ast, which the profile reserves: only the reader adapter parses the checked language, so that another language needs one new reader (reserved.ast; parts.logic.imports.libraries)",
+"move the code that needs ast to adapters/, which may import it (parts.adapters.imports.libraries)"
 ],
 [
 "V",
@@ -413,7 +413,7 @@
 "holds",
 "xarch/modules/spec/application/logic/docs_template.py",
 129,
-"_Context is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"_Context is a class, but logic/ of modules/spec holds functions, records and exceptions (parts.logic.holds)",
 "move _Context to a part that holds classes: domain/, ports/, services/, or make what it does functions"
 ],
 [
@@ -421,7 +421,7 @@
 "holds",
 "xarch/modules/spec/application/logic/migrate_examples.py",
 31,
-"_Copies is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"_Copies is a class, but logic/ of modules/spec holds functions, records and exceptions (parts.logic.holds)",
 "move _Copies to a part that holds classes: domain/, ports/, services/, or make what it does functions"
 ],
 [
@@ -429,7 +429,7 @@
 "holds",
 "xarch/modules/spec/application/logic/project_files.py",
 98,
-"_Reserved is a class, but logic/ of modules/spec holds functions (parts.logic.holds)",
+"_Reserved is a class, but logic/ of modules/spec holds functions, records and exceptions (parts.logic.holds)",
 "move _Reserved to a part that holds classes: domain/, ports/, services/, or make what it does functions"
 ]
 ]

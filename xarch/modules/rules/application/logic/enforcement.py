@@ -114,7 +114,8 @@ def detail(item: str | Drift | At | Unresolved | Weak | Shortfall) -> str:
     """A finding's item in words: a guard or a file by its name, an init file with its state, a place as
     `<file>:<line>`, an import the reader could not follow as its place, its module as written and that it names no
     file of the app, a weak check as its place (the file alone for a whole file) and its message, a key whose check
-    reads a fact partly as the key, the fact and what the reader misses."""
+    reads a fact partly as the key, the fact and what the reader misses, and one whose check reads less for want of a
+    fact by what it reads less."""
     match item:
         case Drift(path, state):
             return f"{'/'.join(path)} is {state}"
@@ -124,15 +125,16 @@ def detail(item: str | Drift | At | Unresolved | Weak | Shortfall) -> str:
             return f'{file}:{line}: import "{written}" names no file of the app'
         case Weak(file=file, line=line, message=message):
             return f"{file}{f':{line}' if line else ''}: {message}"
-        case Shortfall(address, fact, note):
-            return approximation(address, fact, note or "")
+        case Shortfall(address, fact, note, unread):
+            return approximation(address, fact, note or "", unread)
         case _:
             return item
 
 
-def approximation(address: str, fact: str, note: str) -> str:
-    """A key whose check reads a fact the language supplies only partly, in words."""
-    return f"{address} reads {fact} only partly: {note}"
+def approximation(address: str, fact: str, note: str, unread: bool = False) -> str:
+    """A key whose check reads a fact the language supplies only partly, in words; one whose check reads less for want
+    of a fact it reads only when supplied, by its note alone, which says it whole."""
+    return note if unread else f"{address} reads {fact} only partly: {note}"
 
 
 def folders(files: Sequence[str]) -> list[str]:

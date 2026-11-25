@@ -21,7 +21,7 @@ import os
 from collections.abc import Collection, Iterable
 from pathlib import Path
 
-from xarch.kernel.logic.imports import may_import, shown_target
+from xarch.kernel.logic.imports import shown_target, targets_phrase
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.logic.placement import repeat_of, stands_for_folder, stem
 from xarch.kernel.placement import EACH, Place
@@ -101,8 +101,8 @@ def _app(profile: Profile, found: Resolved, app: str, tests: str) -> Placed:
     folder, name, tier = _mirror(profile, part, steps)
     return PartPlace(
         found, where, info or PartInfo(), _singular(profile, part), _reaches(profile, targets, where.instance, app),
-        may_import(targets, folders, profile.words()),
-        None if profile.libraries is None else profile.libraries.get(part, ()),
+        targets_phrase(targets, folders, profile.words()),
+        None if profile.imports_libraries is None else profile.imports_libraries.get(part, ()),
         tuple(outside_text(n, profile.language.member) for n in profile.uses_never.get(part, ())), tier,
         f"{tests}/{'/'.join(folder)}/".replace("//", "/") if tier else "", name if tier else "",
         info.untested if info and tier is None else "")
@@ -205,7 +205,7 @@ def _tier_place(profile: Profile, where: Tested, found: Resolved, tests: str, ap
     mirrored = Place(part, where.instance) if part else None
     return SuitePlace(found, where.is_test, where.tier, mirrored, profile.info.get(part) if part else None,
                       _word_of_instance(profile, where) or _singular(profile, part),
-                      _reaches(profile, targets, where.instance, app), may_import(targets, folders, profile.words()),
+                      _reaches(profile, targets, where.instance, app), targets_phrase(targets, folders, profile.words()),
                       names, may_use_fakes(profile, where.tier), _fakes(profile, tests),
                       f"{tests}/{'/'.join(where.own)}/" if where.own else f"{tests}/", "")
 

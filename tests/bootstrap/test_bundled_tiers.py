@@ -34,7 +34,8 @@ parts:
   api:
     path: "src/<module>/api"
     role: handlers
-    may_import: [store]
+    imports:
+      may: [store]
     tests: driver
   store:
     path: "src/<module>/store"
