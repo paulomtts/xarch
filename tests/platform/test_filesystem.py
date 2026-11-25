@@ -84,3 +84,19 @@ def test_a_link_is_known_as_one_and_removing_it_leaves_what_it_points_to(tmp_pat
     fs.remove(tmp_path / "link.txt")
     fs.remove(tmp_path / "absent")
     assert not (tmp_path / "link.txt").exists() and (tmp_path / "kept.txt").read_text() == "precious"
+
+
+def test_bytes_replaced_whole_land_in_the_folders_made_above_and_leave_nothing_beside_them(tmp_path):
+    fs = FileSystem()
+    target = tmp_path / "new" / "deep" / "kept.bin"
+    fs.replace_bytes(target, b"first")
+    fs.replace_bytes(target, b"second")
+    assert fs.read_bytes(target) == b"second"
+    assert sorted(p.name for p in target.parent.iterdir()) == ["kept.bin"]
+
+
+def test_bytes_that_cannot_be_written_raise_and_leave_nothing_behind(tmp_path):
+    (tmp_path / "taken").write_text("a file, not a folder\n")
+    with pytest.raises(FileExistsError):
+        FileSystem().replace_bytes(tmp_path / "taken" / "kept.bin", b"data")
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["taken"]

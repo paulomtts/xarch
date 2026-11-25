@@ -34,6 +34,7 @@ from xarch.modules.rules.contract import (
     At,
     EnforcementView,
     FindingView,
+    Partial,
 )
 from xarch.modules.spec.contract import Origin
 
@@ -49,27 +50,39 @@ LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init 
 """How each section of the enforcement is labelled, by its key."""
 
 
-def _text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None) -> list[str]:
+def _text_lines(found: Iterable[Violation], hints: Mapping[str, str] | None = None,
+                partial: Partial | None = None) -> list[str]:
     """The violations as the terminal shows them, in the order rules gives them, then the summary line. A
     finding is its line, `<file>:<line>: <message>`, then an indented `fix:` line and, when the profile has a hint
-    for its rule, an indented `hint:` line."""
+    for its rule, an indented `hint:` line. A check of some paths says so in its summary, then on a `partial:` line
+    that names them, says that no check was skipped, and counts the violations of other files, so that its OK never
+    reads as the whole app's."""
     found = list(found)
     hints = hints or {}
-    if not found:
-        return ["OK: no violations"]
-    files = len({v.file for v in found})
+    given = f" the {len(partial.paths)} path(s) given" if partial is not None else ""
     lines: list[str] = []
     for v in found:
         lines += [str(v), f"{INDENT}fix: {v.fix}"]
         if v.rule in hints:
             lines.append(f"{INDENT}hint: {hints[v.rule]}")
-    return [*lines, f"{len(found)} violation(s) in {files} file(s)"]
+    files = len({v.file for v in found})
+    lines.append(f"{len(found)} violation(s) in {files} file(s){f' of{given}' if given else ''}" if found
+                 else f"OK: no violations{f' in{given}' if given else ''}")
+    return [*lines, *([_partial_line(partial)] if partial is not None else [])]
+
+
+def _partial_line(partial: Partial) -> str:
+    skipped = ", ".join(partial.skipped) if partial.skipped else "none"
+    elsewhere = (f"{partial.elsewhere} violation(s) in other files, not shown: run `xarch check` with no path to see "
+                 "them" if partial.elsewhere else "no violation in any other file")
+    return _line("partial", f"{len(partial.paths)} path(s) given ({', '.join(partial.paths)}); every check ran on the "
+                            f"whole app and its tests, {skipped} skipped; {elsewhere}", 0)
 
 
 def check_lines(origin: Origin, checked: AppChecked, strict: bool, cwd: Path) -> list[str]:
     """What `xarch check` shows as text: the violations, then the enforcement section, a profile file named from the
     working folder cwd when it lies below it."""
-    return [*_text_lines(checked.violations, checked.hints),
+    return [*_text_lines(checked.violations, checked.hints, checked.partial),
             *_enforcement_lines(origin, checked.enforcement, strict, cwd, checked.hints)]
 
 
@@ -179,4 +192,7 @@ def _finding(finding: FindingView) -> dict[str, str]:
 def json_document(profile: str, origin: Origin, checked: AppChecked, strict: bool) -> str:
     return document({"ok": checked.ok, "strict": strict, "profile": profile,
                      "violations": [_violation_document(v, checked.hints) for v in checked.violations],
-                     "enforcement": _enforcement_document(origin, checked.enforcement)})
+                     "enforcement": _enforcement_document(origin, checked.enforcement),
+                     **({"partial": {"paths": list(checked.partial.paths),
+                                     "skipped_checks": list(checked.partial.skipped),
+                                     "elsewhere": checked.partial.elsewhere}} if checked.partial is not None else {})})

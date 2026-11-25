@@ -74,6 +74,11 @@ RUNTIME = InterpreterRuntime
 """What that language says of itself (its standard library, reserved words and the names it binds before any code),
 as the interpreter running xarch says it, for a language whose data file gives `standard: interpreter`; a language
 whose data file lists them is not asked, and needs no runtime of its own."""
+CODE = Path(__file__).parents[1]
+"""xarch's own code, whose source the reader's cache is keyed by, so that a change of xarch reads every file afresh."""
+CACHE = "XARCH_CACHE_DIR"
+"""The environment variable naming the folder the reader keeps what it read in; set empty, it keeps nothing. Unset, the
+folder is `xarch/` in the user's cache folder ($XDG_CACHE_HOME, else ~/.cache)."""
 MODEL = "jev-1.14.0"
 """The version of the decision model review asks, pinned: the one the evidence for its lines was measured with. Each
 answer kept records the version that gave it."""
@@ -134,6 +139,18 @@ def _build_scaffold(fs: FileSystem, spec: SpecController) -> ScaffoldController:
     return ScaffoldController(ScaffoldingService(FsFiles(fs), ScaffoldSkeleton(spec)))
 
 
+def _cache(environment: Mapping[str, str]) -> Path | None:
+    """The folder the reader keeps what it read in, as the environment says it (see CACHE); None keeps nothing, and so
+    does an environment that names no home."""
+    if CACHE in environment:
+        return Path(environment[CACHE]) if environment[CACHE].strip() else None
+    base = environment.get("XDG_CACHE_HOME", "")
+    if not Path(base).is_absolute():
+        home = environment.get("HOME", "")
+        base = str(Path(home) / ".cache") if home and Path(home).is_absolute() else ""
+    return Path(base) / "xarch" if base else None
+
+
 def _client(environment: Mapping[str, str], url: str) -> TypeSafe | None:
     """The decision model's client, with the key the environment holds when it is asked, or None when it holds none:
     the key is read here alone, at the moment review would send, and handed to the client, nowhere else; it is read
@@ -162,11 +179,13 @@ def build_controllers(environment: Mapping[str, str] | None = None, url: str = U
     examples with it; layout and scaffold, which read the skeleton spec gives; rules, which reads with the same reader
     the profile spec gives and the structure layout checks; review, which reads the app's files through rules and the
     profile's words through spec. One reader and one spec feed them all: they cannot drift. Review's key is read from
-    environment (None: the process's own) when a question would be sent to the decision model at url."""
+    environment (None: the process's own) when a question would be sent to the decision model at url; the reader's cache
+folder is read from it when the controllers are built."""
+    environment = os.environ if environment is None else environment
     fs = FileSystem()
-    tree = READER(fs)
+    tree = READER(fs, _cache(environment), CODE)
     spec = _build_spec(fs, tree)
     layout = _build_layout(fs, spec)
     rules = _build_rules(tree, spec, layout)
-    review = _build_review(fs, rules, spec, os.environ if environment is None else environment, url)
+    review = _build_review(fs, rules, spec, environment, url)
     return _Controllers(rules, layout, _build_scaffold(fs, spec), spec, review)

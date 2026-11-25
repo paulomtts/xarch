@@ -10,6 +10,14 @@ All notable changes to this project are written here. The format follows
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.
+- `xarch check PATH ...` and `xarch check --files-from FILE|-` show only the violations of the files at or below
+  the paths given, and only those decide the exit code; every check still runs on the whole app and its tests, none
+  skipped, and a `partial:` line (JSON `partial: {paths, skipped_checks, elsewhere}`) names the paths, says no check
+  was skipped and counts the violations of other files, so its OK never reads as the whole app's.
+- The reader keeps what it read of each file in a cache (`xarch/` in `$XDG_CACHE_HOME`, else `~/.cache`;
+  `XARCH_CACHE_DIR` names another folder, empty switches it off), keyed by the file's text, how it is read, what
+  its relative imports find on disk and xarch's own code: reading the tree was 87% of a check (about 11 s of 12.7 s
+  on xarch's own 310 files), and with the cache warm a whole check takes about 1.5 s.
 - `fakes.tiers: [<tier>, ...]` lets the tests of the tiers it lists import the fakes besides those of a tier that
   tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder

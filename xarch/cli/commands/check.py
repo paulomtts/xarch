@@ -33,19 +33,34 @@ StrictOption = Annotated[bool, typer.Option(
          "not follow, checks met to the letter only (weak), approximate keys, checks of the profile's own that read "
          "nothing, and a part redefined without the litmus the compared profile gives it. Every other way a custom "
          "profile differs from the compared one is shown, never failed on.")]
+PathsArgument = Annotated[list[Path] | None, typer.Argument(
+    show_default=False,
+    help="Files or folders, read from the working folder, whose violations alone are shown and decide the exit code. "
+         "Every check still runs on the whole app and its tests, none skipped; the violations of other files are "
+         "counted on the `partial:` line (JSON `partial`). With none, every violation is shown.")]
+FilesFrom = Annotated[typer.FileText | None, typer.Option(
+    "--files-from", help="A file listing more paths to show the violations of, one per line; `-` reads the list "
+                         "from stdin, such as `git diff --name-only | xarch check --files-from -`.")]
 
 
 def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:
     @app.command()
     @rewrapped
-    def check(app_path: AppPath = None, profile: ProfileName = None, tests: TestsPath = None,
-              output: FormatOption = Format.text, strict: StrictOption = False, against: AgainstName = None) -> None:
-        """Report every violation of the architecture in the app and its tests."""
+    def check(paths: PathsArgument = None, files_from: FilesFrom = None, app_path: AppPath = None,
+              profile: ProfileName = None, tests: TestsPath = None, output: FormatOption = Format.text,
+              strict: StrictOption = False, against: AgainstName = None) -> None:
+        """Report every violation of the architecture in the app and its tests; given paths, or a list of them with
+        --files-from, only those of the files at or below them, every check still run on the whole app."""
         refuse = refusal(output)
         cwd = in_full(Path())
         app_path = app_for(spec, cwd, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.check_app(CheckApp(app_path, chosen, cwd, tests_root, strict, against)):
+        try:
+            listed = [Path(line.strip()) for line in files_from or () if line.strip()]
+        except UnicodeDecodeError:
+            raise refuse("the list given with --files-from is not UTF-8 text: give one path per line, as UTF-8") from None
+        some = (*(paths or ()), *listed) if paths or files_from is not None else None
+        match rules.check_app(CheckApp(app_path, chosen, cwd, tests_root, strict, against, some)):
             case NotADirectory(root):
                 raise refuse(not_a_directory(root, cwd))
             case ChecksCannotRun(problems):

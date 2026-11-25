@@ -18,6 +18,7 @@ from xarch.modules.rules.contract import (
     FindingView,
     KnownName,
     OwnCheckView,
+    Partial,
     Translation,
     Unresolved,
     UnresolvedView,
@@ -334,3 +335,38 @@ def test_a_profile_based_on_a_profile_file_says_the_bundled_profile_strict_rests
     assert profile["compared_with"]["anchor"] == "cli"
     assert json.loads(json_document("mine.yaml", against, AppChecked((), EnforcementView(), {}, True), False))[
         "enforcement"]["profile"]["compared_with"]["anchor"] is None
+
+
+def partly(found, partial: Partial) -> list[str]:
+    return check_lines(Origin("web"), AppChecked(tuple(found), EnforcementView(), {}, False, partial), False,
+                       Path("/src"))
+
+
+ELSEWHERE = "violation(s) in other files, not shown: run `xarch check` with no path to see them"
+
+
+@pytest.mark.parametrize("found, partial, shown", [
+    pytest.param([], Partial(("app/a.py",), 0), [
+        "OK: no violations in the 1 path(s) given",
+        "partial:     1 path(s) given (app/a.py); every check ran on the whole app and its tests, none skipped; no "
+        "violation in any other file", *WEB], id="a clean path with nothing elsewhere"),
+    pytest.param([], Partial(("app/a.py", "app/b.py"), 3), [
+        "OK: no violations in the 2 path(s) given",
+        "partial:     2 path(s) given (app/a.py, app/b.py); every check ran on the whole app and its tests, none "
+        f"skipped; 3 {ELSEWHERE}", *WEB],
+        id="the violations of other files are counted, never hidden behind a plain OK"),
+    pytest.param([A], Partial(("app/a.py",), 1), [
+        "app/a.py:3: a problem", "    fix: do this", "1 violation(s) in 1 file(s) of the 1 path(s) given",
+        f"partial:     1 path(s) given (app/a.py); every check ran on the whole app and its tests, none skipped; 1 "
+        f"{ELSEWHERE}", *WEB],
+        id="the violations of the paths given are shown and counted as theirs"),
+])
+def test_a_check_of_some_paths_says_so_after_its_summary(found, partial, shown):
+    assert partly(found, partial) == shown
+
+
+def test_the_json_document_of_a_check_of_some_paths_says_which_how_many_others_and_that_it_skipped_no_check():
+    checked = AppChecked((A,), EnforcementView(), {}, False, Partial(("app/a.py",), 2))
+    document = json.loads(json_document("web", Origin("web"), checked, False))
+    assert document["partial"] == {"paths": ["app/a.py"], "skipped_checks": [], "elsewhere": 2}
+    assert "partial" not in json.loads(json_document("web", Origin("web"), replace(checked, partial=None), False))

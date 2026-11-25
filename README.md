@@ -34,9 +34,10 @@ xarch init [--app PATH] [--profile NAME|FILE]                 # create the top-l
                                                              # app folder, if not app/) in pyproject.toml, write the
                                                              # project docs and files; never overwrites
 xarch new WORD NAME [--app PATH] [--profile NAME|FILE]       # create one instance of a repeating folder, with its skeleton
-xarch check [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict] [--against NAME|FILE]
+xarch check [PATH ...] [--files-from FILE|-] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json] [--strict] [--against NAME|FILE]
                                                              # report every violation in the app and its tests, each
-                                                             # with its fix, then the state of the check's own enforcement
+                                                             # with its fix, then the state of the check's own enforcement;
+                                                             # with paths, only those of the files at or below them
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # what a path is and what code there may do, before it is written
 xarch profile explain [KEY] [--profile NAME|FILE | --configured] [--rule] [--app PATH] [--format text|json]
@@ -419,6 +420,42 @@ app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)
 1 violation(s) in 1 file(s)
 ```
 
+### Checking some files: `xarch check PATH ...`
+
+Given paths (files or folders, read from the working folder), or a list of them with `--files-from FILE` (`-` for
+stdin, one path per line, blank lines ignored; both may be given), `check` shows only the violations of the files at
+or below them, and only those decide the exit code (0, 1 or 2, as for a whole check). It is meant to run after every
+edit, by an agent's hook or a pre-commit hook:
+
+```
+xarch check app/modules/docs/domain/document.py
+git diff --name-only HEAD | xarch check --files-from -
+```
+
+Every check still runs on the whole app and its tests, whole-program ones included (`cycles`, `dead-code`,
+`no-twins`, `shared`, `stand-ins`, `scenario-coverage`): a partial check skips none, so a violation an edit causes in
+the file edited is never missed because its cause lies elsewhere. What it does not show is counted: the summary
+names the paths given, `OK: no violations in the 1 path(s) given` or `<n> violation(s) in <m> file(s) of the <k>
+path(s) given`, and a `partial:` line follows it, naming the paths, saying that no check was skipped and how many
+violations other files have, so its OK never reads as the whole app's:
+
+```
+OK: no violations in the 1 path(s) given
+partial:     1 path(s) given (app/kernel/clean.py); every check ran on the whole app and its tests, none skipped; 2 violation(s) in other files, not shown: run `xarch check` with no path to see them
+```
+
+The enforcement section is the whole app's, as is what `--strict` fails on. In JSON the document gains
+`"partial": {"paths": [...], "skipped_checks": [], "elsewhere": <n>}`; a whole check has no `partial` key.
+
+What makes it fast is not reading less but reading once: the reader keeps what it read of each file in a cache, and
+a file read again whose text, the way it is read (the profile's language and test framework) and what its relative
+imports find on disk are all unchanged, read by the same xarch code, is not parsed again. On xarch's own 310 files a
+whole check takes about 11 s with no cache and 1.5 s with it, so a check of one file after an edit takes about as
+long as a whole one with a warm cache. The cache is in `xarch/` in the user's cache folder (`$XDG_CACHE_HOME`, else
+`~/.cache`); the environment variable `XARCH_CACHE_DIR` names another folder, and set empty switches it off. A cache
+that cannot be read is ignored and one that cannot be written is not written; it never changes what `check` finds,
+and the folder may be deleted at any time.
+
 ### JSON
 
 `xarch check --format json` prints one JSON document on stdout, and nothing else. This shape is a contract: fields
@@ -454,9 +491,11 @@ and rule ids may be added, but an existing one keeps its name and meaning.
 ```
 
 A profile that writes checks of its own also has `"checks"` in `enforcement`: each `{"id", "read", "said"}`, `read`
-how many facts it read in the project.
+how many facts it read in the project. A check of some paths also has `"partial"` (see
+[Checking some files](#checking-some-files-xarch-check-path-)): `paths` as given, `skipped_checks` (always `[]`:
+every check runs on the whole app) and `elsewhere`, how many violations of other files `violations` leaves out.
 
-- `ok`: no violation, and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
+- `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
 - `violations`: sorted by `file`, then `line` (a whole-file or folder violation, `line: null`, first), then `rule`.
   `file` is the path the text output prints; `message` the sentence it prints after the path; `fix` what to do about

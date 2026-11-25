@@ -48,7 +48,7 @@ __all__ = ["At", "Weak", "Piece", "KnownName", "Translation", "Slot", "KeyFacts"
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "UnresolvedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
            "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
-           "WhereAnswer", "NotADirectory", "CheckApp", "AppChecked",
+           "WhereAnswer", "NotADirectory", "CheckApp", "Partial", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
            "WordsResult", "ExplainRule", "RuleShown", "KeyUnset", "NoRuleShown", "RuleResult", "ApproximateView",
@@ -291,24 +291,39 @@ class CheckApp:
     """Check the app below root, its imports and its structure, and the tests below tests (None: no tests), against
     the architecture at profile (a bundled name or a path); strict also fails on the enforcement's findings. cwd is the
     working folder, in full, that a relative root or tests folder is read from. against is the profile the command
-    line compares the one in force with for this run, which the check itself never reads: with strict it is refused."""
+    line compares the one in force with for this run, which the check itself never reads: with strict it is refused.
+    paths, when given, are the files and folders whose violations alone are shown, each read from cwd: every check
+    still runs on the whole app and its tests, and the violations of other files are only counted."""
     root: Path
     profile: str
     cwd: Path
     tests: Path | None = None
     strict: bool = False
     against: str | None = None
+    paths: tuple[Path, ...] | None = None
+
+
+@dataclass(frozen=True)
+class Partial:
+    """A check whose violations were shown for some paths alone: the paths, as given; the checks it skipped, which are
+    none, since every check runs on the whole app and its tests; and how many violations of other files it does not
+    show."""
+    paths: tuple[str, ...]
+    elsewhere: int
+    skipped: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class AppChecked:
     """The violations of the source and of the structure, in order of file, then line (a whole file first), then rule;
     the state of the check's enforcement; the profile's own advice by rule id; and whether the check passes: no
-    violation and, under strict, no finding of the enforcement."""
+    violation and, under strict, no finding of the enforcement. partial, for a check of some paths, says which and
+    how many violations of other files are not among violations; ok then reads the violations shown alone."""
     violations: tuple[Violation, ...]
     enforcement: EnforcementView
     hints: dict[str, str]
     ok: bool
+    partial: Partial | None = None
 
 
 CheckAppResult = AppChecked | NotADirectory | ChecksCannotRun | CheckRefused
