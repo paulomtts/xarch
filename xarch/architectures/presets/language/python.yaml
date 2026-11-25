@@ -71,6 +71,7 @@ supplies:
   import: exact
   import.relative: exact
   import.standard: exact
+  import.type_only: exact
   import.resolved: exact
   import.mentioned: exact
   comment: exact

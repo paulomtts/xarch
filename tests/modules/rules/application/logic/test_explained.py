@@ -125,9 +125,10 @@ def test_a_kind_says_its_fields_each_with_the_filter_it_carries_it_under_what_it
     imported = word(KINDS, "imported-name")
     fields = tuple((name, FIELDS[name], when) for name, when in (
         ("line", ""), ("path", ""), ("written", ""), ("relative", ""), ("standard", ""), ("public", ""),
-        ("name", "takes-a-name")))
+        ("type-only", ""), ("name", "takes-a-name")))
     assert facets(imported) == WordFacets(side=imported.side, fields=fields,
-                                          needs=("import", "import.relative", "import.standard", "public"),
+                                          needs=("import", "import.relative", "import.standard", "public",
+                                                 "import.type_only"),
                                           verb=imported.verb)
 
 

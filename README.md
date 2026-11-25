@@ -328,7 +328,10 @@ same words under `checks`: each reads the facts of a kind (`read`) in some files
 file must reach a target (`must_reach`) or a fact be reached from some files (`must_be_reached`); an exception
 (`except`) excuses a finding, and `message` and `fix` say it, with `{variable}`s (`once_per` says a file's findings
 once for each value of its variables; `per_line` says the findings of one line that differ only in its variables as
-one, each written as its values joined by `, `). A check carries `examples`: code it
+one, each written as its values joined by `, `). An import made only for the type checker, never when the code
+runs, carries the field `type-only` (the fact `import.type_only`; Python's reader sets it on each import in the body of
+an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import` or
+`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

@@ -360,17 +360,32 @@ def _from(node: ast.ImportFrom, where: _Where | None) -> tuple[str, ...] | None:
 
 def _imports(tree: ast.AST, standard: frozenset[str], private: str, where: _Where | None = None) -> list[Import]:
     found: list[Import] = []
+    typing = _type_checking(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found += [Import(node.lineno, tuple(alias.name.split(".")), standard=alias.name.split(".")[0] in standard,
-                             written=alias.name, last=_last(node)) for alias in node.names]
+                             written=alias.name, last=_last(node), type_only=id(node) in typing)
+                      for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
             found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
                                 max(node.level - 1, 0), not node.level and bool(module) and module[0] in standard,
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
                                 _last(node), _from(node, where) is None,
-                                frozenset(a.name for a in node.names if is_private_name(a.name, private))))
+                                frozenset(a.name for a in node.names if is_private_name(a.name, private)),
+                                id(node) in typing))
+    return found
+
+
+def _type_checking(tree: ast.AST) -> set[int]:
+    """The imports made only for the type checker: each one in the body (not the `else`) of an `if` whose test is the
+    bare name `TYPE_CHECKING` or an attribute of that name (`typing.TYPE_CHECKING`), however deep, by its node's id."""
+    found: set[int] = set()
+    for node in ast.walk(tree):
+        test = node.test if isinstance(node, ast.If) else None
+        if (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
+                isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"):
+            found |= {id(n) for stmt in node.body for n in ast.walk(stmt) if isinstance(n, (ast.Import, ast.ImportFrom))}
     return found
 
 

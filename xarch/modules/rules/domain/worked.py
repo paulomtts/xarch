@@ -36,5 +36,14 @@ WORKED: tuple[OwnCheck, ...] = (
              (("documents/types/title%extension%", "%import app.documents.rules trim%\n"),),
              (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),
               ("documents/rules%extension%", "%import app.documents.types.title Title%\n"))),
+    OwnCheck(Rule("rules-for-the-type-checker", Scope(APP, "documents", where=(Condition("below", "documents/types"),)),
+                  ("imported-name",), MAY_NOT, (Match("name", words=("trim",)),),
+                  (Saying("{file} imports {name} at line {line} when its code runs: the types of documents name the "
+                          "rules only for the type checker",
+                          "import {name} only for the type checker, or move what calls it out of documents/types"),),
+                  keep=(Condition("takes-a-name"), Condition("type-only", negated=True)),
+                  key="checks.rules-for-the-type-checker"),
+             (("documents/types/title%extension%", "%import app.documents.rules trim%\n"),),
+             (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),)),
 )
 """The worked checks, the first the example of how a check is written."""

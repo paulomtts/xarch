@@ -18,6 +18,11 @@ All notable changes to this project are written here. The format follows
   that differ only in those variables are said as one, the first, each of them written as its values in the order
   found, joined by `, ` (a value found again written once). An unknown variable is refused at
   `checks.<id>.per_line`.
+- The filter `type-only` of a check of your own: an import made only for the type checker, never when the code
+  runs, which the reader says through the new fact `import.type_only` (Python's: an import in the body of
+  `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`); the kinds `import` and `imported-name` carry
+  it, so a check may keep those imports (`keep: [type-only]`) or skip them (`keep: [not type-only]`). The bundled
+  profiles read nothing new.
 
 ### Changed
 

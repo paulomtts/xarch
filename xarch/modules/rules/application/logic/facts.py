@@ -12,7 +12,7 @@ turns its language's imports and names into such paths, and a fact into the app 
                         a real statement, exceptions-only when it defines classes, every one an exception (below), and no
                         top-level function
     names-mentioned     every name the file mentions, annotations included, by its last step alone
-    import              each import as written: the module it names (path), relative, standard
+    import              each import as written: the module it names (path), relative, standard, type-only
     imported-name       each name an import takes, path the module and the name (the module alone for an import of
                         a whole module), the name it takes (None for a whole module); its traits are the import's,
                         and public when the reader says the name it takes is public
@@ -88,6 +88,7 @@ _RECEIVER, _ANNOTATED = "receiver", "annotated-callable"
 _FORWARDS = frozenset({"forwards"})
 _DOC = frozenset({"doc"})
 _PUBLIC = frozenset({"public"})
+_TYPE_ONLY = frozenset({"type-only"})
 
 
 def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Profile, root: str,
@@ -187,7 +188,8 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                               frozenset(n for n, on in ((_RECEIVER, c.receiver), (_ANNOTATED, c.annotated)) if on))
                          for c in file.callbacks)
         case "import":
-            return tuple(Fact("import", i.line, i.module, traits=_TRAITS[i.relative, i.standard, False],
+            return tuple(Fact("import", i.line, i.module, traits=_TRAITS[i.relative, i.standard, False]
+                              | (_TYPE_ONLY if i.type_only else frozenset()),
                               text=i.written) for i in file.imports)
         case "imported-name":
             return tuple(_imported(file))
@@ -310,7 +312,7 @@ def _exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) 
 
 def _imported(file: SourceFile) -> Iterator[Fact]:
     for i in file.imports:
-        traits = _TRAITS[i.relative, i.standard, False]
+        traits = _TRAITS[i.relative, i.standard, False] | (_TYPE_ONLY if i.type_only else frozenset())
         if i.names is None:
             yield Fact("imported-name", i.line, i.module, traits=traits, text=i.written)
         else:
