@@ -114,7 +114,8 @@ class CheckedLanguage:
     (extensions, in the order written; a message prints the first), the files that stand for the folder holding them
     (package_files; none: no file does), the marks that make a class an interface (interface: an outside name
     among its bases, or a keyword it is declared with or carries), the dotted names of what imports by a name worked
-    out when the code runs; and the tokens of its code: what a private name starts with, the pattern of a special
+    out when the code runs, and of what reads a member of an object by a name worked out when the code runs
+    (dynamic_attributes); and the tokens of its code: what a private name starts with, the pattern of a special
     name (special: a regular expression the whole name matches), the special method calling an instance runs, the
     return annotations of no value as its reader writes them (nothing), whether a method with no return annotation
     gives none (unannotated: nothing when it does; empty when the data file does not say), the forms a comment is
@@ -139,6 +140,7 @@ class CheckedLanguage:
     package_files: tuple[str, ...] = ()
     interface: tuple[InterfaceMark, ...] = ()
     dynamic: tuple[tuple[str, ...], ...] = ()
+    dynamic_attributes: tuple[tuple[str, ...], ...] = ()
     private: str = ""
     special: str = ""
     call: str = ""

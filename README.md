@@ -140,13 +140,26 @@ An entry of a `never` list that is the name of another list includes that list's
 `published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
 profile names, since an entry of that name would name the list.
 
+What `uses.never` follows is the name as the file binds it, never the value at run time. A use is found when the
+name is read: imported however it is written (`import datetime`, `import datetime as dt`, `from datetime import
+datetime as D`, a builtin by its bare name such as `open`), and through a plain rebinding in the same file, `x = y`, one
+bare name assigned to another at module or function level and nothing else binding `x` in that scope (`clock = D`,
+then `clock.now()`; a chain of such rebindings too). Nothing cleverer is followed: not an attribute or an expression
+assigned (`now = D.now`, `x = D if a else E`), an unpacking, an annotated assignment, a default of a parameter, a name
+passed to a function or returned from one, an attribute stored on an object, or a name bound in another file. A name
+worked out when the code runs cannot be followed at all: a call of what imports by a computed name
+(`importlib.import_module`, `__import__`) and a `getattr` of a name an import binds (`getattr(t, "time")` after
+`import time as t`) are listed under `dynamic` in the enforcement section instead, which `--strict` fails on. So a
+green `check` says no file names a forbidden name in a way it follows, not that the code never reaches one.
+
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
 <name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the endings of a source file
 (`extensions`, a list; the first is the one messages print), the files that stand for a folder (`package_files`, a
 list, optional for a language where no file does), what marks an interface (`interface`, a list of marks, each a base,
 `{base: typing.Protocol}`, or a keyword a declaration carries, `{keyword: interface}`), the namespace of the builtins,
-the callables that import by a computed name, the folder of compiled files, and where the standard library's top-level modules, the reserved words
+the callables that import by a computed name (`dynamic`), those that read a member of an object by one
+(`dynamic_attributes`, Python's `getattr`), the folder of compiled files, and where the standard library's top-level modules, the reserved words
 and the builtins are known from (`standard`: `interpreter`, the Python running xarch, or three lists, `modules`,
 `reserved` and `builtins`, each item checked with the file's `package` or `name`);
 and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
@@ -562,7 +575,9 @@ enforcement
 - `skipped`: each use in the tests of a name of `testing.skips`, or one below it, read through imports.
 - `dynamic`: each use, in the files read, of a callable the language's data file lists as importing by a computed name
   (for Python, `importlib.import_module`, `importlib.__import__` and the builtin `__import__`), so it needs no entry in
-  the profile; the import rules cannot see what it imports.
+  the profile; the import rules cannot see what it imports. Each call, in the files read, of a callable the data
+  file lists as reading a member of an object by a computed name (`dynamic_attributes`: for Python, `getattr`) whose
+  first argument is a name an import binds, is listed here too: `uses.never` cannot see which member it reads.
 - `unresolved`: each import, in the files read, that names a place of the app (relative, or by an alias the project
   maps) the reader found no file or folder for, at its first line, with the module as written, one line each; the
   import rules cannot see what it names.

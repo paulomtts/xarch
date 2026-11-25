@@ -23,6 +23,11 @@ All notable changes to this project are written here. The format follows
   `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`); the kinds `import` and `imported-name` carry
   it, so a check may keep those imports (`keep: [type-only]`) or skip them (`keep: [not type-only]`). The bundled
   profiles read nothing new.
+- A language's data file may list `dynamic_attributes`, the callables that read a member of an object by a name
+  worked out when the code runs (Python's: `builtins.getattr`); a call of one whose first argument is a name an
+  import binds (`getattr(t, "time")` after `import time as t`) is listed under `dynamic` in the enforcement section,
+  so `--strict` fails on it, since `uses.never` cannot see which member it reads. A `getattr` of a parameter or an
+  object is not listed. The README says, under `never`, what `uses.never` follows and what it does not.
 
 ### Changed
 
@@ -39,6 +44,10 @@ All notable changes to this project are written here. The format follows
   back edges sees one finding per group, not one per path through them.
 
 ### Fixed
+
+- `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
+  `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
+  there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.
 
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as

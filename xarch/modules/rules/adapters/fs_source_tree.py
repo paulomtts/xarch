@@ -5,7 +5,13 @@ A name in a call or a class base is read as Python scopes it: through the innerm
 comprehension that binds it (a class body only for its own statements), then the module. It is a Ref only when that
 scope binds it with an import, however written, that the reader follows, and nothing else; a parameter, an
 assignment, a def or a second, different binding of the same name in that scope makes it None, and so does a name no
-scope binds.
+scope binds. The one assignment followed is a plain rebinding, `x = y` with a bare name on each side and nothing else
+binding x in that scope: x reaches what y reaches, read from that scope outwards (through a chain of them too; names
+that rebind each other in a ring reach nothing).
+
+A call's callee records its subject: what the call's first argument reaches when it is a name or a chain of attributes
+an import binds (`t` in `getattr(t, "time")` after `import time as t`), so that a read by a computed name of what an
+import binds can be told apart from one of a parameter or an object.
 
 A relative import is followed from the package of the file it is in, the root's name then the folders below it (a
 package file stands for its own folder): up one folder fewer than its dots, then down its module's steps, to a `.py`
@@ -255,6 +261,12 @@ class _Where:
             return self.fs.is_dir(place) or (bool(steps) and self.fs.is_file(place.with_name(f"{steps[-1]}.py")))
         except OSError:
             return False
+
+
+@dataclass(frozen=True)
+class _Alias:
+    """What a plain rebinding `x = y` binds x to: whatever the bare name y reaches, read from the scope of x on."""
+    name: str
 
 
 class _Relative(tuple):
@@ -838,7 +850,7 @@ def _members(node: ast.expr) -> tuple[str, ...] | None:
     return None
 
 
-Scope = dict[str, Ref]
+Scope = dict[str, "Ref | _Alias"]
 _FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 _COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 _NESTED = (*_FUNCTIONS, ast.ClassDef, *_COMPREHENSIONS)
@@ -874,8 +886,15 @@ def _bound(node: ast.AST, where: _Where | None = None) -> tuple[Scope, frozenset
                     bind(n.id, None)
         return found, frozenset(), frozenset()
     body = node.body if isinstance(node.body, list) else [node.body]
+    rebound: set[int] = set()
     for child in _own(body):
-        if isinstance(child, ast.Import):
+        if id(child) in rebound:
+            continue
+        if (isinstance(child, ast.Assign) and len(child.targets) == 1 and isinstance(child.targets[0], ast.Name)
+                and isinstance(child.value, ast.Name)):
+            bind(child.targets[0].id, _Alias(child.value.id))
+            rebound.add(id(child.targets[0]))
+        elif isinstance(child, ast.Import):
             for alias in child.names:
                 steps = tuple(alias.name.split("."))
                 bind(alias.asname or steps[0], steps if alias.asname else steps[:1])
@@ -928,12 +947,20 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str],
         node = node.value
     if not isinstance(node, ast.Name):
         return None, 0
-    scope = next((scope for scope in chain if node.id in scope), None)
-    if scope is None and node.id in bare:
-        return (node.id, *attrs), 0
-    if scope is None:
-        return (("builtins", node.id, *attrs), 0) if node.id in names else (None, 0)
-    base = scope[node.id]
+    name, start, seen = node.id, 0, set()
+    while True:
+        index = next((i for i in range(start, len(chain)) if name in chain[i]), None)
+        if index is None and name in bare:
+            return (name, *attrs), 0
+        if index is None:
+            return (("builtins", name, *attrs), 0) if name in names else (None, 0)
+        base = chain[index][name]
+        if not isinstance(base, _Alias):
+            break
+        if (index, name) in seen:
+            return None, 0
+        seen.add((index, name))
+        name, start = base.name, index
     if base is None:
         return None, 0
     return (*base, *attrs), 0 if isinstance(base, _Relative) else len(base)
@@ -957,6 +984,7 @@ class _Calls(ast.NodeVisitor):
         self.parameter_calls: list[ParameterCall] = []
         self.callbacks: list[Callback] = []
         self.method_calls: list[MethodCall] = []
+        self._subjects: dict[int, tuple[str, ...]] = {}
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -1019,6 +1047,10 @@ class _Calls(ast.NodeVisitor):
                 function, receiver, callables = self._owners[index]
                 self.callbacks.append(Callback(node.lineno, function, node.func.id, node.func.id == receiver,
                                                node.func.id in callables))
+        if node.args and not isinstance(node.args[0], ast.Starred):
+            subject = _ref(node.args[0], self._chain, self._bare)
+            if subject is not None:
+                self._subjects[id(node.func)] = subject
         func = _ref(node.func, self._chain, self._bare)
         if func is None and isinstance(node.func, ast.Attribute):
             self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
@@ -1085,7 +1117,7 @@ class _Calls(ast.NodeVisitor):
     def _use(self, node: ast.expr) -> None:
         name, bound = _reached(node, self._chain, self._builtins, self._bare)
         if name is not None:
-            self.uses.append(Use(node.lineno, name, bound))
+            self.uses.append(Use(node.lineno, name, bound, self._subjects.get(id(node))))
 
 
 def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Function, ...],

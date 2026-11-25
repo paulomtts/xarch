@@ -41,6 +41,9 @@ extensions: [.py]
 package_files: [__init__.py]
 interface: [{base: typing.Protocol}, {base: typing_extensions.Protocol}]
 dynamic: [importlib.import_module, importlib.__import__, builtins.__import__]
+# dynamic_attributes: the callables that read a member of an object by a name worked out when the code runs; a call of
+# one on a name an import binds is listed as dynamic, since no check can follow the name it reads.
+dynamic_attributes: [builtins.getattr]
 namespace: builtins
 cache: __pycache__
 standard: interpreter

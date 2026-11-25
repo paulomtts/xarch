@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 import xarch
-from tests.bootstrap.project import PURE, problems
+from tests.bootstrap.project import APP, PURE, TESTS, problems, source_check, write
+from xarch.modules.rules.contract import DYNAMIC, At, FindingView
 
 BUNDLED = Path(xarch.__file__).parent / "architectures"
 DOMAIN = "modules/docs/domain/document.py"
@@ -74,3 +75,38 @@ def test_a_contract_file_is_found_the_same_whether_published_includes_pure_or_wr
         f"app/{contract}:1: contract/ of modules/docs may not import typing.Any (parts.contract.uses.never)",
         f"app/{contract}:4: contract/ of modules/docs may not use datetime.datetime.now (parts.contract.uses.never)"]
     assert not any("pure" in line or "published" in line for line in found)
+
+
+@pytest.mark.parametrize("body, problem", [
+    pytest.param("from datetime import datetime as D\n\nclock = D\n\n\ndef stamp():\n    return clock.now()\n",
+                 f"app/{DOMAIN}:7: domain/ of modules/docs may not use datetime.datetime.now (parts.domain.uses.never)",
+                 id="a name bound to an imported name, then used under the new name"),
+    pytest.param("import time as t\n\n\ndef stamp():\n    tick = t\n    return tick.time()\n",
+                 f"app/{DOMAIN}:6: domain/ of modules/docs may not use time.time (parts.domain.uses.never)",
+                 id="the same rebinding in a function"),
+])
+def test_a_plain_rebinding_in_the_same_file_is_followed(tmp_path, body, problem):
+    assert [p for p in problems(tmp_path, profile="cli", app={DOMAIN: body}) if "uses.never" in p] == [problem]
+
+
+@pytest.mark.parametrize("body, line", [
+    pytest.param('import time as t\n\n\ndef stamp():\n    return getattr(t, "time")()\n', 5,
+                 id="getattr on a module an import binds"),
+    pytest.param('import importlib\n\n\ndef stamp():\n    return importlib.import_module("time").time()\n', 5,
+                 id="importlib.import_module"),
+    pytest.param('def stamp():\n    return __import__("time").time()\n', 2, id="__import__"),
+])
+def test_a_name_read_by_a_name_worked_out_at_run_time_is_no_violation_but_is_listed_as_dynamic(tmp_path, body, line):
+    """never-use cannot follow it, so it is listed in the enforcement section, which `--strict` fails on."""
+    app_files = {k: v for k, v in {**APP, DOMAIN: body}.items() if v is not None}
+    result = source_check(write(tmp_path / "app", app_files), "cli", write(tmp_path / "tests", TESTS))
+    assert [v for v in result.violations if v.rule == "never-use"] == []
+    assert At(f"app/{DOMAIN}", line) in result.enforcement.dynamic
+    assert FindingView(DYNAMIC, f"app/{DOMAIN}:{line}") in result.enforcement.strict
+
+
+def test_a_getattr_of_anything_no_import_binds_is_not_listed(tmp_path):
+    body = 'class Doc:\n    title = ""\n\n    def get(self, name):\n        return getattr(self, name)\n'
+    app_files = {k: v for k, v in {**APP, DOMAIN: body}.items() if v is not None}
+    result = source_check(write(tmp_path / "app", app_files), "cli", write(tmp_path / "tests", TESTS))
+    assert [at for at in result.enforcement.dynamic if at.file == f"app/{DOMAIN}"] == []
