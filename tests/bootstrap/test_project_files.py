@@ -108,6 +108,17 @@ def test_init_writes_the_agent_instructions_unpinned_and_short_naming_the_comman
 
 
 @pytest.mark.parametrize("profile", PROFILES)
+def test_the_agent_instructions_rely_on_where_the_fix_lines_and_the_placement_order_not_on_reading_the_docs(
+        tmp_path, profile):
+    init(tmp_path / "app", profile)
+    opening = " ".join((tmp_path / "AGENTS.md").read_text().split("\n## ")[0].split())
+    assert "before you change anything" not in opening
+    for needed in ["`xarch where <path>`", "`fix:` line", "`Placement order` (section 7 of "
+                   "`docs/project/architecture.md`", "reference", "not required"]:
+        assert needed in opening, needed
+
+
+@pytest.mark.parametrize("profile", PROFILES)
 def test_the_agent_instructions_say_what_to_do_with_no_key_and_that_calibrate_is_the_maintainer_s_to_run(tmp_path,
                                                                                                           profile):
     init(tmp_path / "app", profile)

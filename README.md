@@ -1256,10 +1256,11 @@ Both bundled profiles list three files: the guard test, `AGENTS.md` and `ruff.to
 project edits them.
 
 `AGENTS.md` (beside the app folder, about 60 lines) is written for a coding agent that has never seen xarch: what governs
-the project (the profile and `docs/project/`), to run `xarch where <path>` before creating or moving a file and to
-take the first litmus test a piece of code passes, to run `xarch check --strict` (what the guard test runs, so a weak
-finding fails it too) and `ruff check` before finishing, how tests are
-written, how to run `xarch review` as a second, advisory reading (with no key set it refuses: skip it, or run it with
+the project (the profile); that it works from `xarch where <path>`, the `fix:` lines of `check` and the Placement
+order (section 7 of `docs/project/architecture.md`, about 15 lines), the two project docs (about 20k tokens) being
+reference, not required reading; to run `xarch where <path>` before creating or moving a file and to take the first
+litmus test a piece of code passes; to run `xarch check --strict` (what the guard test runs, so a weak finding fails
+it too) and `ruff check` before finishing; how tests are written; how to run `xarch review` as a second, advisory reading (with no key set it refuses: skip it, or run it with
 `--offline` when the project commits its answer cache; `xarch review calibrate` is the maintainer's), and what not to
 do to get a green check: move code into a folder no part covers, switch a guard off or loosen the profile, edit the
 guard test, skip a test. It is static text (it names the app folder with `{{app}}`).

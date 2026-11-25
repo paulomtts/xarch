@@ -37,6 +37,9 @@ All notable changes to this project are written here. The format follows
   `--strict` fails on, so a weak finding (`holds`, `immutable`, `pass-through`, a file `dead-code`'s `untested` finds)
   now fails the project's test suite as soon as it appears instead of staying advice. The guard test is pinned, so a
   project written by 0.3.0 sees it listed as changed until it takes the new one.
+- The `AGENTS.md` `init` writes no longer tells an agent to read `docs/project/architecture.md` and
+  `docs/project/testing.md` (about 20k tokens) before changing anything: it points at `xarch where <path>`, the
+  `fix:` lines of `xarch check` and the Placement order section, and names the two docs as reference, not required.
 - The README's list of weak findings names every kind the enforcement section lists as `weak` (it left out `holds`,
   `immutable`, `dead-code`'s `untested` and `tests_only` findings, stale `known` entries and the `list` findings of a
   profile's own checks); the code was right.

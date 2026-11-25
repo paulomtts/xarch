@@ -1,17 +1,17 @@
 # Instructions for coding agents
 
 This project's architecture is a profile (the `[tool.xarch]` table of `pyproject.toml` names it), enforced by `xarch`.
-The code is in `{{app}}/`. Read `docs/project/architecture.md` (where code goes, what may import what) and
-`docs/project/testing.md` (how it is tested) before you change anything. Pass `--app <folder>` to `xarch` when the app
-folder is not `app/`.
+The code is in `{{app}}/` (pass `--app <folder>` to `xarch` when it is not `app/`). Work from `xarch where <path>`, the
+`fix:` line under each violation `xarch check` reports, and `Placement order` (section 7 of
+`docs/project/architecture.md`, a short list); that page and `docs/project/testing.md` are reference, not required.
 
 ## Before you create or move a file
 
 - Run `xarch where <path>`. It says which part the path belongs to, what the part is for, what it may import, which
   outside packages and names it may or may not use, and where its test goes. It works for a path that does not exist
   yet, and for a test path.
-- When you do not know where a piece of code belongs, run the litmus tests in the order of `Placement order` in
-  `docs/project/architecture.md`: the first one the code passes decides where it goes.
+- When you do not know where code belongs, run the litmus tests in the order of `Placement order`: the first one the
+  code passes decides where it goes.
 
 ## Before you finish any change
 
