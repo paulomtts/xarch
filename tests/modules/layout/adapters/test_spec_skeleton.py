@@ -45,3 +45,26 @@ def test_without_beside_there_is_no_beside_and_with_it_the_test_files_and_the_ke
             return near
 
     assert SpecSkeleton(Near()).beside("cli") == Beside(("test_*.py",), (("architecture",), ("fakes",)))
+
+
+OPTIONAL = Skeleton(
+    top_level=(Entry(("kernel",), True, True), Entry(("api",), True, False, True), Entry(("api", "v1"), True, True,
+                                                                                     when=("api",)),
+               Entry(("main.py",), False, True, True)),
+    repeating=(Repeating("module", ("modules",), (Entry(("domain",), True, True),
+                                                  Entry(("config.py",), False, True, True),
+                                                  Entry(("hooks",), True, False, True),
+                                                  Entry(("hooks", "run.py"), False, True, when=("hooks",)))),))
+
+
+class Sparse:
+    def skeleton(self, profile: str) -> Skeleton:
+        return OPTIONAL
+
+
+def test_an_optional_part_is_required_nowhere_and_what_it_holds_only_where_it_is_there():
+    skeleton = SpecSkeleton(Sparse())
+    assert (skeleton.top_level("p"), skeleton.top_level_files("p")) == ([("kernel",), ("api", "v1")], [])
+    assert skeleton.each_parts("p", ("modules",)) == [(("domain",), True), (("hooks", "run.py"), False)]
+    assert skeleton.when("p") == {("api", "v1"): ("api",)}
+    assert skeleton.when("p", ("modules",)) == {("hooks", "run.py"): ("hooks",)}

@@ -319,7 +319,8 @@ def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
         _insert(layout, entry.steps, entry.file, entry.name, owners)
         parts[entry.name] = Part(entry.name, entry.steps, ck.string(entry.keys.get("role")),
                                  ck.string(entry.keys.get("litmus")), False,
-                                 entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "")
+                                 entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "",
+                                 optional=entry.keys.get("optional") is True)
     for folder in tree.folders:
         _add_folder(layout, notes, folder)
     return _Layout(parts, layout, notes, tuple(repeats))
@@ -333,8 +334,9 @@ def _own_problems(entry: pt.TreePart) -> list[str]:
             problems.append(f"{where}.{key}: must be a string")
     if "untested" in spec and not ck.line(spec["untested"]):
         problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
-    if "package_only" in spec and not isinstance(spec["package_only"], bool):
-        problems.append(f"{where}.package_only: must be true or false")
+    for key in ("package_only", "optional"):
+        if key in spec and not isinstance(spec[key], bool):
+            problems.append(f"{where}.{key}: must be true or false")
     return problems
 
 

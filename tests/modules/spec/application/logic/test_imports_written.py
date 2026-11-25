@@ -10,7 +10,7 @@ from xarch.profile_values.placement import Target
 NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
                    ":<pattern>")
 
-USE = "use holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
+USE = "use holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"
 """What every unknown-key problem of a part ends with."""
 
 

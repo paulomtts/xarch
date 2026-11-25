@@ -116,7 +116,7 @@ and a key left out means off):
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {preset, beside, shared} | {files*, declared*, globals, skips, tables, mocks, beside, shared}
 parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports: {may, must, libraries}, uses: {never},
-                              tests | untested, package_only, shared,
+                              tests | untested, package_only, shared, optional,
                               holds: {classes: {names, immutable, built_by}, functions: {names},
                                       records: {names, immutable}, exceptions: {names}}}}
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
@@ -246,7 +246,15 @@ The symbols:
   part; one with no key of a part is only a folder, whose value may be one line of text, its note; a file is always a
   part. A part is named by its folder's last step or its file's name before the first dot, or by `name:`, which two
   parts of one name need. `<unit>/` is a repeating folder, one instance per name (`xarch new` takes the word); a
-  profile may have several, each with a word of its own and one parent, and one cannot sit inside another.
+  profile may have several, each with a word of its own and one parent, and one cannot sit inside another. An
+  instance is a folder the layout does not name: a file lying beside the instances (`sql/engine.py` beside
+  `sql/<store>/`) belongs to the part of the folder holding them, or is its own part when the layout names it, and a
+  folder the layout names beside them (`adapters/web/` beside `adapters/<adapter>/`) is never an instance, for the
+  import rules, `cycles` and `where` alike.
+- `optional: true` on a part, a folder or a file, says it may be left out: `structure` does not ask for it, in the app
+  or in any instance of its repeating folder (a `config.py` only some modules hold, a controller only one module has),
+  and `new` and `init` do not make it. Where it is there, its code is checked as any part's, and what the layout puts
+  in it is required.
 - Every list of parts under `imports` writes each target as a reference: `parts.store` is that part in every
   instance of its repeating folder (or, outside one, the part itself), and `<word>.store`, such as `unit.store`, the
   part in the importer's own instance of the `<word>` folder, which the importer lies in too (in a tier's
@@ -370,7 +378,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | Rule id | What it catches | Key |
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
-| `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts`, `parts.name` |
+| `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder; an optional part, and what it holds where it is not there, aside | `parts`, `parts.name`, `parts.optional` |
 | `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match | `parts.imports.may` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
@@ -469,7 +477,7 @@ how many facts it read in the project.
   profile writes itself.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
-  `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
+  `uses.never`, `untested`, `optional`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
   `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `translated` (the `sentence` names the full address, such as
   `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
@@ -525,7 +533,7 @@ enforcement
   too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
   line names that key. For a custom file, each way it is looser than the one it is compared with, compared only on
   the parts and tiers that pair (a part renamed in place is still compared, under its own name): a target added to a part's `imports.may`, a `types_only` mark dropped from an entry of it, an outside package
-  added to its `imports.libraries` (or `everything`), a name of its `uses.never` list no entry covers any more, a part newly `untested`, a part dropped from a tier's
+  added to its `imports.libraries` (or `everything`), a name of its `uses.never` list no entry covers any more, a part newly `untested`, a part newly `optional`, a part dropped from a tier's
   `imports.types_only`, a target added to a tier's `imports.also`, a tier no longer `uses.apply_never`, a name dropped from `testing.skips`, a `files` entry no longer
   `pinned`, a target added to a part's `imports.must` or the key dropped, a part redefined without the `litmus` the
   other gives it, a public name `guards.dead-code.known` accepts that the other's does not, a part

@@ -88,6 +88,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "tests", rules=("tiers",)),
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
+    Key(PART, "optional", rules=("structure",)),
 
     Key(PART_IMPORTS, "may", rules=("may-import",), opens=PART_IMPORTS_MAY),
     Key(PART_IMPORTS, "must", rules=("must-import",)),

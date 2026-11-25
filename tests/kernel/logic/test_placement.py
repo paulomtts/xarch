@@ -1,7 +1,16 @@
 """Where a path sits among path patterns, and which places a rule's target reaches."""
 import pytest
 
-from xarch.kernel.logic.placement import module_steps, place_of, reaches, repeat_of, root_of, stands_for_folder, stem, with_itself
+from xarch.kernel.logic.placement import (
+    module_steps,
+    place_of,
+    reaches,
+    repeat_of,
+    root_of,
+    stands_for_folder,
+    stem,
+    with_itself,
+)
 from xarch.kernel.placement import EVERYTHING, Marks, Place
 from xarch.profile_values.placement import Repeat, Target
 
@@ -170,3 +179,33 @@ def test_python_s_package_file_stands_for_its_folder_with_its_ending_or_without_
     assert [stands_for_folder(path, python) for path in (("a", "__init__.py"), ("a", "__init__"), ("a", "__init__.pyx"))] == [
         True, True, False]
     assert module_steps(("a", "__init__.py"), python) == ("a",)
+
+
+BESIDE = {"sql": ("sql",), "store": ("sql", "*"), "engine": ("sql", "engine.src"), "web": ("adapters", "web"),
+          "adapter": ("adapters", "*"), "pages": ("adapters", "*", "pages")}
+"""A repeating folder beside loose files of its own folder, one of them a part (sql/<store>/ beside sql/engine.src),
+and beside a named folder that is a part (adapters/<adapter>/ beside adapters/web/)."""
+
+
+@pytest.mark.parametrize("path, files, place", [
+    pytest.param(("sql", "schema.src"), (), Place("sql", None, ("schema",)),
+                 id="a loose file beside the instances, given as written, is no instance: its folder's part holds it"),
+    pytest.param(("sql", "schema"), (("sql", "schema"),), Place("sql", None, ("schema",)),
+                 id="a loose file beside the instances, named as the language names it, is no instance"),
+    pytest.param(("sql", "schema"), (), Place("store", "schema"),
+                 id="a name beside the instances not known to be a file is an instance"),
+    pytest.param(("sql", "docs", "pkg.src"), (), Place("store", "docs"), id="a folder's package file is its instance"),
+    pytest.param(("sql", "docs", "repo.src"), (("sql", "docs", "repo"),), Place("store", "docs", ("repo",)),
+                 id="a file inside an instance lies in that instance"),
+    pytest.param(("sql", "engine.src"), (), Place("engine"),
+                 id="a file the layout names beside the instances is its own part"),
+    pytest.param(("adapters", "web", "x.src"), (), Place("web", None, ("x",)),
+                 id="a folder the layout names beside the instances is no instance, whatever the order of the parts"),
+    pytest.param(("adapters", "web", "pages", "x.src"), (), Place("web", None, ("pages", "x")),
+                 id="below a named folder, no part of the instances is matched"),
+    pytest.param(("adapters", "mail", "pages", "x.src"), (), Place("pages", "mail", ("x",)),
+                 id="an instance beside the named folder is one"),
+])
+def test_an_instance_of_a_repeating_folder_is_a_folder_the_layout_does_not_name(path, files, place):
+    assert place_of(BESIDE, path, MARKS, frozenset(files)) == place
+

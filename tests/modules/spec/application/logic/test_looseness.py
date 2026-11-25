@@ -200,6 +200,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (near(True), near(None)),
         (sharing("support"), sharing()),
         (faking("unit"), faking()),
+        (parsed(given(layered(), "api", optional=True)), parsed(layered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -499,6 +500,7 @@ def tight() -> dict:
     pytest.param(given(layered(), "service", imports={"may": ["module.store", "parts.shared", "module.api"], "must": ["module.api"]}),
                  id="a target naming it that a part must import"),
     pytest.param(given(layered(), "api", untested="reached through the service"), id="the part left untested"),
+    pytest.param(given(layered(), "api", optional=True), id="the part made optional"),
     pytest.param(layered(evals={"placement": {"lines": {"api": 0.2}}}), id="the line of the part"),
     pytest.param(covered(guards={"no-twins": {"translated": ["api"]}}), id="the translations no-twins accepts"),
     pytest.param(marked(["module.store", {"module.api": "types_only"}]), id="a target naming it marked types_only"),
@@ -810,3 +812,10 @@ def test_each_tier_fakes_tiers_opens_the_fakes_to_that_the_compared_profile_does
 ])
 def test_fakes_tiers_is_looser_only_for_a_tier_the_compared_profile_leaves_out(custom, base):
     assert loosened(faking(*custom), faking(*base)) == ()
+
+
+def test_a_part_newly_optional_is_looser_and_one_optional_in_both_is_not():
+    assert loosened(parsed(given(layered(), "api", optional=True)), parsed(layered())) == (
+        Loosened("optional", "api", "", "api is newly optional: structure no longer requires it (parts.api.optional)"),)
+    assert loosened(parsed(given(layered(), "api", optional=True)), parsed(given(layered(), "api", optional=True))) == ()
+    assert loosened(parsed(layered()), parsed(given(layered(), "api", optional=True))) == ()

@@ -14,9 +14,18 @@ All notable changes to this project are written here. The format follows
   tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
   holding it, which is its own folder; only two tiers with the same folder are still refused.
+- `optional: true` on a part, a folder or a file, says it may be left out: `structure` reports nothing for it where it
+  is not there, in the app or in any instance of its repeating folder (a file only some instances hold), `new` and
+  `init` do not make it, and where it is there its code is checked as any part's and what the layout puts in it is
+  required. A part newly optional is listed as looser.
 
 ### Fixed
 
+- A file lying beside the instances of a repeating folder (`sql/engine.py` beside `sql/<store>/`) was read as an
+  instance named after it, and a folder the layout names beside them (`adapters/web/` beside `adapters/<adapter>/`)
+  as one too, or not, by the order of the parts: each gave false `may-import` and `cycles` findings and a wrong
+  `where`. An instance is now a folder the layout does not name; such a file belongs to the part of its folder, or to
+  its own part when the layout names it.
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as
   unparsable instead of stopping the run.

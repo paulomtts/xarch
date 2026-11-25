@@ -210,11 +210,16 @@ class ProjectFile:
 class Entry:
     """
     path: a folder or a file of the layout, e.g. ("application", "controller<ending>")
-    leaf: a file, or a directory that holds nothing in the spec
+    leaf: a file, or a directory that holds nothing in the spec but optional parts
+    optional: it is an optional part: it need not be there
+    when: the optional part it lies in, the deepest, by its path as path is written: it need be there only when that
+        part is; () for none
     """
     path: tuple[str, ...]
     is_dir: bool
     leaf: bool
+    optional: bool = False
+    when: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

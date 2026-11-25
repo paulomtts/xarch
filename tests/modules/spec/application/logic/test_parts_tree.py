@@ -10,7 +10,7 @@ from xarch.modules.spec.domain.values import Language
 
 RESERVED = ("has the step `<parts>`: `<parts>` is reserved: `parts.` names a part in every instance; give the "
             "repeating folder another word")
-KNOWN = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
+KNOWN = "holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"
 
 
 def walked(value):

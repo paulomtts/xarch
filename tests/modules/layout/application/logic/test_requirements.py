@@ -2,7 +2,7 @@
 import pytest
 
 from tests.modules.layout.builders import PYTHON_NAMING
-from xarch.modules.layout.application.logic.requirements import missing, requirements
+from xarch.modules.layout.application.logic.requirements import anchors, missing, requirements
 from xarch.modules.layout.domain.structure import Repeated, Requirement
 
 PARTS = [(("domain",), True), (("application", "controller.py"), False)]
@@ -85,3 +85,29 @@ def test_missing_reports_what_is_not_present_with_its_owner_and_fix():
     found = missing([kernel, domain], [kernel])
     assert [(str(v), v.rule, v.fix) for v in found] == [
         ("app/modules/docs: missing domain/", "structure", "create app/modules/docs/domain/")]
+
+
+def test_what_lies_in_an_optional_part_is_required_only_where_that_part_is_there():
+    when = {("api", "routes.py"): ("api",)}
+    repeated = [Repeated(("modules",), [(("hooks", "run.py"), False)], ["docs"], {("hooks", "run.py"): ("hooks",)})]
+    required = requirements("app", [("kernel",)], repeated, [("api", "routes.py")], PYTHON_NAMING, when)
+    assert required == [
+        Requirement("app", ("kernel",), True, "kernel/"),
+        Requirement("app", ("api", "routes.py"), False, "api/routes.py", ("api",)),
+        Requirement("app/modules/docs", ("modules", "docs", "hooks", "run.py"), False, "hooks/run.py",
+                    ("modules", "docs", "hooks"))]
+    assert anchors(required) == [Requirement("", ("api",), True, "api/"),
+                                 Requirement("", ("modules", "docs", "hooks"), True, "modules/docs/hooks/")]
+
+
+@pytest.mark.parametrize("present, found", [
+    pytest.param([], [], id="an optional part that is not there asks for nothing it holds"),
+    pytest.param([Requirement("", ("api",), True, "api/")], ["app: missing api/routes.py"],
+                 id="an optional part that is there asks for what it holds"),
+    pytest.param([Requirement("", ("api",), True, "api/"),
+                  Requirement("app", ("api", "routes.py"), False, "api/routes.py", ("api",))], [],
+                 id="an optional part that holds what it should is complete"),
+])
+def test_missing_reports_what_an_optional_part_holds_only_where_the_part_is_there(present, found):
+    required = [Requirement("app", ("api", "routes.py"), False, "api/routes.py", ("api",))]
+    assert [str(v) for v in missing(required, present)] == found

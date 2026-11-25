@@ -46,7 +46,8 @@ def violations(app: Iterable[SourceFile], profile: Profile, root: str) -> list[V
     marks = profile.language.marks
     files = [(file, *dotted(file.path, marks)) for file in sorted(app, key=lambda f: f.name) if file.error is None]
     known = frozenset(steps for _, steps, _ in files)
-    where = {steps: place(profile, steps) for _, steps, _ in files}
+    plain = frozenset(steps for _, steps, package in files if not package)
+    where = {steps: place(profile, steps, plain) for _, steps, _ in files}
     defined = _defined(files, where, profile)
     passed = {(steps, name): target for file, steps, package in files
               for _, target, name in named_targets(file.imports, package, known, root) if name is not None}

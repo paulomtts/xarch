@@ -64,6 +64,7 @@ SHAPE = (
     Shown('parts.tests', 1, 'the tier whose tests cover the part', False, True),
     Shown('parts.untested', 1, 'why no tier tests the part', False, True),
     Shown('parts.package_only', 1, 'the part is imported only as a package', False, True),
+    Shown('parts.optional', 1, 'the part may be left out', False, True),
     Shown('never', 0, 'named lists of names a part never uses', False, True),
     Shown('reserved', 0, 'standard-library names only some parts may import', False, True),
     Shown('layers', 0, 'chains of parts from the inside out', False, True),

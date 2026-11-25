@@ -188,3 +188,26 @@ def test_under_beside_without_a_tests_root_nothing_below_it_is_read():
     found = LayoutController(StructureCheckService(FakeDisk(TOP | MODULE, {CONTROLLER}), NEAR)).check(
         CheckStructure(ROOT, "app", "cli")).violations
     assert found == ()
+
+
+SPARSE = FakeSkeleton([("kernel",), ("api", "v1")], {("modules",): [(("domain",), True), (("hooks", "run.py"), False)]},
+                      naming=PYTHON_NAMING, when={None: {("api", "v1"): ("api",)},
+                                                  ("modules",): {("hooks", "run.py"): ("hooks",)}})
+"""A layout with an optional folder api/ at the top level holding v1/, and an optional folder hooks/ in each module
+holding run.py."""
+DOCS = {ROOT / "modules", ROOT / "modules/docs", ROOT / "modules/docs/domain"}
+
+
+@pytest.mark.parametrize("given, then", [
+    pytest.param(FakeDisk({ROOT / "kernel", *DOCS}), [],
+                 id="optional parts that are not there ask for nothing"),
+    pytest.param(FakeDisk({ROOT / "kernel", ROOT / "api", *DOCS, ROOT / "modules/docs/hooks"}),
+                 ["app: missing api/v1/", "app/modules/docs: missing hooks/run.py"],
+                 id="optional parts that are there ask for what they hold"),
+    pytest.param(FakeDisk({ROOT / "kernel", ROOT / "api", ROOT / "api/v1", *DOCS, ROOT / "modules/docs/hooks"},
+                          {ROOT / "modules/docs/hooks/run.py"}), [],
+                 id="optional parts that hold what they should are complete"),
+])
+def test_what_an_optional_part_holds_is_required_only_where_the_part_is_there(given, then):
+    found = LayoutController(StructureCheckService(given, SPARSE)).check(CheckStructure(ROOT, "app", "cli"))
+    assert [str(v) for v in found.violations] == then

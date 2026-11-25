@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from xarch.kernel.placement import EACH
 from xarch.modules.spec.application.logic.checked_tier import checked_tier
 from xarch.modules.spec.application.logic.docs_files import DOCS_ROOT
 from xarch.modules.spec.application.logic.layout_walk import docs_name, folders, walk
@@ -46,13 +47,17 @@ class PublishingService:
     def skeleton(self, profile: str) -> Skeleton:
         architecture = self._architectures.load(profile)
         language = architecture.language
-        repeating = tuple(Repeating(repeat.word, repeat.root, tuple(walk(architecture.instance_tree(repeat))))
+        optional = [part.path for part in architecture.parts.values() if part.optional]
+        repeating = tuple(Repeating(repeat.word, repeat.root,
+                                    tuple(walk(architecture.instance_tree(repeat), (),
+                                               {path[len(repeat.root) + 1:] for path in optional
+                                                if path[:len(repeat.root) + 1] == (*repeat.root, EACH)})))
                           for repeat in architecture.repeats)
         checked = language.checked
         framework = architecture.framework
         kept = (*(tier.folder for tier in architecture.tiers if tier.folder),
                 *((architecture.fakes.folder,) if architecture.fakes is not None else ()))
-        return Skeleton(top_level=tuple(walk(architecture.top_level_tree())), repeating=repeating,
+        return Skeleton(top_level=tuple(walk(architecture.top_level_tree(), (), set(optional))), repeating=repeating,
                         title=checked.title, package_file=checked.package_file, private=checked.private,
                         reserved=language.reserved_names, names=language.names,
                         beside=framework is not None and framework.beside,

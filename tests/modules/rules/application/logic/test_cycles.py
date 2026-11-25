@@ -109,6 +109,20 @@ def test_a_module_and_a_plugin_of_the_same_name_are_two_instances():
                                         hooks("x", imp(2, "app.kernel", "ids"))], TWO, "app")] == []
 
 
+BESIDE = profile(parts={**PROFILE.parts, "web": ("modules", "web")})
+"""PROFILE with a part, web/, that the layout names beside the instances of modules/<module>/."""
+
+
+@pytest.mark.parametrize("files, checked", [
+    pytest.param([source("modules/engine.py", uses(1, "a")), adapter("a", imp(1, "app.modules", "engine"))], PROFILE,
+                 id="a file beside the instances is none of them"),
+    pytest.param([source("modules/web/routes.py", uses(1, "a")), adapter("a", imp(1, "app.modules.web", "routes"))],
+                 BESIDE, id="a folder the layout names beside the instances is none of them"),
+])
+def test_what_lies_beside_the_instances_of_a_repeating_folder_is_in_no_cycle(files, checked):
+    assert problems(*files, checked=checked) == []
+
+
 def test_instances_of_one_repeating_folder_still_form_a_cycle_beside_another_one():
     found = violations([adapter("a", uses(1, "b")), adapter("b", uses(1, "a")), hooks("p", imp(1, "app.kernel"))],
                        TWO, "app")

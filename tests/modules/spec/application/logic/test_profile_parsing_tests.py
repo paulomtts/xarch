@@ -505,7 +505,7 @@ def test_a_part_that_is_not_a_text_for_its_tier_is_refused():
     assert problems(document) == ["layered.yaml: parts.api.tests: must be the name of a tier: use unit, integration"]
 
 
-PART_KEYS = ("holds, imports, litmus, name, package_only, role, shared, tests, untested, uses")
+PART_KEYS = ("holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses")
 RETIRED_TIER = f"unknown key 'tier': renamed in 0.3.0: write tests; use {PART_KEYS}"
 NO_TIER = "no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"
 

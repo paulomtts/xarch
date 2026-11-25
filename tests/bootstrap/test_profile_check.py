@@ -12,7 +12,7 @@ from xarch.bootstrap.app import app
 from xarch.modules.spec.domain.profile_keys import PART
 
 runner = CliRunner()
-KNOWN = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
+KNOWN = "holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"
 
 
 @pytest.fixture(autouse=True)

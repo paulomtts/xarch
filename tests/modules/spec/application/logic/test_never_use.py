@@ -59,7 +59,7 @@ def unit_uses(uses) -> dict:
     return document
 
 
-PART_USE = ("holds, imports, litmus, name, package_only, role, shared, tests, untested, uses")
+PART_USE = ("holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses")
 TIER_USE = "docs, folder, imports, litmus, plain_tables, proves, uses"
 FILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
             "reserved, review, testing, tiers")

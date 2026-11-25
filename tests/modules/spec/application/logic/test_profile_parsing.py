@@ -156,12 +156,23 @@ def test_a_part_s_own_folders_follow_the_parts_in_the_layout_as_today():
                  id="texts that are no strings"),
     pytest.param({"x/": {"role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),
+    pytest.param({"x/": {"role": "r", "optional": "yes"}},
+                 ["layered.yaml: parts.x.optional: must be true or false"], id="optional that is no boolean"),
     pytest.param({"x/": {"role": "r", "untested": "two\nlines"}},
                  ["layered.yaml: parts.x.untested: must be one line of text: why no tier tests the part"],
                  id="an untested reason of two lines"),
 ])
 def test_a_bad_part_is_refused_with_every_problem(parts, expected):
     assert problems(layered(parts=parts)) == expected
+
+
+@pytest.mark.parametrize("written, optional", [
+    pytest.param({"optional": True}, True, id="a part marked optional"),
+    pytest.param({"optional": False}, False, id="a part marked not optional"),
+    pytest.param({}, False, id="a part that does not say"),
+])
+def test_a_part_is_optional_only_when_it_says_so(written, optional):
+    assert parsed(layered(parts={"x/": {"role": "r", **written}})).parts["x"].optional is optional
 
 
 def test_two_repeating_steps_on_the_way_to_a_part_are_refused():

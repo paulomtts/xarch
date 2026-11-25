@@ -84,6 +84,8 @@ class Part:
     imports_types_only: the targets of its imports.may marked types_only, in the order of may: its files may import
                         what they reach and use it as types, but never call it
     shared: the fewest users each public name it defines must have, being there to be shared; None: not shared
+    optional: its folder or file need not be there (`optional: true`): structure requires it nowhere, and what the
+        layout puts in it only where it is there
     """
     name: str
     path: tuple[str, ...]
@@ -95,6 +97,7 @@ class Part:
     holds: tuple[Held, ...] = ()
     imports_types_only: tuple[Target, ...] = ()
     shared: int | None = None
+    optional: bool = False
 
     @property
     def in_instance(self) -> bool:

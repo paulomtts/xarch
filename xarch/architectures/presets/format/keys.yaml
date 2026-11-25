@@ -546,6 +546,16 @@ keys:
     example: |
       <<part>>
           package_only: true
+  parts.<part>.optional:
+    meaning: the part may be left out
+    accepts: >-
+      true: the folder or file of the part need not be there, in the app nor in any instance of its repeating folder,
+      and `structure` reports nothing for it where it is not (a file only some instances hold, such as a settings
+      file); where it is there, its code is checked as any part's, and what the layout puts in it is required. `new`
+      and `init` do not make it. `profile check` lists a part newly optional as looser
+    example: |
+      <<part>>
+          optional: true
   parts.<part>.uses.never:
     meaning: the list of names the part never uses
     accepts: >-

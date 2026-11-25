@@ -237,7 +237,7 @@ parts:
     role: the clients
 """
 
-KNOWN = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
+KNOWN = "holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"
 
 
 def test_a_profile_of_0_2_0_is_refused_with_where_each_part_goes(tmp_path):

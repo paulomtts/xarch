@@ -6,19 +6,21 @@ what the profile does not govern is not checked.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import replace
 
-from xarch.kernel.logic.placement import module_steps, place_of, reaches, with_itself
+from xarch.kernel.logic.placement import module_steps, named_beside, place_of, reaches, with_itself
 from xarch.kernel.placement import EACH, Marks, Place
 from xarch.modules.rules.domain.profile import Profile
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.placement import Repeat, Target
 
 
-def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
-    """Where a path below the root package sits: in a part, Place(None) in the structure, or None if ungoverned."""
-    found = place_of(profile.parts, path, profile.language.marks)
+def place(profile: Profile, path: tuple[str, ...], files: Collection[tuple[str, ...]] = frozenset()) -> Place | None:
+    """Where a path below the root package sits: in a part, Place(None) in the structure, or None if ungoverned; files
+    are the paths, as the language names them, known to be files, none of which is an instance of a repeating
+    folder."""
+    found = place_of(profile.parts, path, profile.language.marks, files)
     if found.part is not None:
         return found
     if not path or any(matches(folder, path, profile.language.marks) for folder in profile.folders):
@@ -29,7 +31,7 @@ def place(profile: Profile, path: tuple[str, ...]) -> Place | None:
 def file_place(profile: Profile, path: tuple[str, ...]) -> Place | None:
     """Where a source file sits, by its path below the root package as written: its place as the language names it
     (see place)."""
-    return place(profile, module_steps(path, profile.language.marks))
+    return place(profile, path)
 
 
 def excluded_by(profile: Profile, path: tuple[str, ...]) -> Excluded | None:
@@ -62,12 +64,19 @@ def instance_folder(profile: Profile, where: Place) -> tuple[str, ...] | None:
     return (*pattern[:pattern.index(EACH)], where.instance)
 
 
-def instance_root(repeats: Iterable[Repeat], path: tuple[str, ...]) -> tuple[str, ...] | None:
+def instance_root(repeats: Iterable[Repeat], path: tuple[str, ...], patterns: Iterable[tuple[str, ...]] = (),
+                  files: Collection[tuple[str, ...]] = frozenset()) -> tuple[str, ...] | None:
     """The folder of the instance a path lies below (src/billing for src/billing/x): of the deepest repeating folder
-    whose folder the path lies below, an instance of it named; None below none."""
+    whose folder the path lies below, an instance of it named; None below none, and None for a step the patterns
+    write by name in that folder or for a file of files lying in it, neither of which is an instance."""
     below = [r for r in repeats if len(path) > len(r.root) and path[:len(r.root)] == r.root]
     deepest = max(below, key=lambda r: len(r.root), default=None)
-    return None if deepest is None else path[:len(deepest.root) + 1]
+    if deepest is None:
+        return None
+    folder = path[:len(deepest.root) + 1]
+    if folder[-1] in named_beside(patterns, deepest.root) or (folder == path and path in files):
+        return None
+    return folder
 
 
 def targets_of(profile: Profile, part: str) -> tuple[Target, ...]:

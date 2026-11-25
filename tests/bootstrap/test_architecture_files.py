@@ -229,12 +229,12 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                  id='files of the wrong shape'),
     pytest.param('name: n\ntesting: pytest\ntiers: {unit: {}}\nparts: {a/: {role: r, tier: secret-value}}\n',
                  ["parts.a: unknown key 'tier': renamed in 0.3.0: write tests; use holds, imports, "
-                  "litmus, name, package_only, role, shared, tests, untested, uses",
+                  "litmus, name, optional, package_only, role, shared, tests, untested, uses",
                   "parts.a: no tier tests it: give it `tests: <tier>`, or `untested: <reason>`"],
                  id='a part still writing tier'),
     pytest.param('name: n\nnever: {pure: [socket]}\nparts: {a/: {role: r, forbidden: secret-list}}\n',
                  ["parts.a: unknown key 'forbidden': moved in 0.3.0: write uses: {never: <list>}; use holds, "
-                  "imports, litmus, name, package_only, role, shared, tests, untested, uses"],
+                  "imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"],
                  id='a part still writing forbidden'),
     pytest.param('name: n\nparts: {a/: {role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, guards, hints, "

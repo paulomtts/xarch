@@ -29,6 +29,12 @@ class Skeleton(Protocol):
         in root."""
         ...
 
+    def when(self, profile: str, root: tuple[str, ...] | None = None) -> dict[tuple[str, ...], tuple[str, ...]]:
+        """For each folder or file the layout requires only where an optional part holding it is there, that part's
+        path, the deepest: both below the app root, outside the repeating folders; or, root given, both below an
+        instance of the repeating folder in root."""
+        ...
+
     def beside(self, profile: str) -> Beside | None:
         """Where the tests sit when every test of a part sits beside the code it tests; None when the profile keeps
         them in the mirrored tests tree."""
