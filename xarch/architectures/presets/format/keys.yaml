@@ -1117,7 +1117,10 @@ keys:
       <<fakes>>
   fakes.prefix:
     meaning: how a fake's name starts
-    accepts: "the start of a class name: the fake of DocumentRepo is FakeDocumentRepo"
+    accepts: >-
+      the start of a class name: the fake of DocumentRepo is FakeDocumentRepo; or a list of starts, each once, such as
+      [InMemory, Fake]: a fake may start with any of them, `stand-ins` and `dead-code` read each, and a fix writes the
+      first
     example: |
       <<two>>
       <<fakes>>

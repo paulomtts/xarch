@@ -611,6 +611,25 @@ def test_fakes_name_their_folder_below_the_tests_folder_the_parts_they_stand_in_
         ("support", "fakes"), ("store",))
 
 
+def test_fakes_may_be_named_by_several_prefixes_the_first_the_one_a_fix_writes():
+    architecture = parsed(covered(fakes={"folder": "fakes", "for": ["store"], "prefix": ["InMemory", "Fake"]}))
+    assert architecture.fakes == Fakes(("fakes",), ("store",), "InMemory", prefixes=("InMemory", "Fake"))
+    assert parsed(covered(fakes={"folder": "fakes", "for": ["store"], "prefix": ["Fake"]})).fakes == Fakes(
+        ("fakes",), ("store",), "Fake")
+
+
+@pytest.mark.parametrize("prefix", [
+    pytest.param([], id="an empty list"),
+    pytest.param(["Fake", ""], id="an empty prefix in the list"),
+    pytest.param(["Fake", 3], id="a prefix that is no text"),
+    pytest.param(["Fake", "Fake"], id="a prefix twice"),
+])
+def test_a_list_of_prefixes_is_refused_when_one_is_no_start_of_a_class_name(prefix):
+    assert problems(covered(fakes={"folder": "fakes", "for": ["store"], "prefix": prefix})) == [
+        "layered.yaml: fakes.prefix: must be the start of a class name, such as Fake, or a list of such starts, each "
+        "once"]
+
+
 def test_fakes_name_the_tiers_that_may_import_them_besides_those_testing_what_they_stand_in_for():
     assert parsed(covered(fakes={"folder": "fakes", "for": ["store"], "tiers": ["unit", "integration"]})).fakes == (
         Fakes(("fakes",), ("store",), tiers=("unit", "integration")))

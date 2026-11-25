@@ -135,6 +135,12 @@ def _named(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
     return found.fact.name is not None and name_matches(value, found.fact.name)
 
 
+def _fake_named(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    fakes, name = profile.fakes, found.fact.name
+    return fakes is not None and name is not None and any(
+        name.startswith(prefix) and name != prefix for prefix in fakes.prefixes or (fakes.prefix,))
+
+
 def _trait(name: str) -> Asked:
     return lambda found, facts, profile, value: name in found.fact.traits
 
@@ -210,6 +216,7 @@ _FACT: dict[str, Asked] = {
     "relative": _relative, "standard": _standard, "reserved": _reserved,
     "listed-by-another-part": _listed_by_another_part, "app-package": _app_package, "own-code": _own_code,
     "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "special": _special, "named": _named,
+    "fake-named": _fake_named,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
                                        "unreadable", "doc", "public")},

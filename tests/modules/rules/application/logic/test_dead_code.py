@@ -1,4 +1,6 @@
 """The dead-code check on hand-made source files: a port no other file of the app names, and a fake no test names."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.rules.application.logic.checks import dead_code as violations
@@ -208,3 +210,14 @@ def test_under_a_language_with_no_private_prefix_the_reader_alone_says_which_nam
     braced = profile(dead_code=True, tests_only=True, language=BRACE)
     file = source("modules/docs/application/logic/rule.ts", classes=(cls,), language=BRACE)
     assert listed_only(file, checked=braced) == expected
+
+
+def test_with_several_prefixes_a_fake_of_any_of_them_no_test_names_is_reported():
+    two = profile(dead_code=True, fakes=replace(ON.fakes, prefix="InMemory", prefixes=("InMemory", "Fake")))
+    tests = [in_tests("fakes/repo.py", classes=(fake("FakeRepo"), fake("InMemoryStore", 4, "FakeRepo"),
+                                                fake("Recorder", 8), fake("InMemory", 9))),
+             in_tests("modules/docs/application/test_doc.py", named=frozenset({"InMemoryStore"}))]
+    assert problems([PORTS, uses(SERVICE, "Repo", "Notifier")], tests, two) == []
+    assert problems([PORTS, uses(SERVICE, "Repo", "Notifier")], tests[:1], two) == [
+        "tests/fakes/repo.py:1: FakeRepo is a fake that no test names (dead-code)",
+        "tests/fakes/repo.py:4: InMemoryStore is a fake that no test names (dead-code)"]

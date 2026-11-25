@@ -402,7 +402,9 @@ def _dead_code(profile: Profile) -> tuple[Rule, ...]:
     fakes = Rule("dead-code", Scope(TESTS, where=_all(f"below {folder}")), ("class",), MUST_BE_REACHED, EXISTING,
                  (Saying("{name} is a fake that no test names (dead-code)",
                          "delete {name}, or write the test that uses it"),),
-                 keep=_all(f"named {prefix}*"), exempt=_all(f"named {prefix}") if prefix else (), links=("names-mentioned",),
+                 keep=_all(f"named {prefix}*") if not profile.fakes.prefixes else _all("fake-named"),
+                 exempt=_all(f"named {prefix}") if prefix and not profile.fakes.prefixes else (),
+                 links=("names-mentioned",),
                  roots=Scope(TESTS, where=_all(f"not below {folder}")), spread=("class",), key="guards.dead-code")
     return (*ports, fakes)
 

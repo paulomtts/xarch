@@ -28,6 +28,9 @@ All notable changes to this project are written here. The format follows
 - A chain of `layers` may be written as a map, `{parts: [...], types_only: true}`, so that an entry of a part's
   `imports.may` marked `types_only` naming a part after it no longer breaks the chain; layering stays strict by
   default, and a chain written as a list reads as before.
+- `fakes.prefix` takes a list of starts besides one (`prefix: [InMemory, Fake]`): a fake may start with any of them,
+  `stand-ins` and `dead-code` read each, a fix writes the first, and the new filter `fake-named` says the same in a
+  check of one's own. A single start reads as before.
 
 ### Fixed
 

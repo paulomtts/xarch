@@ -768,9 +768,15 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     count = len(problems)
     problems += ck.unknown_keys(value, names_of(FAKES), where, FAKES)
     problems += [f"{where}: missing `{key}`" for key in required_of(FAKES) if key not in value]
-    prefix = value.get("prefix", "")
-    if "prefix" in value and (not isinstance(prefix, str) or not is_name(prefix, language.names)):
-        problems.append(f"{where}.prefix: must be the start of a class name, such as Fake")
+    written = value.get("prefix", "")
+    starts = written if isinstance(written, list) else [written]
+    if "prefix" in value and (not starts or len(set(map(str, starts))) < len(starts)
+                              or any(not isinstance(start, str) or not is_name(start, language.names)
+                                     for start in starts)):
+        problems.append(f"{where}.prefix: must be the start of a class name, such as Fake"
+                        + (", or a list of such starts, each once" if isinstance(written, list) else ""))
+        starts = [""]
+    prefix, prefixes = starts[0], tuple(starts) if len(starts) > 1 else ()
     folder = value.get("folder")
     steps = tuple(folder.split("/")) if ck.line(folder) and not folder.startswith("/") else ()
     if "folder" in value and (not steps or any(step in ("", ".", "..") or EACH in step for step in steps)):
@@ -780,7 +786,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     opened = _fakes_tiers(value["tiers"], tiers, problems) if "tiers" in value else ()
     if len(problems) != count:
         return None
-    return Fakes(steps, tuple(n for n in names if n in parts), prefix, opened)
+    return Fakes(steps, tuple(n for n in names if n in parts), prefix, opened, prefixes)
 
 
 def _fakes_tiers(value: Any, tiers: Collection[str], problems: list[str]) -> tuple[str, ...]:

@@ -122,7 +122,7 @@ parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...] | {parts*, types_only}}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     docs}}
-fakes:    {folder*, for*, prefix, tiers}
+fakes:    {folder*, for*, prefix | [prefix, ...], tiers}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
@@ -212,6 +212,8 @@ its own folder's: folders and files below the tests root (default none), each ou
 fakes' folder (an entry inside or holding one is refused). A test file there is still a test file, which no test
 imports, and the fakes keep their own rule; the `tiers` message of an import from elsewhere names the shared entries,
 and `xarch where` lists them for a test.
+A fake of the port `X` is named `<prefix>X` (`fakes.prefix`), or, with a list of starts such as `prefix: [InMemory,
+Fake]`, by any of them: `stand-ins` and `dead-code` read each, and a fix writes the first.
 A test may import the fakes (`fakes.folder`) when its tier's subject holds a part `fakes.for` names; `fakes.tiers:
 [<tier>, ...]` (default none) lets the tests of the tiers it lists import them too, a tier with no such part, such as
 one placed by its `folder`, and `stand-ins` then holds their mocks as well. A tier the profile does not have is

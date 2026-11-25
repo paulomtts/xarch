@@ -281,6 +281,8 @@ FILTERS: tuple[Filter, ...] = (
     Filter("special", "the name the fact carries is one the language reserves for itself", FACT, ("name",)),
     Filter("named", "the name the fact carries matches the pattern, `*` standing for any text", FACT, ("name",),
            value=PATTERN),
+    Filter("fake-named", "the name the fact carries is a fake's: one of the starts `fakes.prefix` gives, followed by "
+                         "more", FACT, ("name",)),
     Filter("top-level", "the function is defined at the top level of its file, in no class", FACT, ("top-level",)),
     Filter("forwards", "the method only passes its arguments on to one call on what its object holds", FACT,
            ("forwards",)),
