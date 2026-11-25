@@ -5,7 +5,13 @@ A name in a call or a class base is read as Python scopes it: through the innerm
 comprehension that binds it (a class body only for its own statements), then the module. It is a Ref only when that
 scope binds it with an import, however written, that the reader follows, and nothing else; a parameter, an
 assignment, a def or a second, different binding of the same name in that scope makes it None, and so does a name no
-scope binds.
+scope binds. The one assignment followed is a plain rebinding, `x = y` with a bare name on each side and nothing else
+binding x in that scope: x reaches what y reaches, read from that scope outwards (through a chain of them too; names
+that rebind each other in a ring reach nothing).
+
+A call's callee records its subject: what the call's first argument reaches when it is a name or a chain of attributes
+an import binds (`t` in `getattr(t, "time")` after `import time as t`), so that a read by a computed name of what an
+import binds can be told apart from one of a parameter or an object.
 
 A relative import is followed from the package of the file it is in, the root's name then the folders below it (a
 package file stands for its own folder): up one folder fewer than its dots, then down its module's steps, to a `.py`
@@ -150,6 +156,7 @@ import io
 import pickle
 import re
 import tokenize
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
@@ -317,6 +324,12 @@ class _Where:
         return there
 
 
+@dataclass(frozen=True)
+class _Alias:
+    """What a plain rebinding `x = y` binds x to: whatever the bare name y reaches, read from the scope of x on."""
+    name: str
+
+
 class _Relative(tuple):
     """A path a relative import binds: read as any other, but bound none of its steps, since the import's line names
     none of them from the top (see the module's docstring)."""
@@ -327,7 +340,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
             where: _Where | None = None, declared: tuple[TestForm, ...] = (),
             bound: tuple[tuple[str, ...], ...] = ()) -> SourceFile:
     try:
-        tree = ast.parse(text)
+        tree = _parse(text)
         comments = _comments(text)
     except SyntaxError as e:
         return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
@@ -420,17 +433,32 @@ def _from(node: ast.ImportFrom, where: _Where | None) -> tuple[str, ...] | None:
 
 def _imports(tree: ast.AST, standard: frozenset[str], private: str, where: _Where | None = None) -> list[Import]:
     found: list[Import] = []
+    typing = _type_checking(tree)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found += [Import(node.lineno, tuple(alias.name.split(".")), standard=alias.name.split(".")[0] in standard,
-                             written=alias.name, last=_last(node)) for alias in node.names]
+                             written=alias.name, last=_last(node), type_only=id(node) in typing)
+                      for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             module = tuple(node.module.split(".")) if node.module else ()
             found.append(Import(node.lineno, module, tuple(a.name for a in node.names), node.level > 0,
                                 max(node.level - 1, 0), not node.level and bool(module) and module[0] in standard,
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
                                 _last(node), _from(node, where) is None,
-                                frozenset(a.name for a in node.names if is_private_name(a.name, private))))
+                                frozenset(a.name for a in node.names if is_private_name(a.name, private)),
+                                id(node) in typing))
+    return found
+
+
+def _type_checking(tree: ast.AST) -> set[int]:
+    """The imports made only for the type checker: each one in the body (not the `else`) of an `if` whose test is the
+    bare name `TYPE_CHECKING` or an attribute of that name (`typing.TYPE_CHECKING`), however deep, by its node's id."""
+    found: set[int] = set()
+    for node in ast.walk(tree):
+        test = node.test if isinstance(node, ast.If) else None
+        if (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
+                isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"):
+            found |= {id(n) for stmt in node.body for n in ast.walk(stmt) if isinstance(n, (ast.Import, ast.ImportFrom))}
     return found
 
 
@@ -703,11 +731,19 @@ def _named(tree: ast.AST) -> frozenset[str]:
     return frozenset(found)
 
 
+def _parse(text: str, mode: str = "exec") -> ast.AST:
+    """The tree the parser makes of the text, with the warnings it raises of the code (an invalid escape sequence in a
+    string) left unsaid: they are about the code read, not xarch's to print."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(text, mode=mode)
+
+
 def _expression(text: str) -> ast.Expression | None:
     """The expression a string holds, or None when the parser cannot read it as one: a syntax error, a lone surrogate
     or a null byte it refuses, or a nesting too deep for it."""
     try:
-        return ast.parse(text.strip(), mode="eval")
+        return _parse(text.strip(), "eval")
     except (SyntaxError, ValueError, RecursionError):
         return None
 
@@ -883,7 +919,7 @@ def _members(node: ast.expr) -> tuple[str, ...] | None:
     return None
 
 
-Scope = dict[str, Ref]
+Scope = dict[str, "Ref | _Alias"]
 _FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 _COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 _NESTED = (*_FUNCTIONS, ast.ClassDef, *_COMPREHENSIONS)
@@ -919,8 +955,15 @@ def _bound(node: ast.AST, where: _Where | None = None) -> tuple[Scope, frozenset
                     bind(n.id, None)
         return found, frozenset(), frozenset()
     body = node.body if isinstance(node.body, list) else [node.body]
+    rebound: set[int] = set()
     for child in _own(body):
-        if isinstance(child, ast.Import):
+        if id(child) in rebound:
+            continue
+        if (isinstance(child, ast.Assign) and len(child.targets) == 1 and isinstance(child.targets[0], ast.Name)
+                and isinstance(child.value, ast.Name)):
+            bind(child.targets[0].id, _Alias(child.value.id))
+            rebound.add(id(child.targets[0]))
+        elif isinstance(child, ast.Import):
             for alias in child.names:
                 steps = tuple(alias.name.split("."))
                 bind(alias.asname or steps[0], steps if alias.asname else steps[:1])
@@ -973,12 +1016,20 @@ def _reached(node: ast.AST, chain: list[Scope], names: frozenset[str],
         node = node.value
     if not isinstance(node, ast.Name):
         return None, 0
-    scope = next((scope for scope in chain if node.id in scope), None)
-    if scope is None and node.id in bare:
-        return (node.id, *attrs), 0
-    if scope is None:
-        return (("builtins", node.id, *attrs), 0) if node.id in names else (None, 0)
-    base = scope[node.id]
+    name, start, seen = node.id, 0, set()
+    while True:
+        index = next((i for i in range(start, len(chain)) if name in chain[i]), None)
+        if index is None and name in bare:
+            return (name, *attrs), 0
+        if index is None:
+            return (("builtins", name, *attrs), 0) if name in names else (None, 0)
+        base = chain[index][name]
+        if not isinstance(base, _Alias):
+            break
+        if (index, name) in seen:
+            return None, 0
+        seen.add((index, name))
+        name, start = base.name, index
     if base is None:
         return None, 0
     return (*base, *attrs), 0 if isinstance(base, _Relative) else len(base)
@@ -1002,6 +1053,7 @@ class _Calls(ast.NodeVisitor):
         self.parameter_calls: list[ParameterCall] = []
         self.callbacks: list[Callback] = []
         self.method_calls: list[MethodCall] = []
+        self._subjects: dict[int, tuple[str, ...]] = {}
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -1064,6 +1116,10 @@ class _Calls(ast.NodeVisitor):
                 function, receiver, callables = self._owners[index]
                 self.callbacks.append(Callback(node.lineno, function, node.func.id, node.func.id == receiver,
                                                node.func.id in callables))
+        if node.args and not isinstance(node.args[0], ast.Starred):
+            subject = _ref(node.args[0], self._chain, self._bare)
+            if subject is not None:
+                self._subjects[id(node.func)] = subject
         func = _ref(node.func, self._chain, self._bare)
         if func is None and isinstance(node.func, ast.Attribute):
             self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
@@ -1130,7 +1186,7 @@ class _Calls(ast.NodeVisitor):
     def _use(self, node: ast.expr) -> None:
         name, bound = _reached(node, self._chain, self._builtins, self._bare)
         if name is not None:
-            self.uses.append(Use(node.lineno, name, bound))
+            self.uses.append(Use(node.lineno, name, bound, self._subjects.get(id(node))))
 
 
 def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Function, ...],

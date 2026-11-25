@@ -173,6 +173,7 @@ FIELDS: dict[str, str] = {
     "returned": "the attributes it returns of the call's result",
     "relative": "whether an import is named from the importing file's own folder",
     "standard": "whether an import names the standard library",
+    "type-only": "whether an import is made only for the type checker, never when the code runs",
     "on-own-object": "whether a method is called on the object itself or on something it holds",
     "top-level": "whether a function is defined at the top level, in no class",
     "forwards": "whether a method only passes its arguments on to one call",
@@ -200,12 +201,14 @@ KINDS: tuple[Kind, ...] = (
          field_needs={"no-statements": ("function.statements",), "exceptions-only": (*_CLASS_EXCEPTION, "function")}),
     Kind("names-mentioned", "every name the file mentions, annotations included, as one fact at line 0", ("line", "mentions"),
          needs=("named",)),
-    Kind("import", "each import as written", ("line", "path", "written", "relative", "standard"), needs=_IMPORT,
-         field_needs={"relative": ("import.relative",), "standard": ("import.standard",)}, verb="import"),
+    Kind("import", "each import as written", ("line", "path", "written", "relative", "standard", "type-only"),
+         needs=_IMPORT, field_needs={"relative": ("import.relative",), "standard": ("import.standard",),
+                                     "type-only": ("import.type_only",)}, verb="import"),
     Kind("imported-name", "each name an import takes, its path what the import names and the name (that alone for "
                           "an import of the whole)",
-         ("line", "path", "written", "relative", "standard", "public"), {"name": "takes-a-name"}, needs=_IMPORT,
-         field_needs={"relative": ("import.relative",), "standard": ("import.standard",), "public": ("public",)},
+         ("line", "path", "written", "relative", "standard", "public", "type-only"), {"name": "takes-a-name"},
+         needs=_IMPORT, field_needs={"relative": ("import.relative",), "standard": ("import.standard",),
+                                     "public": ("public",), "type-only": ("import.type_only",)},
          verb="import"),
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
          ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
@@ -265,6 +268,8 @@ FILTERS: tuple[Filter, ...] = (
     Filter("relative", "the import is named from the importing file's own folder", FACT, ("relative",)),
     Filter("standard", "the import names the language's standard library", FACT,
            ("standard",)),
+    Filter("type-only", "the import is made only for the type checker, never when the code runs, as the "
+                        "language's reader says", FACT, ("type-only",)),
     Filter("reserved", "the top-level package the import names is one `reserved` lists", FACT, ("path",)),
     Filter("listed-by-another-part", "the top-level package the import names is in the `imports.libraries` of a part other "
                                      "than the file's", FACT, ("path",), side=APP_SIDE),
@@ -456,8 +461,11 @@ SLOTS: tuple[Slot, ...] = (
     Slot("fix", "what to do about it", "an imperative sentence with {<variable>}s", "variables"),
     Slot("once_per", "say one finding of a file for each value of these variables, the first", "[<variable>, ...]",
          "variables"),
+    Slot("per_line", "say the findings of a file on one line that differ only in these variables as one, the first, "
+                     "each of them written as its values in the order found, joined by `, `", "[<variable>, ...]",
+         "variables"),
     Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
-                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per}, ...]",
+                  "of the check's own", "[{when: [<filter>, ...], message, fix, once_per, per_line}, ...]",
          "filters"),
     Slot("examples", "code the check must find something in (flagged), and code it must find nothing in (clean), each "
                      "a small project; `xarch profile check` runs them, and fails when either does not behave so",

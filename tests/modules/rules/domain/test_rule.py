@@ -111,6 +111,9 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="a field the kind carries only sometimes"),
     pytest.param({"sayings": say("{part}")}, ["message: {part} is no variable: it is called {where} now: write that"],
                  id="a variable that was called otherwise"),
+    pytest.param({"sayings": (Saying("m", "f", per_line=("weather",)),)},
+                 ["per_line: no variable is named 'weather': did you mean where or tier or path?"],
+                 id="a variable to list per line that does not exist"),
     pytest.param({"sayings": say(once=("part",))},
                  ["once_per: no variable is named 'part': it is called {where} now: write that"],
                  id="a variable to say once by that was called otherwise"),
@@ -189,7 +192,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="a filter a link passes that applies to only some of the kinds of link"),
     pytest.param({"keep": c("sunny"), "mode": "fial", "sayings": say("{weather}")},
                  ["keep: no filter is named 'sunny': write one of test, tiered, placed, package-file, mirrors-a-part, "
-                  "may-import-everything, below, beside, relative, standard, reserved, "
+                  "may-import-everything, below, beside, relative, standard, type-only, reserved, "
                   "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, top-level, "
                   "forwards, returns-an-attribute, exception, record, interface, immutable, receiver, annotated-callable, unreadable, "
                   "directive, doc, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, "

@@ -12,6 +12,8 @@ holds the runtime, from the lists the file gives or from the runtime.
     interface      the marks of an interface, each {base: <outside name>}, an outside name (see below) among a
                    declaration's bases, or {keyword: <word>}, a keyword it is declared with or carries, a name
     dynamic        outside names of what imports by a name worked out when the code runs; optional
+    dynamic_attributes  outside names of what reads a member of an object by a name worked out when the code runs;
+                   a call of one whose first argument an import binds is listed as dynamic; optional
     namespace      the namespace of the names the language binds without an import: a name
     cache          the folder in which its tools keep what they compile, left out of the examples, of a copy of a
                    profile and of the files init writes; optional
@@ -93,7 +95,7 @@ from xarch.profile_values.language import (
     Writing,
 )
 
-KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "namespace", "cache", "standard", "name",
+KEYS = ("title", "extensions", "package_files", "interface", "dynamic", "dynamic_attributes", "namespace", "cache", "standard", "name",
         "package", "member", "private", "special", "call", "nothing", "unannotated", "comments", "directives", "shebang",
         "encoding", "branching", "importing", "supplies", "immutable", "branching_expressions", "writing")
 REQUIRED = ("title", "extensions", "namespace", "standard")
@@ -170,6 +172,7 @@ def language_of(name: str, document: Any) -> Language:
         namespace = ""
     interface = _interface(document, problems, joins, namespace)
     dynamic = _outside(document, "dynamic", problems, joins, namespace)
+    attributes = _outside(document, "dynamic_attributes", problems, joins, namespace)
     standard = _standard(document, problems, joins)
     cache = _text(document, "cache", "must be a folder name", problems, _FOLDER)
     tokens = {key: _text(document, key, "must be a non-empty string", problems)
@@ -191,7 +194,8 @@ def language_of(name: str, document: Any) -> Language:
     if problems:
         raise InvalidArchitecture(source, problems)
     checked = CheckedLanguage(title=title, extensions=extensions or (), package_files=package_files,
-                              interface=interface, dynamic=dynamic, private=tokens["private"], special=special, call=tokens["call"],
+                              interface=interface, dynamic=dynamic, dynamic_attributes=attributes,
+                              private=tokens["private"], special=special, call=tokens["call"],
                               nothing=nothing, comments=comments, directives=directives,
                               shebang=tokens["shebang"], encoding=encoding, branching=branching, supplies=supplies,
                               importing=importing, immutable=immutable, branching_expressions=expressions,

@@ -278,7 +278,8 @@ def test_the_guards_name_every_repeating_folder():
         "library is always allowed, and tests are not checked.",
         "- `test tree`: every folder below `tests/src/` and `tests/ext/` mirrors a folder of the app.",
         "- `cycles`: no `src/<name>/` or `ext/<name>/` imports from another that imports, directly or through "
-        "others, from it; each cycle is reported once, with the imports that close it."]
+        "others, from it; each group of them that import each other is reported once, with the dependencies to cut "
+        "and their imports."]
 
 
 @pytest.mark.parametrize("guard, said", [

@@ -441,7 +441,8 @@ def _guards(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, 
         lines.append(f"`test tree`: every folder below {folders} mirrors a folder of the app.")
         instances = _or([f"`{'/'.join(root)}/<name>/`" for root in roots])
         lines.append(f"`cycles`: no {instances} imports from another that imports, directly or through "
-                     "others, from it; each cycle is reported once, with the imports that close it.")
+                     "others, from it; each group of them that import each other is reported once, with the "
+                     "dependencies to cut and their imports.")
     lines += [_must_import_line(architecture, part) for part in architecture.parts.values() if part.imports_must]
     lines += [_tier_must_import_line(architecture, tier) for tier in architecture.tiers if tier.imports_must]
     lines += _part_lines(architecture)

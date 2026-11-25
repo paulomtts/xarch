@@ -5,7 +5,9 @@ pass over, read from the same parsed files.
                `pytest.mark.skip`, `pytest.mark.skipif(...)` (a name of its own, so listed on its own) or a call such
                as `pytest.skip(...)`, read through imports like any use (see the Use value); one per use
     dynamic    a use, in a file read, of what the language of the app imports by a computed or string name with,
-               the names its data file lists; the import rules cannot see what those import
+               the names its data file lists (`dynamic`); the import rules cannot see what those import. Also each
+               call of what reads a member of an object by such a name (`dynamic_attributes`)
+               whose first argument an import binds: `uses.never` cannot see which name of it the call reads
     unresolved an import, in a file read, naming a place of the app (relative, or by an alias the project maps) the
                reader found no file or folder for, with the module as written; the import rules cannot see what it
                names
@@ -62,7 +64,9 @@ def skipped(tests: Iterable[SourceFile], profile: Profile) -> list[At]:
 
 
 def dynamic(files: Iterable[SourceFile], profile: Profile) -> list[At]:
-    return [At(file.name, use.line) for file in files for use in file.uses if use.name in profile.language.dynamic]
+    language = profile.language
+    return [At(file.name, use.line) for file in files for use in file.uses if use.name in language.dynamic
+            or (use.name in language.dynamic_attributes and use.subject is not None)]
 
 
 def unresolved(files: Iterable[SourceFile]) -> list[Unresolved]:

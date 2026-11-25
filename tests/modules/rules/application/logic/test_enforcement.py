@@ -120,6 +120,16 @@ def test_a_dynamic_import_is_what_the_language_of_the_profile_lists():
     assert dynamic(files, replace(PROFILE, language=CheckedLanguage())) == []
 
 
+def test_a_read_by_a_computed_name_of_what_an_import_binds_is_listed_as_dynamic():
+    """`getattr(t, "time")` after `import time as t` may reach a name `uses.never` forbids, which no check can follow;
+    a getattr of anything an import does not bind (a parameter, an object) is not listed."""
+    files = [file("app/kernel/a.py", Use(2, ("builtins", "getattr"), 0, subject=("time",)),
+                  Use(3, ("builtins", "getattr"), 0), Use(4, ("builtins", "setattr"), 0, subject=("time",)))]
+    assert dynamic(files, PROFILE) == [At("app/kernel/a.py", 2)]
+    other = replace(PROFILE, language=CheckedLanguage(dynamic_attributes=(("sys", "peek"),)))
+    assert dynamic([file("app/b.py", Use(5, ("sys", "peek"), 1, subject=("os",)))], other) == [At("app/b.py", 5)]
+
+
 def test_a_name_beside_a_dynamic_import_is_no_dynamic_import():
     files = [file("app/kernel/a.py", Use(2, ("importlib", "reload"), 1), Use(3, ("builtins", "__build_class__"), 0),
                   Use(4, ("importlib",), 1))]

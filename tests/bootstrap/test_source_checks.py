@@ -38,8 +38,8 @@ def test_a_project_following_every_check_passes(tmp_path):
     pytest.param({"modules/mod/__init__.py": "", "modules/mod/contract/__init__.py": "",
                   "modules/docs/adapters/mod_review.py": "from app.modules.mod.contract import Clean\n",
                   "modules/mod/adapters/docs_review.py": "from app.modules.docs.contract import Published\n"}, {},
-                 ["app/modules/docs/adapters/mod_review.py:1: modules/docs → modules/mod → modules/docs import each "
-                  "other in a cycle: app/modules/docs/adapters/mod_review.py:1 imports app.modules.mod.contract; "
+                 ["app/modules/mod/adapters/docs_review.py:1: modules/docs and modules/mod import each other in a "
+                  "cycle, through 2 dependencies; the one to cut: modules/mod → modules/docs: "
                   "app/modules/mod/adapters/docs_review.py:1 imports app.modules.docs.contract (cycles)"],
                  id="cycles: two modules import each other"),
     pytest.param({"modules/docs/application/ports/repo.py": PORT}, {},

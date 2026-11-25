@@ -2,9 +2,16 @@
 
 The instances of every repeating folder are the nodes of one graph: a module and a plugin may depend on each other.
 Instance A depends on instance B when a file below A imports from below B, absolutely or relatively, whatever the
-parts (under the bundled rules only an adapter can, importing B's contract). Every elementary cycle of that graph is
-one violation: its instances in order, starting from the one first by name, each followed by the import that makes it
-depend on the next (the first such import, by file then line), reported at the first of those imports. A file in no
+parts (under the bundled rules only an adapter can, importing B's contract). Each group of instances that all reach
+each other (a strongly connected group of two or more) is one violation, however many cycles run through it: its
+instances by name, how many dependencies run between them, and the dependencies to cut, each with every import that
+makes it (once per file and line, by file then line).
+
+The dependencies to cut are those that go back in an order of the group's instances chosen so that few imports go
+back (the greedy order of Eades, Lin and Smyth, each dependency weighing as many imports as make it): an instance no
+other one left in the group depends on goes first, one that depends on none left goes last, and else the one whose
+imports out weigh most over its imports in goes first, the first by name among equals. Cutting them all leaves the
+group with no cycle. The violation is reported at the first import of the first of them by name. A file in no
 instance is not this check's business, and an import within one instance is no dependency.
 """
 from __future__ import annotations
@@ -21,22 +28,25 @@ from xarch.profile_values.placement import Repeat
 Edge = tuple[str, int, str]
 """An import that makes one instance depend on another: the file, its line, and what it imports, dotted."""
 
+Graph = dict[str, dict[str, list[Edge]]]
+"""Each instance, the instances it depends on, and the imports that make each dependency, by file then line."""
+
 
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
     if not profile.repeats:
         return []
     parsed = [(f, *dotted(f.path, profile.language.marks)) for f in files]
     known = {steps for _, steps, _ in parsed}
-    edges: dict[str, dict[str, Edge]] = {}
+    edges: Graph = {}
     for file, steps, is_package in sorted(parsed, key=lambda p: p[0].name):
         source = _instance(profile.repeats, steps)
         if source is None:
             continue
-        for line, target in sorted(targets(file.imports, steps if is_package else steps[:-1], known, root)):
+        for line, target in sorted(set(targets(file.imports, steps if is_package else steps[:-1], known, root))):
             depends = _instance(profile.repeats, target)
             if depends is not None and depends != source:
-                edges.setdefault(source, {}).setdefault(depends, (file.name, line, ".".join((root, *target))))
-    return [_violation(cycle, edges) for cycle in _cycles(edges)]
+                edges.setdefault(source, {}).setdefault(depends, []).append((file.name, line, ".".join((root, *target))))
+    return [_violation(group, edges) for group in _groups(edges)]
 
 
 def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...]) -> str | None:
@@ -45,26 +55,78 @@ def _instance(repeats: tuple[Repeat, ...], steps: tuple[str, ...]) -> str | None
     return None if folder is None else "/".join(folder)
 
 
-def _cycles(edges: dict[str, dict[str, Edge]]) -> list[list[str]]:
-    """Every elementary cycle once, as its instances from the least by name."""
+def _reach(start: str, edges: Graph) -> set[str]:
+    seen: set[str] = set()
+    todo = [start]
+    while todo:
+        for nxt in edges.get(todo.pop(), {}):
+            if nxt not in seen:
+                seen.add(nxt)
+                todo.append(nxt)
+    return seen
+
+
+def _groups(edges: Graph) -> list[list[str]]:
+    """Each strongly connected group of two or more instances once, its instances by name, the groups by their first."""
+    reach = {node: _reach(node, edges) for node in edges}
     found: list[list[str]] = []
-    for start in sorted(edges):
-        stack = [(start, [start])]
-        while stack:
-            node, path = stack.pop()
-            for nxt in sorted(edges.get(node, {}), reverse=True):
-                if nxt == start:
-                    found.append(path)
-                elif nxt > start and nxt not in path:
-                    stack.append((nxt, [*path, nxt]))
-    return sorted(found)
+    for node in sorted(edges):
+        group = sorted(other for other in reach[node] if node in reach.get(other, set()))
+        if node in group and group[0] == node:
+            found.append(group)
+    return found
 
 
-def _violation(cycle: list[str], edges: dict[str, dict[str, Edge]]) -> Violation:
-    hops = [edges[a][b] for a, b in zip(cycle, [*cycle[1:], cycle[0]])]
-    shown = " → ".join([*cycle, cycle[0]])
-    why = "; ".join(f"{file}:{line} imports {target}" for file, line, target in hops)
-    first = hops[0]
-    fix = (f"break the cycle: remove the import of {first[2]} at {first[0]}:{first[1]}, or move what it needs to a "
-           "part that both may import")
-    return Violation(first[0], first[1], f"{shown} import each other in a cycle: {why} (cycles)", "cycles", fix)
+def _order(group: list[str], weight: dict[tuple[str, str], int]) -> list[str]:
+    """The group's instances in the greedy order that leaves few imports going back (see the module's text)."""
+    left = set(group)
+    first: list[str] = []
+    last: list[str] = []
+
+    def moves(u: str) -> tuple[int, int]:
+        return (sum(n for (a, b), n in weight.items() if a == u and b in left),
+                sum(n for (a, b), n in weight.items() if b == u and a in left))
+
+    while left:
+        while (ends := [u for u in sorted(left) if moves(u)[0] == 0]) or (
+                starts := [u for u in sorted(left) if moves(u)[1] == 0]):
+            if ends:
+                last.insert(0, ends[0])
+                left.remove(ends[0])
+            else:
+                first.append(starts[0])
+                left.remove(starts[0])
+        if left:
+            best = max(sorted(left), key=lambda u: moves(u)[0] - moves(u)[1])
+            first.append(best)
+            left.remove(best)
+    return first + last
+
+
+def _cuts(group: list[str], edges: Graph) -> list[tuple[str, str]]:
+    """The dependencies of the group that go back in its greedy order, by name."""
+    inside = set(group)
+    weight = {(a, b): len(imports) for a in group for b, imports in edges.get(a, {}).items() if b in inside}
+    place = {node: index for index, node in enumerate(_order(group, weight))}
+    return sorted((a, b) for a, b in weight if place[a] > place[b])
+
+
+def _violation(group: list[str], edges: Graph) -> Violation:
+    inside = set(group)
+    count = sum(1 for a in group for b in edges.get(a, {}) if b in inside)
+    cuts = _cuts(group, edges)
+    shown = "; ".join(f"{a} → {b}: " + ", ".join(f"{file}:{line} imports {target}" for file, line, target in edges[a][b])
+                      for a, b in cuts)
+    named = _and([f"{a} → {b}" for a, b in cuts])
+    first = edges[cuts[0][0]][cuts[0][1]][0]
+    message = (f"{_and(group)} import each other in a cycle, through {count} dependencies; "
+               f"{'the one' if len(cuts) == 1 else f'the {len(cuts)}'} to cut: {shown} (cycles)")
+    fix = (f"break the cycle: remove the imports of {named} the message lists, or move what they need to a part "
+           "that both may import" if len(cuts) == 1 else
+           f"break the cycles: remove the imports of {named} the message lists, or move what each needs to a part "
+           "that both of its ends may import")
+    return Violation(first[0], first[1], message, "cycles", fix)
+
+
+def _and(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"

@@ -59,11 +59,13 @@ class Scope:
 class Saying:
     """How a finding is said, when the conditions hold of it (none: always): the message and the fix, each a sentence
     with `{variable}`s of the vocabulary, and the variables by which a file's findings said this way are said once each
-    (empty: every one is said)."""
+    (empty: every one is said), and the variables in which the findings of one line said this way may differ and still
+    be said as one, each written as its values in the order found, joined by `, ` (empty: none)."""
     message: str
     fix: str
     when: tuple[Condition, ...] = ()
     once: tuple[str, ...] = ()
+    per_line: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

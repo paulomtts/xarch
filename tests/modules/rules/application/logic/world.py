@@ -6,7 +6,8 @@ and variable can name a fact by its file and line: PROFILE's app (package `app`)
                                               and Pair immutable records, Loose a record that is not), a
                                               top-level function and a method that forwards, comments, callbacks,
                                               uses and method calls
-    app/modules/docs/application/ports/repo.py ports: Repo, an interface
+    app/modules/docs/application/ports/repo.py ports: Repo, an interface, and an import made only for the type
+                                              checker
     app/modules/docs/application/services/publish.py services: builds Doc, calls and passes make on
     app/bootstrap/wiring.py                   bootstrap, which may import everything
     app/modules/__init__.py                   the structure's package file
@@ -64,6 +65,7 @@ APP = [
            method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute")),
            module_functions=("make",), named=frozenset({"Doc", "make", "Repo"})),
     source("modules/docs/application/ports/repo.py", imp(1, "typing", "Protocol"),
+           replace(imp(3, "app.modules.docs.domain.doc", "Doc"), type_only=True),
            classes=(Class(2, "Repo", bases=(("typing", "Protocol"),), interface=True),)),
     source("modules/docs/application/services/publish.py", imp(1, "app.modules.docs.domain", "doc"),
            imp(2, "app.modules.docs.domain.doc", "Doc"), imp(3, "app.platform", "db"),

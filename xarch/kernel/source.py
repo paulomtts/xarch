@@ -16,7 +16,8 @@ class Import:
     writes that). last: the last line the import spans, when it is not its first (0: it spans one line). unresolved:
     the import names a place of the code being read (relative, or by an alias the project maps) that the reader found
     no file or folder for. withheld: the names it takes that are not for other files to use, as the language's reader
-    says (none: every name it takes is public)."""
+    says (none: every name it takes is public). type_only: the import is made only for the type checker, never when
+    the code runs, as the language's reader says."""
     line: int
     module: tuple[str, ...]
     names: tuple[str, ...] | None = None
@@ -28,6 +29,7 @@ class Import:
     last: int = 0
     unresolved: bool = False
     withheld: frozenset[str] = frozenset()
+    type_only: bool = False
 
 
 @dataclass(frozen=True)

@@ -130,7 +130,7 @@ guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, mode, message*, fix*,
-                  once_per, cases, examples*}}
+                  once_per, per_line, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
 evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
@@ -143,13 +143,26 @@ An entry of a `never` list that is the name of another list includes that list's
 `published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
 profile names, since an entry of that name would name the list.
 
+What `uses.never` follows is the name as the file binds it, never the value at run time. A use is found when the
+name is read: imported however it is written (`import datetime`, `import datetime as dt`, `from datetime import
+datetime as D`, a builtin by its bare name such as `open`), and through a plain rebinding in the same file, `x = y`, one
+bare name assigned to another at module or function level and nothing else binding `x` in that scope (`clock = D`,
+then `clock.now()`; a chain of such rebindings too). Nothing cleverer is followed: not an attribute or an expression
+assigned (`now = D.now`, `x = D if a else E`), an unpacking, an annotated assignment, a default of a parameter, a name
+passed to a function or returned from one, an attribute stored on an object, or a name bound in another file. A name
+worked out when the code runs cannot be followed at all: a call of what imports by a computed name
+(`importlib.import_module`, `__import__`) and a `getattr` of a name an import binds (`getattr(t, "time")` after
+`import time as t`) are listed under `dynamic` in the enforcement section instead, which `--strict` fails on. So a
+green `check` says no file names a forbidden name in a way it follows, not that the code never reaches one.
+
 `language` names the language of the app: `python`, which is the default and the only one xarch reads today. What is
 true of a language as a whole lives in a data file shipped beside the profiles, `xarch/architectures/presets/language/
 <name>.yaml`, the way `testing: pytest` resolves to `presets/testing/pytest.yaml`: the endings of a source file
 (`extensions`, a list; the first is the one messages print), the files that stand for a folder (`package_files`, a
 list, optional for a language where no file does), what marks an interface (`interface`, a list of marks, each a base,
 `{base: typing.Protocol}`, or a keyword a declaration carries, `{keyword: interface}`), the namespace of the builtins,
-the callables that import by a computed name, the folder of compiled files, and where the standard library's top-level modules, the reserved words
+the callables that import by a computed name (`dynamic`), those that read a member of an object by one
+(`dynamic_attributes`, Python's `getattr`), the folder of compiled files, and where the standard library's top-level modules, the reserved words
 and the builtins are known from (`standard`: `interpreter`, the Python running xarch, or three lists, `modules`,
 `reserved` and `builtins`, each item checked with the file's `package` or `name`);
 and the tokens of its code the checks and the docs need: what a name may be, what an import names from outside the app
@@ -329,7 +342,12 @@ Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `
 same words under `checks`: each reads the facts of a kind (`read`) in some files (`in`), keeps those its filters pass
 (`keep`), and says that a kept fact may not match its targets (`may_not`), may only match them (`may_only`), or that a
 file must reach a target (`must_reach`) or a fact be reached from some files (`must_be_reached`); an exception
-(`except`) excuses a finding, and `message` and `fix` say it, with `{variable}`s. A check carries `examples`: code it
+(`except`) excuses a finding, and `message` and `fix` say it, with `{variable}`s (`once_per` says a file's findings
+once for each value of its variables; `per_line` says the findings of one line that differ only in its variables as
+one, each written as its values joined by `, `). An import made only for the type checker, never when the code
+runs, carries the field `type-only` (the fact `import.type_only`; Python's reader sets it on each import in the body of
+an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import` or
+`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml
@@ -374,13 +392,13 @@ that switches or configures each (`-` for none: the rule is always on):
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
 | `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder | `parts`, `parts.name` |
-| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match | `parts.imports.may` |
+| `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match; the findings of one import line are one, listing what it may not take (the names the pattern does not match, or the places it may not import) | `parts.imports.may` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared`, `fakes.tiers` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
-| `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each elementary cycle is reported once, at its first import | - (needs a repeating folder) |
+| `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
 | `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.imports.must`, `tiers.imports.must` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier; with no table form, a variant named by no test | `guards.scenario-coverage`, `tiers.plain_tables` |
@@ -413,7 +431,9 @@ Every violation says what to do about it. A finding is its line, `<file>[:<line>
 hint (`xarch profile explain hints`) for its rule, an indented `hint: <text>` line. The findings come in order of
 file, then line (a whole file first), then rule, then a summary, `OK: no violations` or `<n> violation(s) in <m>
 file(s)`, then the enforcement section (below). Paths are relative to the folder holding the app folder
-(`app/kernel/x.py`, `tests/...`).
+(`app/kernel/x.py`, `tests/...`). What the language's parser warns of the code it reads (for Python, a
+`SyntaxWarning` such as an invalid escape sequence in a string) is not printed: it is about the code, not xarch's
+output, and a linter reports it.
 
 ```
 app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)
@@ -507,7 +527,9 @@ every check runs on the whole app) and `elsewhere`, how many violations of other
   `must-import`, `no-duplicates`, `no-twins`, `dead-code`, `pass-through`, `holds`, `immutable` (these three never a
   violation, only a weak item), `no-callbacks`, `names`, `built-by`, `private-imports`, `shared`, `structure`,
   `test-tree`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
-  profile writes itself.
+  profile writes itself. An import line that takes several names a part may not import is one `may-import`
+  violation, its `message` listing them (or the places it may not import), so the violations count lines, not
+  names.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
   `uses.never`, `untested`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
@@ -596,7 +618,9 @@ enforcement
 - `skipped`: each use in the tests of a name of `testing.skips`, or one below it, read through imports.
 - `dynamic`: each use, in the files read, of a callable the language's data file lists as importing by a computed name
   (for Python, `importlib.import_module`, `importlib.__import__` and the builtin `__import__`), so it needs no entry in
-  the profile; the import rules cannot see what it imports.
+  the profile; the import rules cannot see what it imports. Each call, in the files read, of a callable the data
+  file lists as reading a member of an object by a computed name (`dynamic_attributes`: for Python, `getattr`) whose
+  first argument is a name an import binds, is listed here too: `uses.never` cannot see which member it reads.
 - `unresolved`: each import, in the files read, that names a place of the app (relative, or by an alias the project
   maps) the reader found no file or folder for, at its first line, with the module as written, one line each; the
   import rules cannot see what it names.

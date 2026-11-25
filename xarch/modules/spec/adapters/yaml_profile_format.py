@@ -91,7 +91,8 @@ class YamlProfileFormat:
         return {"when": [f"when: {self._list(map(self._filter, saying.when))}"],
                 "message": [f"message: {self._writer.quoted(saying.message)}"],
                 "fix": [f"fix: {self._writer.quoted(saying.fix)}"],
-                "once_per": [f"once_per: {self._list(saying.once)}"] if saying.once else []}
+                "once_per": [f"once_per: {self._list(saying.once)}"] if saying.once else [],
+                "per_line": [f"per_line: {self._list(saying.per_line)}"] if saying.per_line else []}
 
     def _quantified(self, quantified: Quantified) -> list[str]:
         if quantified.slot not in REACH_SLOTS:

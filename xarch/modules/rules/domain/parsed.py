@@ -90,10 +90,13 @@ class Use:
     after `from datetime import datetime as dt` is ("datetime", "datetime", "now"). bound is how many steps of the
     path the import that binds its first name names from the top (2 here: `from datetime import datetime`; 0 for a
     relative import, which names none of them so, and whose line therefore carries no finding on the path); a builtin
-    used by its bare name is (<its namespace>, <name>), bound 0."""
+    used by its bare name is (<its namespace>, <name>), bound 0. subject, for the callee of a call, is the path its
+    first argument reaches through an import (`t` in `getattr(t, "time")` after `import time as t` is ("time",)),
+    else None."""
     line: int
     name: tuple[str, ...]
     bound: int
+    subject: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)

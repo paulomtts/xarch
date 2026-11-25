@@ -108,7 +108,7 @@ def test_the_guards_placeholder_leaves_out_what_the_profile_does_not_check():
         "library is always allowed, and tests are not checked.",
         "- `test tree`: every folder below `tests/src/` mirrors a folder of the app.",
         "- `cycles`: no `src/<name>/` imports from another that imports, directly or through others, from it; each "
-        "cycle is reported once, with the imports that close it."]
+        "group of them that import each other is reported once, with the dependencies to cut and their imports."]
 
 
 def reserving(reserved, libraries=None) -> dict:

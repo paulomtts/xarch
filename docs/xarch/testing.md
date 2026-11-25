@@ -160,7 +160,7 @@ A test builds the state it needs, so the reader sees all of it. No tier runs a s
 - `types-only`: a guard test uses `domain/`, `application/logic/`, `application/ports/`, `application/services/`, `application/controller.py`, `adapters/` and `platform/` only as a type: it may import it and annotate with it, and never calls it.
 - `plain tables`: no table test of the unit and integration tests holds a branch in its body: no `if`, `match`, `try`, `for` or `while` statement and no `if` expression.
 - `test tree`: every folder below `tests/modules/` mirrors a folder of the app.
-- `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; each cycle is reported once, with the imports that close it.
+- `cycles`: no `modules/<name>/` imports from another that imports, directly or through others, from it; each group of them that import each other is reported once, with the dependencies to cut and their imports.
 - `must-import`: every file of `adapters/` imports from `platform/`, any module's `contract/`, or an outside package, or reaches one through a file of its own part; a package file and a file with no code of its own are exempt.
 - `must-import`: every integration test imports from `application/controller.py`, directly or through test code that is no test file.
 - `must-import`: every wired test imports from `bootstrap/`, directly or through test code that is no test file.

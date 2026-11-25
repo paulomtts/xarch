@@ -47,6 +47,29 @@ def test_profile_check_runs_each_check_s_examples_and_check_finds_what_it_is_wri
                                                  "said": "checks.store-names read 2 facts"}]
 
 
+TYPE_ONLY = "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.web.page import Page\n"
+AT_RUN_TIME = "from app.web.page import Page\n"
+BLIND = {"read": "imported-name", "in": {"part": "store"}, "keep": ["takes-a-name", "not type-only"],
+         "may_not": {"name": ["Page"]}, "message": "{where} takes {name} at line {line} when its code runs",
+         "fix": "import {name} only for the type checker",
+         "examples": {"flagged": {"store/x.py": AT_RUN_TIME}, "clean": {"store/x.py": TYPE_ONLY}}}
+
+
+def test_a_check_may_keep_or_skip_the_imports_made_only_for_the_type_checker(tmp_path):
+    """Its examples flag an import made when the code runs, and pass one under TYPE_CHECKING; check says the same."""
+    project(tmp_path, {"blind-store": BLIND}, {"store/a.py": AT_RUN_TIME, "store/b.py": TYPE_ONLY})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 0, checked.output
+    found = json.loads(runner.invoke(app, ["check", "--format", "json"]).output)
+    assert [(v["rule"], v["file"], v["line"]) for v in found["violations"]] == [("blind-store", "app/store/a.py", 1)]
+    only = {**BLIND, "keep": ["takes-a-name", "type-only"], "message": "{where} takes {name} for the type checker",
+            "examples": {"flagged": {"store/x.py": TYPE_ONLY}, "clean": {"store/x.py": AT_RUN_TIME}}}
+    project(tmp_path, {"blind-store": only}, {})
+    assert runner.invoke(app, ["profile", "check"]).exit_code == 0
+    found = json.loads(runner.invoke(app, ["check", "--format", "json"]).output)
+    assert [(v["file"], v["line"]) for v in found["violations"]] == [("app/store/b.py", 3)]
+
+
 def test_a_check_that_reads_nothing_is_listed_and_fails_strict(tmp_path):
     project(tmp_path, {"store-names": CHECK}, {"store/a.py": "x = 1\n"})
     found = runner.invoke(app, ["check", "--strict"])

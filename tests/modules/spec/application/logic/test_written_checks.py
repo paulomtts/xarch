@@ -45,14 +45,14 @@ def test_a_reach_to_targets_keeps_its_targets_as_written_and_its_filters_as_cond
                                                                                               {"not below": "x/y"}]},
             "keep": [{"named": "*Repo"}], "must_reach": {"targets": [{"place": ["parts.shared"]}, "outside"],
                                                           "through": "import-into-app", "through_only": ["target-in-own-part"]},
-            "cases": [{"when": ["relative"], "message": "m", "fix": "f", "once_per": ["line"]}]}
+            "cases": [{"when": ["relative"], "message": "m", "fix": "f", "once_per": ["line"], "per_line": ["name"]}]}
     del body["may_not"]
     found, problems = read({"reach": body})
     assert problems == []
     check = found["reach"]
     assert (check.within, check.keep, check.sayings[0]) == (
         Scope(APP, "store", "", (Condition("package-file", negated=True), Condition("below", "x/y", True))),
-        (Condition("named", "*Repo"),), Saying("m", "f", (Condition("relative"),), ("line",)))
+        (Condition("named", "*Repo"),), Saying("m", "f", (Condition("relative"),), ("line",), ("name",)))
     assert check.quantified == Quantified("must_reach", (WrittenTarget("place", ("parts.shared",)), WrittenTarget("outside")),
                                           ("import-into-app",), (Condition("target-in-own-part"),))
 
@@ -74,11 +74,11 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
     pytest.param({"names": SMALL}, ["checks.names: names is the id of a check xarch has: give your check an id of its "
                                     "own, such as my-names"], id="the id of a check xarch has"),
     pytest.param({"x": "call"}, ["checks.x: must be a map of slots: read, in, keep, may_not, may_only, must_reach, "
-                                 "must_be_reached, except, mode, message, fix, once_per, cases, examples"],
+                                 "must_be_reached, except, mode, message, fix, once_per, per_line, cases, examples"],
                  id="a check that is no map"),
     pytest.param({"x": {**SMALL, "colour": "red"}}, ["checks.x: unknown key `colour`: use read, in, keep, may_not, "
                                                      "may_only, must_reach, must_be_reached, except, mode, message, fix, "
-                                                     "once_per, cases, examples"], id="a slot of no check"),
+                                                     "once_per, per_line, cases, examples"], id="a slot of no check"),
     pytest.param({"x": {"may_not": "exist"}}, ["checks.x: missing `read`", "checks.x: missing `message`",
                                                "checks.x: missing `fix`", "checks.x: missing `examples`"],
                  id="the slots every check needs"),

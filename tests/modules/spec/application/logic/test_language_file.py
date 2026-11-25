@@ -41,7 +41,7 @@ IMMUTABLE = "immutable: each mark is {base}, {decorator, keywords}, {fields} or 
 STANDARD = "standard: must be interpreter, or a map of modules, reserved and builtins, each a list of names"
 LISTS = {"modules": [], "reserved": [], "builtins": []}
 """A standard that lists nothing, to which a test adds the lists it needs."""
-KEYS_USED = ("branching, branching_expressions, cache, call, comments, directives, dynamic, encoding, extensions, "
+KEYS_USED = ("branching, branching_expressions, cache, call, comments, directives, dynamic, dynamic_attributes, encoding, extensions, "
              "immutable, importing, interface, member, name, namespace, nothing, package, package_files, private, "
              "shebang, special, standard, supplies, title, unannotated, writing")
 """The keys of a data file, as the unknown-key text lists them."""

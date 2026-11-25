@@ -29,6 +29,34 @@ All notable changes to this project are written here. The format follows
   tests a part `fakes.for` names (such as a tier placed only by its `folder`); an unknown tier is refused.
 - A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`): a test has the tier of the deepest folder
   holding it, which is its own folder; only two tiers with the same folder are still refused.
+- A check of your own (and a case of one) takes `per_line: [<variable>, ...]`: the findings of a file on one line
+  that differ only in those variables are said as one, the first, each of them written as its values in the order
+  found, joined by `, ` (a value found again written once). An unknown variable is refused at
+  `checks.<id>.per_line`.
+- The filter `type-only` of a check of your own: an import made only for the type checker, never when the code
+  runs, which the reader says through the new fact `import.type_only` (Python's: an import in the body of
+  `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`); the kinds `import` and `imported-name` carry
+  it, so a check may keep those imports (`keep: [type-only]`) or skip them (`keep: [not type-only]`). The bundled
+  profiles read nothing new.
+- A language's data file may list `dynamic_attributes`, the callables that read a member of an object by a name
+  worked out when the code runs (Python's: `builtins.getattr`); a call of one whose first argument is a name an
+  import binds (`getattr(t, "time")` after `import time as t`) is listed under `dynamic` in the enforcement section,
+  so `--strict` fails on it, since `uses.never` cannot see which member it reads. A `getattr` of a parameter or an
+  object is not listed. The README says, under `never`, what `uses.never` follows and what it does not.
+
+### Changed
+
+- `may-import` reports one finding per import line and place: an import taking several names a part may not import
+  is one finding whose message lists them (`not A, not B (pkg.mod.A, pkg.mod.B)` for a name pattern; the places
+  once each for a part it may not import at all), in the text and in the JSON (`--format json`), where a violation's
+  `message` lists them the same way. A line with a single name says what it said before.
+- `cycles` reports one finding per group of instances that all reach each other (a strongly connected group),
+  however many elementary cycles run through it, instead of one per elementary cycle: the message names the group's
+  instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per
+  file and line), and the finding is reported at the first import of the first of them. The dependencies to cut are
+  those that go back in a greedy order of the group that leaves few imports going back (each dependency weighing as
+  many imports as make it), so cutting them all leaves the group with no cycle. A project whose instances share a few
+  back edges sees one finding per group, not one per path through them.
 
 ### Changed
 
@@ -45,6 +73,13 @@ All notable changes to this project are written here. The format follows
   profile's own checks); the code was right.
 
 ### Fixed
+
+- `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
+  `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
+  there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.
+- `xarch check` no longer prints the parser's `SyntaxWarning` lines on stderr (`<unknown>:1: SyntaxWarning: invalid
+  escape sequence '\d'`) for the code it reads, a file with an invalid escape in a string or a string holding one;
+  the warnings are about the user's code, not xarch's output.
 
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as

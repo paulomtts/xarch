@@ -166,10 +166,10 @@ class Rule:
 
     @property
     def variables(self) -> tuple[str, ...]:
-        """Every variable the rule is written with: in a message or a fix of its sayings, or by which one is said
-        once."""
+        """Every variable the rule is written with: in a message or a fix of its sayings, by which one is said
+        once, or that one lists per line."""
         return (*(name for s in self.sayings for text in (s.message, s.fix) for _, name, _, _ in Formatter().parse(text)
-                  if name), *(name for s in self.sayings for name in s.once))
+                  if name), *(name for s in self.sayings for name in (*s.once, *s.per_line)))
 
 
 @dataclass(frozen=True)
@@ -396,12 +396,13 @@ def _sayings(rule: Rule, kinds: list[Kind], side: str) -> list[str]:
         guards = {c.name for c in (*rule.keep, *saying.when) if not c.negated}
         for part, text in (("message", saying.message), ("fix", saying.fix)):
             problems += _sentence(f"{slot}{part}", text, rule, held, side, guards)
-        for name in saying.once:
-            variable = _VARIABLES.get(name)
-            if variable is None:
-                problems.append(f"{slot}once_per: no variable is named {name!r}{_nearest_variable(name)}")
-            else:
-                problems += _variable(f"{slot}once_per", variable, rule, held, side, guards)
+        for key, names in (("once_per", saying.once), ("per_line", saying.per_line)):
+            for name in names:
+                variable = _VARIABLES.get(name)
+                if variable is None:
+                    problems.append(f"{slot}{key}: no variable is named {name!r}{_nearest_variable(name)}")
+                else:
+                    problems += _variable(f"{slot}{key}", variable, rule, held, side, guards)
     return problems
 
 

@@ -38,7 +38,7 @@ FILE_TYPES = f"{FORMAT}/file_types.yaml"
 """The data file of the kinds of file the docs quote besides the language of the app (see file_types)."""
 
 SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
-         "fix", "once_per", "cases", "examples")
+         "fix", "once_per", "per_line", "cases", "examples")
 """Every slot of a check a profile writes under `checks`, in the order a check is written: spec reads them, and writes
 a check with them."""
 SCOPE_SLOTS = ("files", "part", "tier", "where")
@@ -46,7 +46,7 @@ SCOPE_SLOTS = ("files", "part", "tier", "where")
 REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
                "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
 """The slots of a quantifier of reach, in the order they are written."""
-CASE_SLOTS = ("when", "message", "fix", "once_per")
+CASE_SLOTS = ("when", "message", "fix", "once_per", "per_line")
 """The slots of a case."""
 EXAMPLE_SLOTS = ("flagged", "clean")
 """The slots of a check's examples: the code it must find something in, then the code it must find nothing in."""
