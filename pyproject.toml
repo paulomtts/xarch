@@ -1,6 +1,6 @@
 [project]
 name = "xarch"
-version = "0.2.0"
+version = "0.3.0"
 description = "Scaffold and check the architecture a profile file describes, for coding agents and people"
 readme = "README.md"
 license = "MIT"
