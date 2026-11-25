@@ -18,6 +18,9 @@ All notable changes to this project are written here. The format follows
   `PostToolUse` on `Edit|Write` runs `xarch check --files-from -` on the file written, `Stop` runs
   `xarch check --strict` (unless `stop_hook_active`); each hands the check's output back to the agent (exit 2) when
   it fails. The README says how to do the same with another agent's hooks.
+- `.pre-commit-hooks.yaml` at the repository's root ships the pre-commit hook `xarch-check`: `xarch check` with the
+  files staged as its paths, in one run; the README gives the `.pre-commit-config.yaml` snippet, and a local form
+  running the project's own xarch.
 - The reader keeps what it read of each file in a cache (`xarch/` in `$XDG_CACHE_HOME`, else `~/.cache`;
   `XARCH_CACHE_DIR` names another folder, empty switches it off), keyed by the file's text, how it is read, what
   its relative imports find on disk and xarch's own code: reading the tree was 87% of a check (about 11 s of 12.7 s

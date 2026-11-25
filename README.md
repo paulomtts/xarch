@@ -647,6 +647,40 @@ can run a command after it edits a file and before it ends its turn: after an ed
 exit 0 when clean, 1 with violations and 2 on a usage error, and print what to fix. An agent with no hooks follows
 `AGENTS.md`, which tells it to run `xarch check --strict` before it finishes; the guard test catches what it forgets.
 
+## Running the check before each commit: pre-commit
+
+The repository ships a [pre-commit](https://pre-commit.com) hook, `xarch-check` in `.pre-commit-hooks.yaml`: it runs
+`xarch check` with the files staged as its paths, in one run (`require_serial`), so the commit fails on their
+violations alone (see [Checking some files](#checking-some-files-xarch-check-path-)); the violations of other files
+are counted, not shown, and do not fail it. In the project's `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/paulomtts/xarch
+    rev: <a tag or commit of xarch>
+    hooks:
+      - id: xarch-check
+```
+
+pre-commit installs xarch in an environment of its own (Python 3.13 or later), which is enough: `check` reads the
+source and never imports it. To run the xarch the project already has as a dev dependency instead, write the hook
+locally:
+
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: xarch-check
+        name: xarch check
+        entry: uv run xarch check
+        language: system
+        pass_filenames: true
+        require_serial: true
+```
+
+Neither passes `--strict`, which judges the whole app: add `args: [--strict]` to the first, or `--strict` to the
+local `entry`, to fail the commit on it too, as the guard test does.
+
 ## xarch where: ask before you write
 
 `check` says what went wrong after the fact; `where` answers beforehand, for a person or a coding agent about to create
