@@ -60,9 +60,9 @@ BROKEN = {**LAYERED, "parts": {"src/<module>/": {"api/": {**API, "imports": {"ma
                  id="a configured path is relative to the pyproject holding it"),
     pytest.param(dict(files={FILE: BROKEN}), SelectProfile(APP, FILE),
                  ProfileRefused(
-                     f"{FILE}: parts.api.imports.may: 'api@mine' has an unknown scope '@mine': the only scope is "
-                     f"@any, any instance of the repeating folder\n{FILE}: parts.api.imports.may: 'nowhere' names "
-                     "no part 'nowhere'"),
+                     f"{FILE}: parts.api.imports.may: 'api@mine' is not a reference: write parts.<part> or "
+                     f"<word>.<part>, optionally followed by /<path> and :<pattern>\n{FILE}: "
+                     "parts.api.imports.may: 'nowhere' names no part 'nowhere'"),
                  id="an invalid architecture file is refused with every problem"),
     pytest.param(dict(), SelectProfile(APP, "/src/none.yaml"),
                  ProfileRefused("/src/none.yaml: cannot read the file: no such file"),

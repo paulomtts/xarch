@@ -17,7 +17,7 @@ parts:
         it belongs in `application/logic/`. If it must load or save anything, it is a service step. `xarch check`
         holds it to its `uses.never` list: no clock and no I/O by name.
       imports:
-        may: [kernel, kernel-logic]
+        may: [parts.kernel, parts.kernel-logic]
       uses:
         never: pure
       holds:
@@ -33,7 +33,7 @@ parts:
           save anything, it is a service step. `xarch check` holds it to its `uses.never` list: no clock and no I/O by
           name.
         imports:
-          may: [domain, kernel, kernel-logic]
+          may: [module.domain, parts.kernel, parts.kernel-logic]
         uses:
           never: pure
         holds:
@@ -51,7 +51,7 @@ parts:
           `Clock`), it belongs in `kernel/`. If it has a body that talks to a real system, it belongs in `adapters/`.
           `xarch check` holds it to its `uses.never` list: no clock and no I/O by name.
         imports:
-          may: [domain, kernel, kernel-logic]
+          may: [module.domain, parts.kernel, parts.kernel-logic]
         uses:
           never: pure
         holds:
@@ -68,7 +68,7 @@ parts:
           a failure into a `Result` variant, it belongs in the controller. If it touches a database, it belongs in
           `adapters/`.
         imports:
-          may: [logic, domain, ports, contract, kernel, kernel-logic]
+          may: [module.logic, module.domain, module.ports, module.contract, parts.kernel, parts.kernel-logic]
         uses:
           never: ambient
         holds:
@@ -86,7 +86,8 @@ parts:
           text, it belongs in `web/`. If it handles a table row, or reads another module's `Result` to answer one of
           this module's ports, it belongs in `adapters/`.
         imports:
-          may: [services, logic, domain, ports, contract, kernel, kernel-logic]
+          may: [module.services, module.logic, module.domain, module.ports, module.contract, parts.kernel,
+                parts.kernel-logic]
         uses:
           never: ambient
         holds:
@@ -104,8 +105,8 @@ parts:
         wraps. If it knows no module's types and is only a client or engine for a technology, it belongs in
         `platform/`. If it contains a business rule, it belongs in `domain/`.
       imports:
-        may: [ports, domain, kernel, kernel-logic, platform, contract@any]
-        must: [platform, contract@any]
+        may: [module.ports, module.domain, parts.kernel, parts.kernel-logic, parts.platform, parts.contract]
+        must: [parts.platform, parts.contract]
         libraries: [sqlmodel]
       uses:
         never: ambient
@@ -123,7 +124,7 @@ parts:
         module hands out is a type of its own here. If it is a `domain/` entity, a service type or a port, it stays
         where it is, and a DTO goes here instead.
       imports:
-        may: ["domain/values:*Id", domain/published, kernel, kernel-logic]
+        may: ["module.domain/values:*Id", module.domain/published, parts.kernel, parts.kernel-logic]
       uses:
         never: published
       package_only: true
@@ -138,7 +139,7 @@ parts:
       yes, it goes here, named for the technology (a table model, for its table) and never for a module. If it
       translates a module's types for a port, it belongs in that module's `adapters/`.
     imports:
-      may: [kernel, kernel-logic]
+      may: [parts.kernel, parts.kernel-logic]
       libraries: [sqlmodel]
     uses:
       never: environment
@@ -151,7 +152,7 @@ parts:
       If it builds anything or starts the program, it belongs in `bootstrap/`. If it reports a failure as a `Result`,
       it belongs in the controller. If it holds a business rule, it belongs in `domain/`.
     imports:
-      may: [controller@any, contract@any, kernel, kernel-logic]
+      may: [parts.controller, parts.contract, parts.kernel, parts.kernel-logic]
       libraries: [fastapi]
     uses:
       never: environment
@@ -195,7 +196,7 @@ parts:
         `kernel/`. If it must load or save anything, it is a service step. `xarch check` holds it to its `uses.never`
         list: no clock and no I/O by name.
       imports:
-        may: [kernel]
+        may: [parts.kernel]
       uses:
         never: pure
       holds:
@@ -263,7 +264,7 @@ tiers:
       Does it prove what the page shows for one `Result`, with a fake controller injected, asserting only what is
       shown and never a status code? If yes, it is a rendering test. If it asserts what the use case did, or needs the
       real controller to mean anything, it is an integration test wearing a screen.
-    imports: {types_only: [controller]}
+    imports: {types_only: [parts.controller]}
     docs:
       may_touch: a fake controller, injected; the real controller's class only as a type, never called
       one_file_per: command or page

@@ -20,34 +20,34 @@ parts:
       role: entities and rules of one module
       litmus: Is it an invariant of one module?
       imports:
-        may: [kernel]
+        may: [parts.kernel]
       tests: unit
     contract/:
       role: what a module shows to the others
       litmus: Does another folder need it?
       imports:
-        may: [domain, kernel]
+        may: [module.domain, parts.kernel]
       tests: integration
       package_only: true
     adapters/:
       role: talks to a technology
       litmus: Does it touch a technology?
       imports:
-        may: [domain, kernel, contract@any, hooks@any]
+        may: [module.domain, parts.kernel, parts.contract, parts.hooks]
       tests: unit
   plugins/<plugin>/:
     hooks/:
       role: what a plugin runs
       litmus: Does a plugin run it?
       imports:
-        may: [manifest, kernel, contract@any]
-        must: [manifest, contract@any]
+        may: [plugin.manifest, parts.kernel, parts.contract]
+        must: [plugin.manifest, parts.contract]
       tests: integration
     manifest.py:
       role: what a plugin declares
       litmus: Does a plugin declare it?
       imports:
-        may: [kernel]
+        may: [parts.kernel]
       tests: unit
 tiers:
   unit: {proves: a rule, litmus: "Does it run with nothing outside?"}

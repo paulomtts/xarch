@@ -8,6 +8,8 @@ from xarch.kernel.placement import EACH
 from xarch.modules.spec.application.logic.parts_tree import PartsTree, TreeFolder, TreePart, parts_tree
 from xarch.modules.spec.domain.values import Language
 
+RESERVED = ("has the step `<parts>`: `<parts>` is reserved: `parts.` names a part in every instance; give the "
+            "repeating folder another word")
 KNOWN = "holds, imports, litmus, name, package_only, role, shared, tests, untested, uses"
 
 
@@ -95,11 +97,28 @@ def test_two_repeating_steps_on_the_way_to_a_part_are_kept_for_the_parser_to_ref
                  "one word between them: write the repeating folder as `<name>`", id="15 a bracket that is no word"),
     pytest.param({"a/<x>b/": {"role": "r"}}, "parts: 'a/<x>b/' has a step with `<` or `>` that is not one word "
                  "between them: write the repeating folder as `<name>`", id="15 a bracket inside a name"),
+    pytest.param({"units/<parts>/store/": {"role": "r"}}, f"parts: 'units/<parts>/store/' {RESERVED}",
+                 id="15 the word parts in a joined key"),
+    pytest.param({"units/": {"<parts>/": {"store/": {"role": "r"}}}}, f"parts: '<parts>/' {RESERVED}",
+                 id="15 the word parts in a nested key"),
+    pytest.param({"<parts>/x.py": {"role": "r"}}, f"parts: '<parts>/x.py' {RESERVED}",
+                 id="15 the word parts at the top"),
     pytest.param({"modules/<module>/": {}}, "parts: 'modules/<module>/' is a repeating folder with no part below it: "
                  "write a part in it, or drop it", id="17 a repeating folder with no part"),
 ])
 def test_each_refusal_of_the_tree_says_where_and_what_to_write(value, expected):
     assert walked(value).problems == (expected,)
+
+
+@pytest.mark.parametrize("value, names", [
+    pytest.param({"units/<partsx>/store/": {"role": "r"}}, ["store"], id="a word that starts with parts"),
+    pytest.param({"units/<sub-parts>/store/": {"role": "r"}}, ["store"], id="a word that ends with parts"),
+    pytest.param({"parts/": {"store/": {"role": "r"}}}, ["store"], id="a plain folder named parts"),
+    pytest.param({"parts/": {"role": "r"}}, ["parts"], id="a part named parts"),
+])
+def test_only_the_repeating_word_parts_is_reserved(value, names):
+    tree = walked(value)
+    assert (tree.problems, [part.name for part in tree.parts]) == ((), names)
 
 
 def test_a_typo_alone_in_a_folder_leaves_it_a_folder_and_no_part():

@@ -20,6 +20,8 @@ from xarch.modules.spec.domain.profile_keys import PART
 from xarch.modules.spec.domain.values import Language
 
 _REPEATING = re.compile(r"<([A-Za-z_][A-Za-z0-9_-]*)>")
+_RESERVED = "<parts>"
+
 _TREE = "parts: must be the folder tree of the app: folders ending in /, files with their extension"
 
 
@@ -145,7 +147,8 @@ def _walk(node: Mapping[Any, Any], at: tuple[str, ...], found: _Found) -> None:
 
 
 def _steps(key: str, problems: list[str]) -> tuple[str, ...] | None:
-    """The steps a folder or file key writes, `<word>` as written; None, said, when one of them is no step."""
+    """The steps a folder or file key writes, `<word>` as written; None, said, when one of them is no step or is the
+    repeating folder `<parts>`, whose word a reference keeps for every instance."""
     steps = tuple((key[:-1] if key.endswith("/") else key).split("/"))
     if any(step in ("", ".", "..") or "\\" in step for step in steps):
         problems.append(f"parts: '{key}' has an empty, `.` or `..` step")
@@ -154,6 +157,9 @@ def _steps(key: str, problems: list[str]) -> tuple[str, ...] | None:
     elif any(("<" in step or ">" in step) and not _REPEATING.fullmatch(step) for step in steps):
         problems.append(f"parts: '{key}' has a step with `<` or `>` that is not one word between them: write the "
                         "repeating folder as `<name>`")
+    elif _RESERVED in steps:
+        problems.append(f"parts: '{key}' has the step `{_RESERVED}`: `{_RESERVED}` is reserved: `parts.` names a part "
+                        "in every instance; give the repeating folder another word")
     else:
         return steps
     return None

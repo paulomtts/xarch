@@ -131,5 +131,6 @@ def may_use_fakes(profile: Profile, tier: CheckedTier) -> bool:
 
 
 def as_place(instance: str | None) -> Place:
-    """The place a test speaks from: its repeating folder's instance, so that @own reaches that instance's parts."""
+    """The place a test speaks from: its repeating folder's instance, so that `<word>.<part>` reaches that instance's
+    parts."""
     return Place(EACH, instance)

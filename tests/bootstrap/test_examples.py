@@ -48,7 +48,7 @@ CUSTOM = """\
 name: layered
 parts:
   src/<module>/:
-    api/: {role: handlers, imports: {may: [store]}}
+    api/: {role: handlers, imports: {may: [module.store]}}
     store/: {role: database access}
 docs:
   entry: api

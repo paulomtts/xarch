@@ -23,9 +23,9 @@ PROFILE = {
     "name": "layered",
     "parts": {"shared/": {"role": "code every module uses"},
               "src/<module>/": {
-                  "store/": {"role": "database access", "imports": {"may": ["sql", "shared/text"]},
+                  "store/": {"role": "database access", "imports": {"may": ["module.sql", "parts.shared/text"]},
                              "sql/": {"role": "queries"}},
-                  "service/": {"role": "business logic", "imports": {"may": ["store", "api@any"]}},
+                  "service/": {"role": "business logic", "imports": {"may": ["module.store", "parts.api"]}},
                   "api.py": {"role": "HTTP handlers", "imports": {"may": "everything"}}}},
 }
 PATHS = {"shared": "shared/x.py", "store": "src/billing/store/x.py", "sql": "src/billing/store/sql/x.py",
@@ -44,8 +44,8 @@ def check(**codes: Read) -> list[str]:
 
 
 def test_imports_the_rules_allow_pass():
-    """Imports outside the app are ignored; api@any reaches another module's api; a module of shared is reached by
-    name (shared/text); api's * reaches everything, the structure too."""
+    """Imports outside the app are ignored; parts.api reaches another module's api; a module of shared is reached by
+    name (parts.shared/text); api's * reaches everything, the structure too."""
     assert check(
         service=(whole("os"), frm("typing", "Protocol"), whole("yaml"), frm("app.src.billing.service.rules", "cap"),
                  frm("app.src.billing.store", "Repo"), whole("app.src.billing.store.repo"),
@@ -57,7 +57,7 @@ def test_imports_the_rules_allow_pass():
 
 
 def test_an_import_the_rules_forbid_is_reported_once_with_its_rule():
-    """store@own reaches billing's store, not tax's; shared/text reaches only that path of shared; sql lies deeper
+    """module.store reaches billing's store, not tax's; parts.shared/text reaches only that path of shared; sql lies deeper
     than store, so it is its own part with its own rules; the structure (app.src.billing) is reached only by *."""
     assert check(
         service=(frm("app.src.tax.store", "Repo"), frm("app.src.tax.store", "Other"), frm("app.shared", "x")),

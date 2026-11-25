@@ -25,11 +25,12 @@ of profile_values: each list a tuple, a filter a Condition, a target its kind an
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from typing import Any
 
 from xarch.kernel.logic.conditions import condition
 from xarch.kernel.logic.placement import stem
+from xarch.kernel.logic.targets import outside_imports
 from xarch.kernel.violations import OWN_ID, RULES
 from xarch.modules.spec.domain.values import (
     CASE_SLOTS,
@@ -56,9 +57,9 @@ from xarch.profile_values.checks import (
 
 
 def checks(value: Any, declared: set[str], tiers: tuple[Tier, ...], language: Language,
-           problems: list[str]) -> dict[str, WrittenCheck]:
+           problems: list[str], *, words: Collection[str]) -> dict[str, WrittenCheck]:
     """Every check of the map, by its id, as it comes back (see the module); one with a problem is left out, and the
-    problem said at its address."""
+    problem said at its address. words are the profile's, which the part a scope names never takes."""
     if not isinstance(value, Mapping):
         problems.append("checks: must be a map from an id of your own to a check, such as "
                         "{store-names: {read: class, may_only: {name: [\"*Store\"]}, message: ..., fix: ..., examples: ...}}")
@@ -74,14 +75,14 @@ def checks(value: Any, declared: set[str], tiers: tuple[Tier, ...], language: La
             problems.append(f"{where}: {name} is the id of a check xarch has: give your check an id of its own, such as "
                             f"my-{name}")
             continue
-        read = _check(body, where, declared, {t.name for t in tiers}, language, problems)
+        read = _check(body, where, declared, {t.name for t in tiers}, language, problems, words)
         if len(problems) == count and read is not None:
             found[name] = read
     return found
 
 
 def _check(body: Any, where: str, declared: set[str], tiers: set[str], language: Language,
-           problems: list[str]) -> WrittenCheck | None:
+           problems: list[str], words: Collection[str]) -> WrittenCheck | None:
     if not isinstance(body, Mapping):
         problems.append(f"{where}: must be a map of slots: {', '.join(SLOTS)}")
         return None
@@ -91,7 +92,7 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
     if len(quantified) != 1:
         problems.append(f"{where}: {'names no quantifier' if not quantified else 'names ' + ' and '.join(quantified)}: "
                         f"write one of {', '.join(QUANTIFIER_SLOTS)}")
-    within = scope(body.get("in", {}), f"{where}.in", declared, tiers, problems)
+    within = scope(body.get("in", {}), f"{where}.in", declared, tiers, problems, words=words)
     read = _names(body.get("read"), f"{where}.read", problems)
     keep = filters(body.get("keep", []), f"{where}.keep", problems)
     exempt = filters(body.get("except", []), f"{where}.except", problems)
@@ -104,8 +105,8 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
     if len(quantified) != 1:
         return None
     slot = quantified[0]
-    return WrittenCheck(read, within, _quantified(slot, body[slot], f"{where}.{slot}", declared, tiers, problems),
-                        (*cases, own), keep, exempt, mode, flagged, clean)
+    quantifier = _quantified(slot, body[slot], f"{where}.{slot}", declared, tiers, problems, words)
+    return WrittenCheck(read, within, quantifier, (*cases, own), keep, exempt, mode, flagged, clean)
 
 
 def _unknown(body: Mapping[Any, Any], known: tuple[str, ...], where: str) -> list[str]:
@@ -160,7 +161,10 @@ def filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ...
     return tuple(condition(text) for text in found)
 
 
-def scope(value: Any, where: str, declared: set[str], tiers: set[str], problems: list[str]) -> Scope:
+def scope(value: Any, where: str, declared: set[str], tiers: set[str], problems: list[str], *,
+          words: Collection[str]) -> Scope:
+    """The files a check or an eval reads: their kind, the part, the tier and the filters; a part written as a reference
+    (its prefix `parts` or one of words) is told its plain name."""
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a map {{files, part, tier, where}}")
         return Scope()
@@ -173,6 +177,8 @@ def scope(value: Any, where: str, declared: set[str], tiers: set[str], problems:
             chosen = STRUCTURE
         elif isinstance(part, str) and part in declared:
             chosen = part
+        elif (prefixed := outside_imports(part, declared, words)) is not None:
+            problems.append(f"{where}.part: {prefixed}")
         else:
             problems.append(f"{where}.part: no part named {part!r}: write one of {', '.join(sorted(declared))}, or "
                             f"{STRUCTURE_WORD}")
@@ -207,7 +213,7 @@ def _targets(value: Any, where: str, problems: list[str]) -> tuple[WrittenTarget
 
 
 def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: set[str],
-                problems: list[str]) -> Quantified:
+                problems: list[str], words: Collection[str]) -> Quantified:
     if slot not in REACH_SLOTS:
         return Quantified(slot, _targets(value, where, problems))
     if not isinstance(value, Mapping):
@@ -223,7 +229,8 @@ def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: se
     elsewhere = value.get("by_another_file", False)
     if not isinstance(elsewhere, bool):
         problems.append(f"{where}.by_another_file: must be true or false")
-    return Quantified(slot, (), through, only, scope(value.get("from", {}), f"{where}.from", declared, tiers, problems),
+    return Quantified(slot, (), through, only, scope(value.get("from", {}), f"{where}.from", declared, tiers, problems,
+                                                      words=words),
                       _names(value.get("then_through"), f"{where}.then_through", problems), elsewhere is True)
 
 

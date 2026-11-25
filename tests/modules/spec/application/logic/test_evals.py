@@ -55,6 +55,9 @@ NOT_A_LINE = "is not a line: write a number above 0 and below 1, such as 0.2"
                                                   "such as {documents: 0.2}", id="lines not a mapping"),
     pytest.param({"placement": {"lines": {"domain": 0.2}}}, "evals.placement.lines: 'domain' is not a part of this "
                                                             "profile: name a part under parts", id="a name that is no part"),
+    pytest.param({"placement": {"lines": {"parts.store": 0.2}}}, "evals.placement.lines: 'parts.store': names a part "
+                                                                 "outside imports: write store",
+                 id="a part named by a reference"),
     pytest.param({"placement": {"lines": {"store": "low"}}}, f"evals.placement.lines.store: 'low' {NOT_A_LINE}",
                  id="a line that is no number"),
     pytest.param({"placement": {"lines": {"store": True}}}, f"evals.placement.lines.store: True {NOT_A_LINE}",
@@ -146,6 +149,8 @@ VARIABLES = "use {file}, {line}, {name}, {value}"
                                       "of", id="a kind of fact the eval does not read"),
     pytest.param({"in": {"part": "nowhere"}}, "evals.rule.in.part: no part named 'nowhere': write one of api, service, "
                                               "shared, store, or structure", id="a scope naming no part"),
+    pytest.param({"in": {"part": "module.store"}}, "evals.rule.in.part: 'module.store': names a part outside imports: "
+                                                   "write store", id="a scope naming a part by a reference"),
     pytest.param({"in": {"files": "tests"}}, "evals.rule.in: review reads the app's files only: write part and where",
                  id="a scope of the tests"),
     pytest.param({"in": {"part": "structure"}}, "evals.rule.in.part: review reads the files of a part only: name a "
@@ -226,6 +231,8 @@ NOT_ALIKE = ("check tells them apart by rule, so one file is not all that tells 
                  "as [drafts, documents]", id="a group that is no list"),
     pytest.param(alike(("store", "domain")), "evals.placement.alike[0]: 'domain' is not a part of this profile: name a "
                                              "part under parts", id="a name that is no part"),
+    pytest.param(alike(("parts.store", "shared")), "evals.placement.alike[0]: 'parts.store': names a part outside "
+                                                   "imports: write store", id="a part named by a reference"),
     pytest.param(alike(("store",)), "evals.placement.alike[0]: must name two parts or more: a part alone is alike to "
                                     "no other", id="a group of one part"),
     pytest.param(alike(("store", "store")), "evals.placement.alike[0]: names 'store' twice: name each part once",

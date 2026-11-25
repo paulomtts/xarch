@@ -37,9 +37,10 @@ NARROWER = ("records", "exceptions")
 """The kinds every class covers too."""
 
 
-def holds(value: Any, where: str, declared: Collection[str], problems: list[str]) -> tuple[Held, ...]:
+def holds(value: Any, where: str, declared: Collection[str], problems: list[str], *,
+          words: Collection[str]) -> tuple[Held, ...]:
     """The kinds the `holds` of the part at where lists, each with its settings, in the order of KINDS; none when it
-    is refused, each problem added to problems."""
+    is refused, each problem added to problems; words are the profile's, which a part a setting names never takes."""
     at = f"{where}.holds"
     retired = retired_value(PART, "holds", value) if isinstance(value, str) else ""
     if retired:
@@ -53,11 +54,11 @@ def holds(value: Any, where: str, declared: Collection[str], problems: list[str]
         return ()
     problems += [f"{at}: no kind {str(name)!r}: use {', '.join(sorted(KINDS))}" for name in value if name not in KINDS]
     return tuple(held for kind in KINDS if kind in value
-                 for held in _kind(kind, value[kind], "classes" in value, f"{at}.{kind}", declared, problems))
+                 for held in _kind(kind, value[kind], "classes" in value, f"{at}.{kind}", declared, problems, words))
 
 
 def _kind(kind: str, settings: Any, beside_classes: bool, at: str, declared: Collection[str],
-          problems: list[str]) -> tuple[Held, ...]:
+          problems: list[str], words: Collection[str]) -> tuple[Held, ...]:
     """The kind with the settings written for it, at its address; none when it is no map."""
     if not isinstance(settings, Mapping):
         problems.append(f"{at}: must be a map of its settings, {{}} for none, such as {EXAMPLES[kind]}")
@@ -68,7 +69,7 @@ def _kind(kind: str, settings: Any, beside_classes: bool, at: str, declared: Col
         problems.append(f"{at}: says nothing beside classes, which already allows {kind}: give it a setting, or drop it")
     names = _patterns(settings["names"], f"{at}.names", problems) if "names" in settings else ()
     immutable = _immutable(settings, kind, at, problems) if "immutable" in known else False
-    built_by = tuple(ck.part_names(settings["built_by"], declared, f"{at}.built_by", problems)) \
+    built_by = tuple(ck.part_names(settings["built_by"], declared, f"{at}.built_by", problems, words=words)) \
         if "built_by" in known and "built_by" in settings else ()
     return (Held(kind, names, immutable, built_by),)
 

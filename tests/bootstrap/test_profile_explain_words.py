@@ -2,6 +2,7 @@
 word with an example from a bundled profile's own rules, the rules a key expands to as checks, a word that does not
 exist refused with the nearest ones (a key that does not exist with the nearest words too), and all of it as JSON."""
 import json
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -9,6 +10,8 @@ from typer.testing import CliRunner
 from xarch.bootstrap.app import app
 
 runner = CliRunner()
+ROOT = Path(__file__).resolve().parents[2]
+"""The repository, whose architecture.yaml is the profile in force when xarch is run there."""
 
 
 @pytest.fixture(autouse=True)
@@ -100,3 +103,13 @@ def test_a_part_s_imports_may_expands_to_the_rules_may_import():
     assert listed.exit_code == 0, listed.output
     assert listed.output.splitlines()[0] == "parts.imports.may expands to 12 rules in web, written as checks:"
     assert "  may-import-domain:" in listed.output.splitlines() and "  rules-domain:" not in listed.output.splitlines()
+
+
+def test_the_example_of_targets_place_writes_its_places_as_references(monkeypatch):
+    monkeypatch.chdir(ROOT)
+    result = explain("targets.place")
+    assert result.exit_code == 0, result.output
+    example = result.output.partition("  example: ")[2]
+    assert "architecture.yaml expands to" in example
+    assert "targets: [{place: [parts.platform, parts.contract]}, outside]" in example
+    assert "@any" not in example

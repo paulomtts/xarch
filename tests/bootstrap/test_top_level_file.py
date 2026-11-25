@@ -15,7 +15,7 @@ parts:
     name: main
     role: the python -m entry
     imports:
-      may: [core]
+      may: [parts.core]
     untested: a two-line shim
   core/: {role: the code}
 guards:

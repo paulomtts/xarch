@@ -4,11 +4,11 @@ An example is one file of an example project of the docs, so it is checked as if
 importer's part is the part its path lies in, and each import of the app's own code is resolved to a part the same
 way, through the parts' path patterns (the repeating folder captures the instance, the deepest pattern wins, a path no
 part claims is structure). The import is allowed when a target in the importer's `imports.may` reaches it: everything,
-or the same part, in the importer's instance (a bare name), in any instance (@any) or outside the repeating folder,
-and below its /<path> if it names one. Structure is reached only by everything. Imports outside the app's root
-package (the standard library, third parties) are not the architecture's business and are ignored. The example
-project's app is the one the docs' example project names (EXAMPLE_APP), and its test code lies in the default tests
-folder.
+or the same part, in the importer's instance (`<word>.<part>`), in any instance or outside the repeating folder
+(`parts.<part>`), and below its /<path> if it names one. Structure is reached only by everything. Imports outside the
+app's root package (the standard library, third parties) are not the architecture's business and are ignored. The
+example project's app is the one the docs' example project names (EXAMPLE_APP), and its test code lies in the default
+tests folder.
 
 The examples are read by the reader of the app's language, as data: what each imports, or where and why it does not
 parse. Every source file of the language below the example projects is checked, so a file that lies in no part is

@@ -12,7 +12,7 @@ APP = Path("/p/app")
 PRESET = {"files": ["test_*.py"], "declared": [{"function": "test_*"}]}
 MINE = {"name": "mine", "testing": "kit", "parts": {
     "core/": {"role": "rules", "uses": {"never": "pure"}},
-    "store/": {"role": "storage", "imports": {"may": ["core"], "libraries": ["sqlmodel", "requests"]}},
+    "store/": {"role": "storage", "imports": {"may": ["parts.core"], "libraries": ["sqlmodel", "requests"]}},
     "edge/": {"role": "entry", "imports": {"may": "everything", "libraries": "everything"}}},
     "never": {"pure": ["socket"]}}
 

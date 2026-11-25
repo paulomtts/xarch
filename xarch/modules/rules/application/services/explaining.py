@@ -77,7 +77,9 @@ class ExplainingService:
         found = self.example(category, name, locations)
         if found is not None:
             location, rule = found
-            return explained.example_key(rule), location, self._form.written({rule.id: check_of(rule, language.member)})
+            words = self._profiles.profile(location).words()
+            return explained.example_key(rule), location, self._form.written({rule.id: check_of(rule, language.member,
+                                                                                                 words=words)})
         return (own.rule.key, "", self._form.written(written_own((own,), language))) if own is not None else ("", "", "")
 
     def example(self, category: str, name: str, locations: tuple[str, ...]) -> tuple[str, Rule] | None:
@@ -114,8 +116,9 @@ class ExplainingService:
             return KeyUnset(address, location, self._profiles.key(address))
         if not rules:
             return NoRuleShown(address, location, explained.no_rule(self._profiles.key(address).read_by))
-        return RuleShown(address, location, self._form.written(written(rules, self.language((location,)).member)), len(rules),
-                         tuple(dict.fromkeys(need for rule in rules for need in rule.needs)))
+        words = self._profiles.profile(location).words()
+        return RuleShown(address, location, self._form.written(written(rules, self.language((location,)).member, words=words)),
+                         len(rules), tuple(dict.fromkeys(need for rule in rules for need in rule.needs)))
 
     def _rules(self, location: str) -> list[Rule]:
         try:

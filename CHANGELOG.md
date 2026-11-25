@@ -7,6 +7,21 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- References beside the old forms of a target: a part's `imports.may` and `imports.must`, a tier's `imports.may` and
+  `imports.also`, and a check's `place` read `parts.<part>` and `<word>.<part>`, each optionally followed by `/<path>`
+  and, where the key takes one, `:<pattern>`. `parts.<part>` is the part in every instance of its repeating folder
+  (as `<part>@any`), or the part itself when it lies in none; `<word>.<part>` is the part in the importer's own
+  instance of the `<word>` folder, the word one of the profile's repeating folders, and in a tier's `imports.also` the
+  instance the test mirrors; `parts.everything` names a part called `everything`. A value is a reference when the
+  text before its first `/` or `:` holds a dot. A reference written wrong is refused saying what to write: a word for
+  a part in no `<word>` folder or in another word's (`'module.kernel': part 'kernel' lies in no <module> folder: write
+  parts.kernel`), a word from an importer outside its folder (`... so it has no own module: write parts.domain`), a
+  word in brackets (`write the word without brackets: module.services`), a prefix that is no word of the profile
+  (`'orders' is neither parts nor a word of this profile (module): a profile names no instance; write module.services
+  or parts.services`, and for a check's `place` the hint that a dotted name of code goes under `path`), `@` anywhere
+  before the pattern, and a part's own instance of itself. In a tier's `imports.also`, a word none of the parts the
+  tier tests lies in is refused too (`'module.store': no part the tier tests lies in a <module> folder, so its tests
+  mirror no module: write parts.store`), and `<part>@own` or a bare name there is then told `parts.<part>`.
 - The match of a custom profile with the bundled one it is compared with: the share of what `check` reads under
   either profile (each part, each key a part, a tier or the profile writes, each setting of a kind of `holds` on its
   own, each guard switched on, each check of the profile's own of an id both write) that has a counterpart in the
@@ -344,6 +359,34 @@ All notable changes to this project are written here. The format follows
   0}]`: a call giving both a keyword and a first argument now names its spec by the keyword, and a read port named by
   `spec_set=` is shown with `spec_set=`. A `type_argument` entry needs `call.type_arguments`, and an entry of a form the
   language's `writing.specs` does not write is refused at its index.
+- `profile explain <key> --rule` and the example of `profile explain <word>` write a check's `place` as a reference,
+  and the looser lines of `profile check` and `check` (and their JSON `what` and `sentence`) write a target so:
+  `parts.<part>` for a part in every instance of its repeating folder or in none, `<word>.<part>` for the importer's
+  own instance, the word that of the folder the part lies in, then `/<path>` and `:<pattern>` as before (`domain may
+  also import parts.platform`, `targets: [{place: [parts.platform, parts.contract]}, outside]`). `everything` is
+  still written `everything`, and the JSON's shape does not change.
+- The bundled profiles (`cli`, `web`) and xarch's own `architecture.yaml` write every list of parts under `imports`
+  as references: a part in the importer's own instance `module.<part>`, one in any instance or in no repeating
+  folder `parts.<part>` (`may: [module.domain, parts.kernel, parts.contract]`, `"module.domain/values:*Id"`,
+  `types_only: [parts.controller]`); what each allows does not change, and `profile check architecture.yaml` prints
+  what it printed. A tier's `imports.must` and `imports.types_only` read `parts.<part>`, and
+  refuse `<word>.<part>` (`'module.controller': a tier's tests lie in no instance: write parts.controller`) and a
+  path or a pattern (`'parts.controller/x': names a part only: write parts.controller`), each entry its own problem.
+  `profile explain` (its symbols and the keys under `imports`), the README and the examples the messages give
+  (`must be a list of targets such as [parts.core, unit.store/schema]`, `such as {must: [parts.<part>]}`,
+  `[{parts.ports: types_only}]`) say references.
+- The old forms of a target are refused, each with the reference to write, computed from the profile, one problem
+  per value: `<part>@any` (`'contract@any': @any was removed in 0.3.0: write parts.contract`), `<part>@own` (`write
+  module.contract` where the importer lies in the part's `<module>` folder, else `write parts.contract`) and the bare
+  name of a part (`'domain': a bare part name was removed in 0.3.0: write module.domain (this module's) or
+  parts.domain (any module's)`, or `write parts.kernel` for a part `<word>.` cannot name from there), each with its
+  `/<path>` and `:<pattern>` carried into the reference. A bare name, `@any` or `@own` in a tier's `imports.must` or
+  `imports.types_only` is told `parts.<part>`. A value with `@` and no dot, such as `domain@all`, is not a reference.
+  The tree's reader refuses the repeating folder `<parts>` (`parts.` names a part in every instance: give the
+  repeating folder another word), and a key outside `imports` that names a part by its plain name refuses a prefixed
+  one (`'parts.bootstrap': names a part outside imports: write bootstrap`). `<word>.<part>` from an importer outside
+  its folder and a concrete instance name (`orders.services`, also when a part is named `orders`) stay refused. No
+  form is rewritten on load: a profile written in the old forms is refused until it is rewritten.
 
 ## [0.2.0] - 2026-11-18
 

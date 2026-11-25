@@ -6,14 +6,14 @@ so and read back is the same rule, its id and key aside: a check of one's own ta
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from xarch.kernel.logic.names import outside_text
+from xarch.kernel.logic.targets import written_target
 from xarch.modules.rules.domain.rule import MUST_BE_REACHED, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.vocabulary import TARGETS
 from xarch.profile_values.checks import Quantified, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
-from xarch.profile_values.placement import Target
 
 _IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
 """The token of a line that imports a name from a file of the app, in the code of a check written for the
@@ -22,17 +22,20 @@ _VALUED = frozenset(kind.name for kind in TARGETS if kind.values)
 """The kinds of target that take values: a check writes one with its values, even none, and any other alone."""
 
 
-def written(rules: Iterable[Rule], member: str) -> dict[str, WrittenCheck]:
+def written(rules: Iterable[Rule], member: str, *, words: Mapping[str, str]) -> dict[str, WrittenCheck]:
     """The rules as checks of a profile, each under an id of its own (see _ids), an outside name joined with the
-    language's member."""
+    language's member, a place written as a reference with words, the word of the repeating folder each part of the
+    profile lies in."""
     rules = list(rules)
-    return {name: check_of(rule, member) for rule, name in zip(rules, _ids(rules))}
+    return {name: check_of(rule, member, words=words) for rule, name in zip(rules, _ids(rules))}
 
 
 def written_own(checks: Iterable[OwnCheck], language: CheckedLanguage) -> dict[str, WrittenCheck]:
     """Checks of a profile's own as its `checks` are written, each under its id with its examples, the tokens of the
-    language (see _tokens_filled) in their paths and code filled in."""
-    return {own.rule.id: check_of(own.rule, language.member, _filled(own.flagged, language), _filled(own.clean, language))
+    language (see _tokens_filled) in their paths and code filled in; checks written for the explanation, which name no
+    place, so no word is needed."""
+    return {own.rule.id: check_of(own.rule, language.member, _filled(own.flagged, language), _filled(own.clean, language),
+                                  words={})
             for own in checks}
 
 
@@ -51,9 +54,11 @@ def _ids(rules: list[Rule]) -> list[str]:
 
 
 def check_of(rule: Rule, member: str, flagged: tuple[tuple[str, str], ...] = (),
-             clean: tuple[tuple[str, str], ...] = ()) -> WrittenCheck:
-    """The rule as the check a profile would write, with the examples given, an outside name joined with member."""
-    targets = () if rule.quantifier == MUST_BE_REACHED else tuple(_target(match, member) for match in rule.targets)
+             clean: tuple[tuple[str, str], ...] = (), *, words: Mapping[str, str]) -> WrittenCheck:
+    """The rule as the check a profile would write, with the examples given, an outside name joined with member, a place
+    written as a reference with words (see written_target); raises ValueError for a place in the own instance of a part
+    words gives no word."""
+    targets = () if rule.quantifier == MUST_BE_REACHED else tuple(_target(match, member, words) for match in rule.targets)
     quantified = Quantified(rule.quantifier, targets, rule.links, rule.via, rule.roots, rule.spread, rule.elsewhere)
     return WrittenCheck(rule.facts, rule.scope, quantified, rule.sayings, rule.keep, rule.exempt, rule.mode, flagged,
                         clean)
@@ -73,16 +78,8 @@ def _filled(files: tuple[tuple[str, str], ...], language: CheckedLanguage) -> tu
     return tuple((_tokens_filled(path, language), _tokens_filled(code, language)) for path, code in files)
 
 
-def _target(match: Match, member: str) -> WrittenTarget:
+def _target(match: Match, member: str, words: Mapping[str, str]) -> WrittenTarget:
     if match.kind not in _VALUED:
         return WrittenTarget(match.kind)
-    return WrittenTarget(match.kind, (*map(_place, match.places), *(outside_text(n, member) for n in match.names),
-                                      *match.words))
-
-
-def _place(made: Target) -> str:
-    """The target as a profile writes it, which target() reads back: `@any` for any instance of the repeating folder
-    (a bare name is the importer's own instance, or no instance), then the path below the part and the name pattern."""
-    return (made.part + ("@any" if made.scope == "any" else "") + ("/" + "/".join(made.sub) if made.sub else "")
-            + (f":{made.names}" if made.names else ""))
-
+    return WrittenTarget(match.kind, (*(written_target(place, words) for place in match.places),
+                                      *(outside_text(n, member) for n in match.names), *match.words))

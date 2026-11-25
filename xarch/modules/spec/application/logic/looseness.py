@@ -58,6 +58,7 @@ from fractions import Fraction
 
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.logic.placement import name_matches
+from xarch.kernel.logic.targets import written_target
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.spec.application.logic.holds_written import NARROWER
 from xarch.modules.spec.domain.guards import KEY, ORDER
@@ -242,20 +243,28 @@ def _into(target: Target, parts: Mapping[str, str]) -> Target:
     return replace(target, part=parts.get(target.part, target.part))
 
 
+def _here(target: Target, words: Mapping[str, str]) -> Target:
+    """A target of the bundled profile renamed into the custom one, its own instance the part itself (scope none) when
+    the part lies in no repeating folder of the custom profile (words), where it has no instance of its own."""
+    return replace(target, scope="none") if target.scope == "own" and target.part not in words else target
+
+
 def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     member = custom.language.checked.member
+    words = custom.words()
     pairs = _paired_parts(custom, base)
     back = {theirs: name for name, theirs in pairs.items()}
     shared = [name for name in custom.parts if name in pairs]
     found: list[Looser] = []
     for name in shared:
         before = base.rules.get(pairs[name], ())
-        found += [("imports.may", name, _shown(t)) for t in custom.rules.get(name, ())
+        found += [("imports.may", name, _shown(t, words)) for t in custom.rules.get(name, ())
                   if not any(_covers(b, _into(t, pairs)) for b in before)]
     for name in shared:
         allows = [_into(c, pairs) for c in custom.rules.get(name, ())]
         marks = [_into(c, pairs) for c in custom.parts[name].imports_types_only]
-        found += [("imports.may.types_only", name, _shown(_into(t, back))) for t in base.parts[pairs[name]].imports_types_only
+        found += [("imports.may.types_only", name, _shown(_here(_into(t, back), words), words))
+                  for t in base.parts[pairs[name]].imports_types_only
                   if any(_covers(c, t) for c in allows) and not any(_covers(c, t) for c in marks)]
     if base.imports_libraries is not None:
         if custom.imports_libraries is None:
@@ -272,7 +281,7 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
         if before and not now:
             found.append(("imports.must", name, ""))
         else:
-            found += [("imports.must", name, _shown(t)) for t in now if before and _into(t, pairs) not in before]
+            found += [("imports.must", name, _shown(t, words)) for t in now if before and _into(t, pairs) not in before]
     found += [("untested", name, "") for name in shared
               if custom.parts[name].untested and not base.parts[pairs[name]].untested]
     found += [(LITMUS, name, "") for name in shared if base.parts[pairs[name]].litmus and not custom.parts[name].litmus]
@@ -292,7 +301,7 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
             marked = {pairs.get(part, part) for part in mine.imports_types_only}
             found += [("imports.types_only", mine.name, back.get(part, part)) for part in tier.imports_types_only
                       if part not in marked]
-            found += [("imports.also", mine.name, _shown(t)) for t in mine.imports_also
+            found += [("imports.also", mine.name, _shown(t, words)) for t in mine.imports_also
                       if not any(_covers(b, _into(t, pairs)) for b in tier.imports_also)]
     found += [("uses.apply_never", tiers[tier.name].name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
@@ -554,9 +563,7 @@ def _held_sentence(key: str, part: str, what: str) -> str:
     raise ValueError(f"no sentence says how a profile is looser under {key!r}")
 
 
-def _shown(target: Target) -> str:
-    if target.part == EVERYTHING:
-        return "everything"
-    scope = f"@{target.scope}" if target.scope == "any" else ""
-    names = f":{target.names}" if target.names else ""
-    return target.part + scope + "".join(f"/{step}" for step in target.sub) + names
+def _shown(target: Target, words: Mapping[str, str]) -> str:
+    """How a target of the custom profile is said: `everything` as the word, any other as a reference (see
+    written_target), the word that of the repeating folder its part lies in in the custom profile (words)."""
+    return "everything" if target.part == EVERYTHING else written_target(target, words)

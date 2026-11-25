@@ -24,9 +24,9 @@ key_catalogue); the shape:
                                the reading order, a part before the parts inside it, is the order their litmus tests run
         name: <name>           the part's name, when its folder or file does not give it
         imports: {may, must, libraries}
-                               what the part may import besides itself, which it always may: each entry a target
-                               (a bare name of a part in the repeating folder is the importer's own instance, `@any`
-                               any instance, `/<path>` below it) or one marked {<target>: types_only}, or everything;
+                               what the part may import besides itself, which it always may: each entry a reference
+                               (`parts.<part>` the part in every instance, `<word>.<part>` the importer's own
+                               instance, `/<path>` below it) or one marked {<reference>: types_only}, or everything;
                                the targets each file must import one of; the outside packages by top-level import
                                name, none unless listed, everything leaving the part unchecked (see imports_written)
         uses: {never: <list>}  the name of a list under the top-level `never`, which the part never uses
@@ -45,8 +45,8 @@ key_catalogue); the shape:
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
                                the tests folder says in `imports.may` what the tests there may import; `imports.also`
                                what each of its tests may import beyond that or what the part it mirrors may;
-                               `imports.must` the parts one of which each of its test files reaches;
-                               `imports.types_only` the parts its tests may import only as types;
+                               `imports.must` the parts (`parts.<part>`) one of which each of its test files reaches;
+                               `imports.types_only` the parts (`parts.<part>`) its tests may import only as types;
                                `uses: {apply_never: true}` holds its tests to the `uses.never` list of the part they
                                mirror; `docs` holds what only fills the generated docs
     fakes: {folder, for, prefix}               the folder of the test fakes below the tests folder, the parts they
@@ -81,6 +81,7 @@ from typing import Any
 
 from xarch.kernel.logic.names import is_name, outside_text
 from xarch.kernel.logic.placement import root_of, stem
+from xarch.kernel.logic.targets import outside_imports
 from xarch.kernel.placement import EACH, EVERYTHING
 from xarch.modules.spec.application.logic import imports_written as iw
 from xarch.modules.spec.application.logic import never_lists as nl
@@ -198,40 +199,46 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     declared = set(specs)
     built = _layout(tree, problems)
     parts = built.parts
+    words = tuple(repeat.word for repeat in built.repeats)
     examples = ex.example_files(document.get("docs", {}), files, problems, language)
     imports = {part: iw.group(specs[part], f"parts.{part}", problems) for part in parts}
-    read = {part: iw.may(imports[part].get("may"), item, parts, declared, f"parts.{part}.imports.may", problems)
+    read = {part: iw.may(imports[part].get("may"), item, parts, declared, f"parts.{part}.imports.may", problems,
+                         repeats=built.repeats)
             for part, item in parts.items()}
     rules = {part: allowed for part, (allowed, _) in read.items()}
     reserved = ck.reserved_modules(document["reserved"], problems, language) if "reserved" in document else {}
     libraries = {part: _imports_libraries(imports[part], f"parts.{part}.imports.libraries", problems, language, reserved)
                  for part in parts}
-    parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems),
+    parts = {part: replace(item, imports_must=iw.must(imports[part], item, parts, declared, rules[part], problems,
+                                                      repeats=built.repeats),
                            imports_types_only=read[part][1]) for part, item in parts.items()}
-    parts = {part: _substance(specs[part], item, declared, problems) for part, item in parts.items()}
+    parts = {part: _substance(specs[part], item, declared, problems, words) for part, item in parts.items()}
     uses_never = _never_refs(specs, parts, never_lists, problems)
-    layers = ck.layer_chains(document["layers"], parts, declared, rules, problems) if "layers" in document else {}
+    layers = (ck.layer_chains(document["layers"], parts, declared, rules, problems, words=words) if "layers" in document
+              else {})
     unread = frozenset(item.address for item in shortfalls if item.note is None)
     testing = _testing(document["testing"], presets or {}, problems, language, unread) if "testing" in document else None
-    tiers = _tiers(document, specs, parts, declared, examples, problems, language)
+    tiers = _tiers(document, specs, parts, declared, examples, problems, language, built.repeats)
     beside = _tests_beside(document, specs, tiers, problems)
     problems += [f"tiers.{tier.name}.plain_tables: needs a table form: the framework {_framework_named(testing)} "
                  "writes none in `testing.tables`" for tier in tiers
                  if tier.plain_tables and testing is not None and not testing.framework.tables]
-    fakes = _fakes(document["fakes"], parts, declared, problems, language) if "fakes" in document else None
+    fakes = _fakes(document["fakes"], parts, declared, problems, language, words) if "fakes" in document else None
     problems += ck.folder_clashes(tiers, fakes)
-    guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language)
+    written_tiers = _tier_names(document["tiers"]) if isinstance(document.get("tiers"), Mapping) else []
+    guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language,
+                     words, written_tiers)
     problems += _needs_testing(document)
-    entry, pages, naming = _docs(document.get("docs", {}), declared, files, problems)
+    entry, pages, naming = _docs(document.get("docs", {}), declared, files, problems, words)
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
     written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages", language)
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
-    own = (own_checks.checks(document["checks"], declared, tiers, language, problems) if "checks" in document
-           else {})
+    own = (own_checks.checks(document["checks"], declared, tiers, language, problems, words=words)
+           if "checks" in document else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
     never, mask = sending(document["review"], problems) if "review" in document else ((), ())
-    placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems) if "evals" in document
-                                           else ({}, ((), ()), {}, ()))
+    placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems, words=words)
+                                           if "evals" in document else ({}, ((), ()), {}, ()))
     problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
     problems += unlike(alike, {name: (frozenset(uses_never.get(name, ())),
                                       tuple((held.kind, held.immutable) for held in part.holds))
@@ -584,7 +591,7 @@ def _mocks(value: Any, problems: list[str], language: Language,
 
 
 def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, Part], declared: set[str],
-           examples: ex.Examples, problems: list[str], language: Language) -> tuple[Tier, ...]:
+           examples: ex.Examples, problems: list[str], language: Language, repeats: tuple[Repeat, ...]) -> tuple[Tier, ...]:
     """The tiers in the order of the file, each with the parts that say they are tested by it; then the coverage:
     with tiers, every part names one or is untested, and without them none names one."""
     value = document.get("tiers")
@@ -602,7 +609,7 @@ def _tiers(document: Mapping[Any, Any], specs: dict[str, Any], parts: dict[str, 
             problems.append(f"tiers: {name!r} is not a tier name: one line of text")
             continue
         subject = tuple(Subject(part) for part in parts if assigned.get(part) == name)
-        tier = _tier(name, spec, subject, parts, declared, examples, problems, language)
+        tier = _tier(name, spec, subject, parts, declared, examples, problems, language, repeats)
         if tier is not None:
             tiers.append(tier)
     return tuple(tiers)
@@ -639,7 +646,7 @@ def _coverage(specs: dict[str, Any], parts: dict[str, Part], names: list[str] | 
 
 
 def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, Part], declared: set[str],
-          examples: ex.Examples, problems: list[str], language: Language) -> Tier | None:
+          examples: ex.Examples, problems: list[str], language: Language, repeats: tuple[Repeat, ...]) -> Tier | None:
     where = f"tiers.{name}"
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping, {{}} if it takes nothing")
@@ -659,18 +666,19 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     if not isinstance(plain, bool):
         problems.append(f"{where}.plain_tables: must be true or false: whether every table test of the tier holds no "
                         "branch in its body")
-    imports = iw.group(spec, where, problems, TIER_IMPORTS, "{must: [<part>]}")
-    types_only = (ck.part_names(imports["types_only"], declared, f"{where}.imports.types_only", problems)
+    imports = iw.group(spec, where, problems, TIER_IMPORTS, "{must: [parts.<part>]}")
+    types_only = (iw.tier_parts(imports["types_only"], declared, f"{where}.imports.types_only", problems)
                   if "types_only" in imports else [])
     folder = ck.tier_folder(spec["folder"], parts, f"{where}.folder", problems, language) if "folder" in spec else None
     if "folder" not in spec and "may" in imports:
         problems.append(f"{where}.imports.may: only a tier with a `folder` has an allowance of its own: without one, "
                         "its tests import what the part they mirror may")
-    allowance = (allowed_targets(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems)
-                 if "folder" in spec else None)
-    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems, mirrored=True)
+    allowance = (allowed_targets(imports.get("may"), None, parts, declared, f"{where}.imports.may", problems,
+                                 repeats=repeats) if "folder" in spec else None)
+    also = allowed_targets(imports.get("also"), None, parts, declared, f"{where}.imports.also", problems,
+                           mirrored=tuple(parts[tested.part].path for tested in subject), repeats=repeats)
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
-    reach = (ck.part_names(imports["must"], declared, f"{where}.imports.must", problems)
+    reach = (iw.tier_parts(imports["must"], declared, f"{where}.imports.must", problems)
              if "must" in imports else [])
     if len(problems) != count:
         return None
@@ -711,7 +719,7 @@ def _helpers(value: Any, examples: ex.Examples, where: str, problems: list[str],
 
 
 def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: list[str],
-           language: Language) -> Fakes | None:
+           language: Language, words: Collection[str]) -> Fakes | None:
     where = "fakes"
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a mapping {{folder, for}} and optionally prefix: the folder of the fakes "
@@ -728,7 +736,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
     if "folder" in value and (not steps or any(step in ("", ".", "..") or EACH in step for step in steps)):
         problems.append(f"{where}.folder: must be a folder below the tests folder, such as fakes: relative, with no "
                         "`..`, no empty step and no `*`")
-    names = ck.part_names(value["for"], declared, f"{where}.for", problems) if "for" in value else []
+    names = ck.part_names(value["for"], declared, f"{where}.for", problems, words=words) if "for" in value else []
     if len(problems) != count:
         return None
     return Fakes(steps, tuple(n for n in names if n in parts), prefix)
@@ -736,7 +744,7 @@ def _fakes(value: Any, parts: dict[str, Part], declared: set[str], problems: lis
 
 def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
             fakes: Fakes | None, testing: _Testing | None, problems: list[str],
-            language: Language) -> tuple[Guard, ...]:
+            language: Language, words: Collection[str], written_tiers: Collection[str]) -> tuple[Guard, ...]:
     guards: list[Guard] = []
     package_only = tuple(name for name in parts if specs[name].get("package_only") is True)
     if package_only:
@@ -752,7 +760,8 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         elif name not in _GUARDS:
             problems.append(f"guards: unknown guard {name!r}: {ck.advice(GUARD_SCOPE, str(name), _GUARDS)}")
         elif kind is ScenarioCoverage:
-            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language)
+            guard = _scenario_coverage(spec, parts, declared, tiers, testing, where, problems, language, words,
+                                       written_tiers)
             if guard is not None:
                 guards.append(guard)
         elif kind is StandIns:
@@ -762,9 +771,9 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
         elif kind is NoDuplicates:
             guards.append(_no_duplicates(spec, where, problems))
         elif kind is NoTwins:
-            guards.append(_no_twins(spec, declared, parts, where, problems))
+            guards.append(_no_twins(spec, declared, parts, where, problems, words))
         elif kind in _LISTED:
-            listed = _listed_parts(spec, declared, parts, where, *_LISTED[kind], problems)
+            listed = _listed_parts(spec, declared, parts, where, *_LISTED[kind], problems, words)
             if listed is not None:
                 guards.append(kind(listed))
         elif kind is DeadCode:
@@ -780,7 +789,8 @@ def _guards(value: Any, specs: dict[str, Any], parts: dict[str, Part], declared:
 
 def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], tiers: tuple[Tier, ...],
                        testing: _Testing | None, where: str, problems: list[str],
-                       language: Language) -> ScenarioCoverage | None:
+                       language: Language, words: Collection[str],
+                       written_tiers: Collection[str]) -> ScenarioCoverage | None:
     if not isinstance(spec, Mapping):
         problems.append(f"{where}: must be a mapping {{results, tier, suffix, columns, file}}: the part holding the "
                         "result unions, the tier whose test files hold their tables, how a union's name ends, the "
@@ -798,7 +808,7 @@ def _scenario_coverage(spec: Any, parts: dict[str, Part], declared: set[str], ti
     if len(problems) != count:
         return None
     ck.scenario_places(spec["results"], spec["tier"], spec["suffix"], parts, declared, tiers, where, problems,
-                       language)
+                       language, words=words, written=written_tiers)
     columns = ck.column_names(spec["columns"], f"{where}.columns", problems, language) if forms else ()
     framework = testing.framework if testing is not None else None
     file = ck.use_case_file(spec["file"], framework, f"{where}.file", problems, language, "testing.files")
@@ -872,13 +882,13 @@ def _known(value: Any, tests_only: bool, where: str, problems: list[str], langua
     return tuple(found)
 
 
-def _substance(spec: Any, part: Part, declared: set[str], problems: list[str]) -> Part:
+def _substance(spec: Any, part: Part, declared: set[str], problems: list[str], words: Collection[str]) -> Part:
     """The keys of a part that say what its code holds and how it is used: holds, with the settings of each kind it
     lists (see holds_written), and shared."""
     where = f"parts.{part.name}"
     if not isinstance(spec, Mapping):
         return part
-    holds = held_kinds(spec["holds"], where, declared, problems) if "holds" in spec else ()
+    holds = held_kinds(spec["holds"], where, declared, problems, words=words) if "holds" in spec else ()
     shared = spec.get("shared")
     if shared is not None and not _whole(shared, 2):
         problems.append(f"{where}.shared: must be a whole number of users, at least 2, such as 2; leave it out for a "
@@ -897,7 +907,8 @@ def _no_duplicates(spec: Any, where: str, problems: list[str]) -> NoDuplicates:
     return NoDuplicates(_minimum(spec, "min_statements", NoDuplicates.min_statements, "statements", where, problems))
 
 
-def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str, problems: list[str]) -> NoTwins:
+def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str, problems: list[str],
+              words: Collection[str]) -> NoTwins:
     if spec in ({}, None):
         return NoTwins()
     if not isinstance(spec, Mapping):
@@ -914,7 +925,8 @@ def _no_twins(spec: Any, declared: set[str], parts: dict[str, Part], where: str,
                             "to switch this case off")
             value = None
         found.append(value)
-    names = ck.part_names(spec["translated"], declared, f"{where}.translated", problems) if "translated" in spec else []
+    names = (ck.part_names(spec["translated"], declared, f"{where}.translated", problems, words=words)
+             if "translated" in spec else [])
     return NoTwins(least, *found, tuple(n for n in names if n in parts))
 
 
@@ -933,7 +945,7 @@ def _whole(value: Any, least: int) -> bool:
 
 
 def _listed_parts(spec: Any, declared: set[str], parts: dict[str, Part], where: str, scope: str, said: str,
-                  problems: list[str]) -> tuple[str, ...] | None:
+                  problems: list[str], words: Collection[str]) -> tuple[str, ...] | None:
     """The parts a guard whose one key is `parts` reads, in the order written; None, with its problems, when the
     guard is written wrong. scope is the scope of the guard's keys; said, what its parts are, as its refusal says it."""
     if not isinstance(spec, Mapping):
@@ -942,7 +954,7 @@ def _listed_parts(spec: Any, declared: set[str], parts: dict[str, Part], where: 
     count = len(problems)
     problems += ck.unknown_keys(spec, names_of(scope), where, scope)
     problems += [f"{where}: missing `{key}`" for key in required_of(scope) if key not in spec]
-    names = ck.part_names(spec["parts"], declared, f"{where}.parts", problems) if "parts" in spec else []
+    names = ck.part_names(spec["parts"], declared, f"{where}.parts", problems, words=words) if "parts" in spec else []
     if len(problems) != count:
         return None
     return tuple(n for n in names if n in parts)
@@ -961,7 +973,8 @@ def _needs_testing(document: Mapping[Any, Any]) -> list[str]:
             "<preset>, or testing: {files: [<pattern>, ...], declared: [{function: <pattern>}]}"]
 
 
-def _docs(value: Any, declared: set[str], files: Collection[str], problems: list[str]) -> tuple[str, tuple, tuple]:
+def _docs(value: Any, declared: set[str], files: Collection[str], problems: list[str],
+          words: Collection[str]) -> tuple[str, tuple, tuple]:
     """What only fills the docs, but for the examples: the entry point's name ("" if none), the pages and the naming
     table."""
     if not isinstance(value, Mapping):
@@ -969,8 +982,9 @@ def _docs(value: Any, declared: set[str], files: Collection[str], problems: list
         return "", (), ()
     problems += ck.unknown_keys(value, names_of(DOCS), "docs", DOCS)
     entry = value.get("entry", "")
-    if "entry" in value and (not isinstance(entry, str) or entry not in declared):
-        problems.append(f"docs.entry: no part named {entry!r}")
+    prefixed = outside_imports(entry, declared, words) if "entry" in value else None
+    if prefixed is not None or ("entry" in value and (not isinstance(entry, str) or entry not in declared)):
+        problems.append(f"docs.entry: {prefixed or f'no part named {entry!r}'}")
         entry = ""
     pages = ck.doc_pages(_bare_from(value["pages"]), files, problems, "docs.pages") if "pages" in value else ()
     naming = ck.naming_rows(value["naming"], problems, "docs.naming") if "naming" in value else ()

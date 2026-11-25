@@ -19,7 +19,7 @@ parts:
         invariants. If it is a pure rule that is not one value's invariant, it belongs in `application/logic/`. If it
         must read anything, it is a service step through a port.
       imports:
-        may: [kernel, kernel-logic, profile-values]
+        may: [parts.kernel, parts.kernel-logic, parts.profile-values]
       uses:
         never: pure
       holds:
@@ -34,7 +34,7 @@ parts:
           is one value's invariant, it belongs on that value in `domain/`. If another module needs the same rule, it
           belongs in `kernel/logic/`. If it must read or write anything, it is a service step through a port.
         imports:
-          may: [domain, kernel, kernel-logic, profile-values]
+          may: [module.domain, parts.kernel, parts.kernel-logic, parts.profile-values]
         uses:
           never: pure
         holds:
@@ -52,7 +52,7 @@ parts:
           port hands back belongs in `domain/`, unless it is already a value of `profile_values/` or `kernel/` that
           the port hands back as it is.
         imports:
-          may: [domain, kernel, kernel-logic, profile-values]
+          may: [module.domain, parts.kernel, parts.kernel-logic, parts.profile-values]
         uses:
           never: pure
         holds:
@@ -67,7 +67,8 @@ parts:
           `application/logic/`, and the service calls it. If it turns a failure into a Result variant, it belongs in
           the controller. If it reads a file or another module, it does so through a port.
         imports:
-          may: [logic, domain, ports, contract, kernel, kernel-logic, profile-values]
+          may: [module.logic, module.domain, module.ports, module.contract, parts.kernel, parts.kernel-logic,
+                parts.profile-values]
         uses:
           never: ambient
         holds:
@@ -85,7 +86,8 @@ parts:
           `pass-through` lists it. If it builds a Result from logic or domain values itself, that assembly belongs in
           a service. If it parses arguments or prints, it belongs in `cli/`.
         imports:
-          may: [services, contract, domain/errors, kernel, kernel-logic, profile-values]
+          may: [module.services, module.contract, module.domain/errors, parts.kernel, parts.kernel-logic,
+                parts.profile-values]
         uses:
           never: ambient
         holds:
@@ -103,8 +105,9 @@ parts:
         fact is supplied), that rule belongs in `application/logic/`, and the adapter hands it the translated values.
         If it knows no module's types and only wraps a technology, it belongs in `platform/`.
       imports:
-        may: [ports, domain, kernel, kernel-logic, profile-values, platform, contract@any]
-        must: [platform, contract@any]
+        may: [module.ports, module.domain, parts.kernel, parts.kernel-logic, parts.profile-values, parts.platform,
+              parts.contract]
+        must: [parts.platform, parts.contract]
         libraries: [ast, tokenize]
       uses:
         never: ambient
@@ -121,7 +124,8 @@ parts:
         everything else the module hands out is a type of its own here. If it is a domain value, a service type or a
         port, it stays where it is, and a type of the contract goes here instead.
       imports:
-        may: ["domain/values:*Id", domain/published, kernel, kernel-logic, profile-values]
+        may: ["module.domain/values:*Id", module.domain/published, parts.kernel, parts.kernel-logic,
+              parts.profile-values]
       uses:
         never: published
       package_only: true
@@ -135,7 +139,7 @@ parts:
       module's `adapters/`. Which folder a relative path is read from is its caller's to say: a method that makes a
       path whole or walks the folders above it refuses a path not given in full.
     imports:
-      may: [kernel, kernel-logic]
+      may: [parts.kernel, parts.kernel-logic]
       libraries: [yaml]
     uses:
       never: environment
@@ -149,7 +153,7 @@ parts:
       unchanged into another module's command, or showing two Results side by side, is the cli's. If it chooses words,
       it belongs in `reports/`. If it holds a business rule, it belongs in a module.
     imports:
-      may: [reports, controller@any, contract@any, kernel, kernel-logic]
+      may: [parts.reports, parts.controller, parts.contract, parts.kernel, parts.kernel-logic]
       libraries: [typer]
     uses:
       never: environment
@@ -161,7 +165,7 @@ parts:
         Does it only put into text or JSON what a Result already says, choosing the words, the counts and the layout,
         and deciding nothing the Result does not hold?
       imports:
-        may: [contract@any, kernel, kernel-logic]
+        may: [parts.contract, parts.kernel, parts.kernel-logic]
       uses:
         never: pure
       holds:
@@ -175,7 +179,7 @@ parts:
     role: "`python -m xarch`: starts the same app as the console script"
     litmus: "Does it only hand control to the app bootstrap/ builds, so that `python -m xarch` runs it?"
     imports:
-      may: [bootstrap]
+      may: [parts.bootstrap]
     uses:
       never: environment
     untested: >-
@@ -208,7 +212,7 @@ parts:
       value of its own. If only one module needs it, it belongs in that module's `domain/`. If it has no business
       meaning, one that could be lifted unchanged into an unrelated system, it belongs in `kernel/`.
     imports:
-      may: [kernel]
+      may: [parts.kernel]
     uses:
       never: pure
     holds:
@@ -247,7 +251,7 @@ parts:
         one module needs it, it belongs in that module's `application/logic/`. If it is a value or a type rather than
         a function, it belongs in `kernel/`, or in `profile_values/` when it has business meaning.
       imports:
-        may: [kernel, profile-values]
+        may: [parts.kernel, parts.profile-values]
       uses:
         never: pure
       holds:
@@ -296,8 +300,8 @@ tiers:
     plain_tables: true
     imports:
       # the values the ports hand back, which a test of a controller builds its fakes' answers with
-      also: [domain/values, domain/profile, domain/parsed, domain/outcomes]
-      must: [controller]
+      also: [module.domain/values, module.domain/profile, module.domain/parsed, module.domain/outcomes]
+      must: [parts.controller]
     docs:
       may_touch: what the part it mirrors may import; `tests/fakes/`
       one_file_per: use case
@@ -308,8 +312,9 @@ tiers:
     proves: a command, a check on real files, or what a bundled profile holds, through the app bootstrap/ wires
     litmus: Does it need the whole app, as bootstrap/ wires it, to mean anything?
     imports:
-      must: [bootstrap]
-      types_only: [domain, logic, ports, services, controller, adapters, platform]
+      must: [parts.bootstrap]
+      types_only: [parts.domain, parts.logic, parts.ports, parts.services, parts.controller, parts.adapters,
+                   parts.platform]
     docs:
       may_touch: anything bootstrap/ wires; temporary folders
       one_file_per: command, or feature of the profile file
@@ -321,7 +326,8 @@ tiers:
     litmus: Does it run the wired check on xarch's own source?
     imports:
       may: everything
-      types_only: [domain, logic, ports, services, controller, adapters, platform]
+      types_only: [parts.domain, parts.logic, parts.ports, parts.services, parts.controller, parts.adapters,
+                   parts.platform]
     folder: architecture
     docs:
       subject: xarch's own source tree

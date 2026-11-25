@@ -224,11 +224,19 @@ The symbols:
   part. A part is named by its folder's last step or its file's name before the first dot, or by `name:`, which two
   parts of one name need. `<unit>/` is a repeating folder, one instance per name (`xarch new` takes the word); a
   profile may have several, each with a word of its own and one parent, and one cannot sit inside another.
-- In `imports.may`, a bare name is that part in the importer's own instance of its repeating folder; `store@any` any
-  instance, and the only way to name a part of another repeating folder, which has no own instance; `store/schema`
-  only that path below the part; `store:*Id` only the names that match the pattern, imported by name;
-  `everything` no limit (also for `imports.libraries`); an entry written `{store: types_only}` is a target the part
-  may import only to use as a type. A part may always import itself.
+- Every list of parts under `imports` writes each target as a reference: `parts.store` is that part in every
+  instance of its repeating folder (or, outside one, the part itself), and `<word>.store`, such as `unit.store`, the
+  part in the importer's own instance of the `<word>` folder, which the importer lies in too (in a tier's
+  `imports.also`, the instance the test mirrors, so a part the tier tests must lie in that folder); either is
+  optionally followed by `/<path>`, only that path below the part (`parts.store/schema`), and, in `imports.may`,
+  `:<pattern>`, only the names that match the pattern, imported by name (`parts.store:*Id`). `everything` is no
+  limit (also for `imports.libraries`); an entry written `{parts.store: types_only}` is a target the part may
+  import only to use as a type. A tier's `imports.must` and `imports.types_only` name whole parts, `parts.<part>`,
+  for a tier's tests lie in no instance. A part may always import itself. `profile explain --rule` and the looser
+  lines of `profile check` and `check` write a target the same way. The forms before 0.3.0, `store@any`, `store@own`
+  and the bare `store`, are refused with the reference to write (`'store@any': @any was removed in 0.3.0: write
+  parts.store`). Every other key that names a part, outside `imports`, takes its plain name (`fakes.for: [store]`),
+  and a repeating folder cannot be written `<parts>`.
 
 This is the whole format on one screen. The reference for each key (what it means, what it accepts, whether `check`
 enforces it and through which rule, an example that loads, the keys it holds) is the command, which reads the same

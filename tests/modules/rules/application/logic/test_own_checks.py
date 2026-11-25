@@ -37,12 +37,50 @@ def test_a_check_the_profile_writes_becomes_a_rule_with_its_examples_and_its_key
         OwnCheck(rule, (("kernel/a.py", "x()\n"),), (("kernel/b.py", "\n"),)),)
 
 
-def test_a_place_is_read_by_the_target_grammar_from_the_part_the_scope_names():
+def test_a_place_in_an_old_form_is_refused_with_the_reference_the_part_the_scope_names_would_write():
     placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
-                          Quantified(MAY_NOT, (WrittenTarget("place", ("domain/values", "kernel")),)),
+                          Quantified(MAY_NOT, (WrittenTarget("place", ("domain/values", "kernel@any")),)),
+                          (Saying("m", "f"),))
+    with pytest.raises(ChecksRefused) as refused:
+        resolved(profile(written={"placed": placed}))
+    assert refused.value.problems == (
+        "checks.placed.may_not.place: 'domain/values': a bare part name was removed in 0.3.0: write "
+        "module.domain/values (this module's) or parts.domain/values (any module's)",
+        "checks.placed.may_not.place: 'kernel@any': @any was removed in 0.3.0: write parts.kernel")
+
+
+def test_a_part_target_written_as_a_reference_is_told_the_plain_name_and_a_place_still_takes_one():
+    named = WrittenCheck(("import-into-app",), Scope(APP, "services"),
+                         Quantified(MAY_NOT, (WrittenTarget("part", ("parts.kernel", "module.domain", "ghost")),)),
+                         (Saying("m", "f"),))
+    with pytest.raises(ChecksRefused) as refused:
+        resolved(profile(written={"named": named}))
+    assert refused.value.problems == (
+        "checks.named.may_not.part: 'parts.kernel': names a part outside imports: write kernel",
+        "checks.named.may_not.part: 'module.domain': names a part outside imports: write domain",
+        "checks.named.may_not.part: no part named 'ghost'")
+    placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
+                          Quantified(MAY_NOT, (WrittenTarget("place", ("parts.kernel",)),)), (Saying("m", "f"),))
+    (check,) = resolved(profile(written={"placed": placed})).checks
+    assert check.rule.targets == (Match("place", places=(Target("kernel"),)),)
+
+
+def test_a_place_reads_a_reference_with_the_words_of_the_profile_s_repeating_folders():
+    placed = WrittenCheck(("import-into-app",), Scope(APP, "services"),
+                          Quantified(MAY_NOT, (WrittenTarget("place", ("parts.kernel", "module.domain/values")),)),
                           (Saying("m", "f"),))
     (check,) = resolved(profile(written={"placed": placed})).checks
-    assert check.rule.targets == (Match("place", places=(Target("domain", "own", ("values",)), Target("kernel"))),)
+    assert check.rule.targets == (Match("place", places=(Target("kernel"), Target("domain", "own", ("values",)))),)
+
+
+def test_a_dotted_name_of_code_written_as_a_place_is_told_it_goes_under_path():
+    dotted = WrittenCheck(("import-into-app",), Scope(APP, "services"),
+                          Quantified(MAY_NOT, (WrittenTarget("place", ("os.environ",)),)), (Saying("m", "f"),))
+    with pytest.raises(ChecksRefused) as refused:
+        resolved(profile(written={"dotted": dotted}))
+    assert refused.value.problems == (
+        "checks.dotted.may_not.place: 'os.environ': 'os' is neither parts nor a word of this profile (module): a "
+        "profile names no instance; write parts.<part> or <word>.<part>; a dotted name of code goes under path",)
 
 
 def test_a_check_whose_words_do_not_apply_or_whose_places_and_parts_are_not_the_profile_s_is_refused_at_once():

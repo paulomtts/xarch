@@ -14,9 +14,9 @@ from xarch.modules.spec.domain.values import FileType
 PARTS = {
     "src/<module>/": {
         "store/": {"role": "database access", "litmus": "Does it touch the database?",
-                   "imports": {"may": ["shared/text"]}, "sql/": "the queries"},
+                   "imports": {"may": ["parts.shared/text"]}, "sql/": "the queries"},
         "service/": {"role": "business logic", "litmus": "Does it decide?",
-                     "imports": {"may": ["store", "api@any", "shared"]}},
+                     "imports": {"may": ["module.store", "parts.api", "parts.shared"]}},
         "api.py": {"role": "HTTP handlers", "litmus": "Does it parse a request?", "imports": {"may": "everything"}},
     },
     "shared/": {"role": "code every module uses", "litmus": "Is it shared?", "imports": {"may": []}},
@@ -86,13 +86,13 @@ def test_the_rules_table_lists_each_part_in_order_without_itself():
 
 
 def test_a_part_naming_its_own_kind_in_any_module_shows_it():
-    table = filled("{{rules_table}}", parts=parts(store={"imports": {"may": ["store@any"]}}))
+    table = filled("{{rules_table}}", parts=parts(store={"imports": {"may": ["parts.store"]}}))
     assert table.splitlines()[2] == "| `store/` | any module's `store/` |"
 
 
 def test_consecutive_targets_in_one_scope_share_their_phrase():
-    table = filled("{{rules_table}}", parts=parts(service={"imports": {"may": ["store", "api", "shared", "store@any",
-                                                                                    "api@any"]}}))
+    table = filled("{{rules_table}}", parts=parts(service={"imports": {"may": ["module.store", "module.api", "parts.shared",
+                                                                                    "parts.store", "parts.api"]}}))
     assert table.splitlines()[3] == (
         "| `service/` | its own module's `store/` and `api.py`, `shared/`, any module's `store/` and `api.py` |")
 
@@ -220,7 +220,8 @@ def test_the_docs_tree_of_an_architecture_without_docs_is_refused():
 
 
 def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
-    feature = {key.replace("<module>", "<feature>"): value for key, value in PARTS.items()}
+    feature = {key.replace("<module>", "<feature>"): value for key, value in deepcopy(PARTS).items()}
+    feature["src/<feature>/"]["service/"]["imports"]["may"] = ["feature.store", "parts.api", "parts.shared"]
     text = filled("{{tree}}\n\n{{rules_table}}", parts=feature)
     assert "└── <feature>/" in text
     assert "its own feature's `store/`, any feature's `api.py`" in text
@@ -229,10 +230,10 @@ def test_the_instance_is_named_by_the_word_in_the_paths_not_by_xarch():
 
 TWO = {
     "src/<module>/": {"service/": {"role": "business logic", "litmus": "Does it decide?",
-                                   "imports": {"may": ["hooks@any", "shared"]}}},
+                                   "imports": {"may": ["parts.hooks", "parts.shared"]}}},
     "ext/<plugin>/": {
         "hooks/": {"role": "what a plugin runs", "litmus": "Does a plugin run it?",
-                   "imports": {"may": ["service@any", "manifest", "shared"], "libraries": ["yaml"]}},
+                   "imports": {"may": ["parts.service", "plugin.manifest", "parts.shared"], "libraries": ["yaml"]}},
         "manifest.py": {"role": "what a plugin declares", "litmus": "Does it declare?"},
     },
     "shared/": {"role": "code both use", "litmus": "Is it shared?"},

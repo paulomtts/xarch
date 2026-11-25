@@ -17,8 +17,8 @@ parts:
   core/:
     role: the rules
     imports:
-      may: [{api: types_only}]
-      must: [api]
+      may: [{parts.api: types_only}]
+      must: [parts.api]
       libraries: [yaml]
     uses: {never: pure}
     package_only: true
@@ -36,13 +36,13 @@ tiers:
   unit:
     uses: {apply_never: true}
     imports:
-      also: [api]
-      must: [core]
-      types_only: [api]
+      also: [parts.api]
+      must: [parts.core]
+      types_only: [parts.api]
   guard:
     folder: architecture
     imports:
-      may: [core]
+      may: [parts.core]
 fakes: {folder: fakes, for: [api], prefix: Fake}
 guards:
   no-comments: {}

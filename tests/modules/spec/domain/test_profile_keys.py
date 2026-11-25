@@ -84,14 +84,14 @@ def test_the_names_retired_are_tier_the_old_names_of_never_and_its_keys_written_
         Retired(PART, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
         Retired(PART, "libraries", "moved in 0.3.0: write imports: {libraries: [...]}"),
         Retired(PART, "types_only", "moved in 0.3.0: write it as the mode of its entry in imports.may, such as "
-                                    "[{ports: types_only}]"),
+                                    "[{parts.ports: types_only}]"),
         Retired(PART_IMPORTS, "never", "a key of uses, beside imports: write uses: {never: <list>}"),
         Retired(PART_IMPORTS, "types_only", "write it as the mode of its entry in imports.may, such as "
-                                            "[{ports: types_only}]"),
+                                            "[{parts.ports: types_only}]"),
         Retired(TIER, "may_import", "moved in 0.3.0: write imports: {may: [...]}"),
         Retired(TIER, "may_also_import", "moved in 0.3.0: write imports: {also: [...]}"),
         Retired(TIER, "must_import", "moved in 0.3.0: write imports: {must: [...]}"),
-        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}"),
+        Retired(TIER, "types_only", "moved in 0.3.0: write imports: {types_only: [parts.<part>, ...]}"),
         Retired(TESTING, "table", "moved in 0.3.0: write tables, a list of forms (xarch profile explain testing.tables)"),
         Retired(TESTING, "functions", 'moved in 0.3.0: write declared: [{function: "<pattern>"}]'),
         Retired(MOCKS, "spec_keywords", "moved in 0.3.0: write specs: [{keyword: spec}, {position: 0}]"),

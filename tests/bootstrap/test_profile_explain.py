@@ -28,7 +28,8 @@ def test_with_no_key_the_whole_format_is_one_screen_with_the_shape_the_symbols_a
     lines = result.output.splitlines()
     assert any(line.startswith("parts") and "required" in line and "enforced" in line for line in lines)
     assert any(line.strip().startswith("parts.imports") for line in lines)
-    assert "symbols" in result.output and "<word>" in result.output and "@any" in result.output
+    assert "symbols" in result.output and "<word>" in result.output and "parts.store" in result.output
+    assert "unit.store" in result.output and "@any" not in result.output
     assert "smallest valid profile" in result.output and "\n  name: documents-app\n" in result.output
     assert "xarch profile explain parts.imports.may" in result.output
     assert len(lines) < 100 and max(map(len, lines)) <= 120
@@ -39,7 +40,7 @@ def test_a_key_is_explained_with_what_it_accepts_whether_check_enforces_it_throu
     assert result.exit_code == 0, result.output
     assert result.output.splitlines()[0] == "parts.imports.may"
     for expected in ("in: parts.<part>.imports", "accepts:", "required: no", "enforced: yes, by the rule `may-import`", "example:",
-                     "may: [core]", "parts.imports.may.types_only"):
+                     "may: [parts.core]", "parts.imports.may.types_only"):
         assert expected in result.output
 
 
@@ -329,7 +330,7 @@ def test_the_group_of_a_tier_lists_its_keys_and_the_rules_they_feed():
     pytest.param("tiers.may_import", "moved in 0.3.0: write imports: {may: [...]}", id="may_import"),
     pytest.param("tiers.may_also_import", "moved in 0.3.0: write imports: {also: [...]}", id="may_also_import"),
     pytest.param("tiers.must_import", "moved in 0.3.0: write imports: {must: [...]}", id="must_import"),
-    pytest.param("tiers.types_only", "moved in 0.3.0: write imports: {types_only: [<part>, ...]}", id="types_only"),
+    pytest.param("tiers.types_only", "moved in 0.3.0: write imports: {types_only: [parts.<part>, ...]}", id="types_only"),
 ])
 def test_an_old_tier_key_answers_with_the_form_that_replaces_it(address, text):
     said = runner.invoke(app, ["profile", "explain", address])
