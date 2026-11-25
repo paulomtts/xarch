@@ -200,12 +200,38 @@ keys:
   layers:
     meaning: chains of parts from the inside out
     accepts: >-
-      a map {<name>: [<part>, ...]}: no part imports one after it in its chain; refused at load when an `imports.may`
-      breaks a chain
+      a map {<name>: [<part>, ...] | {parts, types_only}}: no part imports one after it in its chain; refused at load
+      when an `imports.may` breaks a chain
     example: |
       layers:
         stack: [core, documents]
       <<two>>
+  layers.<layer>.parts:
+    meaning: the parts of the chain, from the inside out
+    accepts: >-
+      [<part>, ...]: the chain written as a map, so that it may say `types_only`; the same as the list written alone
+    example: |
+      layers:
+        stack: {parts: [core, documents]}
+      <<two>>
+  layers.<layer>.types_only:
+    meaning: an import of a type only does not break the chain
+    accepts: >-
+      true or false (default false): with true, an entry of a part's `imports.may` marked `types_only` that names a
+      part after it in the chain does not break the chain, since the part only uses it as a type (`types-only` holds it
+      to that); any other entry still does. Off, layering is strict
+    example: |
+      layers:
+        stack: {parts: [core, documents], types_only: true}
+      parts:
+        core/:
+          role: the rules of the documents
+          imports:
+            may: [{parts.documents: types_only}]
+        documents/:
+          role: the documents
+          imports:
+            may: [parts.core]
   tiers:
     meaning: the kinds of test, in the order their litmus tests run
     accepts: >-

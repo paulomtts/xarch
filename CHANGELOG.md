@@ -25,6 +25,9 @@ All notable changes to this project are written here. The format follows
   import gone, or `imports.may` now allowing it) is a `may-import` violation, so the list can only shrink. An entry
   needs a reason and a file of its part. Each entry the compared profile does not hold is listed as looser. The new
   filter `target-accepted` says the same in a check of one's own.
+- A chain of `layers` may be written as a map, `{parts: [...], types_only: true}`, so that an entry of a part's
+  `imports.may` marked `types_only` naming a part after it no longer breaks the chain; layering stays strict by
+  default, and a chain written as a list reads as before.
 
 ### Fixed
 

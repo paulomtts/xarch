@@ -42,7 +42,9 @@ key_catalogue); the shape:
                                list includes it
     reserved: {<module>: <reason>}             standard-library modules only the parts whose `imports.libraries` list them
                                may import
-    layers: {<name>: [<part>, ...]}            chains of parts from the inside out: none imports one after it
+    layers: {<name>: [<part>, ...] | {parts, types_only}}
+                               chains of parts from the inside out: none imports one after it, but, with
+                               types_only: true, through an entry of its imports.may marked types_only
     tiers: {<tier>: {proves, litmus, uses, plain_tables, folder, imports: {may, also, must, types_only}, docs}}
                                the kinds of test, in the order their litmus tests run. A tier with a `folder` below
                                the tests folder (one may lie inside another's, the deepest holding a test being its

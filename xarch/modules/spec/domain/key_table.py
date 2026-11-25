@@ -18,6 +18,7 @@ from xarch.modules.spec.domain.profile_keys import (
     FILE,
     FIXTURE,
     GUARD,
+    LAYER,
     MOCK_SPECS,
     MOCKS,
     NAMING,
@@ -65,7 +66,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "parts", True, rules=("structure", "may-import"), opens=PART),
     Key(PROFILE, "never", rules=("never-use",)),
     Key(PROFILE, "reserved", rules=("libraries",)),
-    Key(PROFILE, "layers"),
+    Key(PROFILE, "layers", opens=LAYER),
     Key(PROFILE, "tiers", rules=("tiers", "test-tree"), opens=TIER),
     Key(PROFILE, "fakes", rules=("stand-ins", "dead-code"), opens=FAKES),
     Key(PROFILE, "guards", opens=GUARD),
@@ -114,6 +115,9 @@ _KEYS: tuple[Key, ...] = (
     Key(PART_HOLDS_RECORDS, "immutable", rules=("immutable",)),
 
     Key(PART_HOLDS_EXCEPTIONS, "names", rules=("names",)),
+
+    Key(LAYER, "parts", True),
+    Key(LAYER, "types_only"),
 
     Key(TIER, "proves", False, False),
     Key(TIER, "litmus", False, False),

@@ -68,6 +68,8 @@ SHAPE = (
     Shown('never', 0, 'named lists of names a part never uses', False, True),
     Shown('reserved', 0, 'standard-library names only some parts may import', False, True),
     Shown('layers', 0, 'chains of parts from the inside out', False, True),
+    Shown('layers.parts', 1, 'the parts of the chain, from the inside out', True, True),
+    Shown('layers.types_only', 1, 'an import of a type only does not break the chain', False, True),
     Shown('tiers', 0, 'the kinds of test, in the order their litmus tests run', False, True),
     Shown('tiers.proves', 1, 'what its tests prove, in one line', False, False),
     Shown('tiers.litmus', 1, 'the question that tells a test belongs to the tier', False, False),

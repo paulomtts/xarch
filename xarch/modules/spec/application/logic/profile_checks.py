@@ -21,7 +21,7 @@ from xarch.modules.spec.application.logic.layout_walk import lies_in
 from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
-from xarch.modules.spec.domain.profile_keys import DECLARED, FILE, FIXTURE, NAMING, PAGE, RULE_ID, TABLES
+from xarch.modules.spec.domain.profile_keys import DECLARED, FILE, FIXTURE, LAYER, NAMING, PAGE, RULE_ID, TABLES
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import SPEC_FORMS
@@ -116,6 +116,16 @@ def layer_chains(value: Any, parts: dict[str, Part], declared: set[str], rules: 
         if not text(name) or not PART_NAME.fullmatch(name):
             problems.append(f"layers: {name!r} is not a name: use letters, digits, '_' and '-'")
             continue
+        types_only = False
+        if isinstance(chain, Mapping):
+            count = len(problems)
+            problems += unknown_keys(chain, names_of(LAYER), where, LAYER)
+            problems += [f"{where}: missing `{key}`" for key in required_of(LAYER) if key not in chain]
+            if "types_only" in chain and not isinstance(chain["types_only"], bool):
+                problems.append(f"{where}.types_only: must be true or false")
+            if len(problems) != count:
+                continue
+            types_only, chain = chain.get("types_only", False), chain["parts"]
         if not isinstance(chain, list) or not chain:
             problems.append(f"{where}: must be a list of parts, from the inside out")
             continue
@@ -135,7 +145,9 @@ def layer_chains(value: Any, parts: dict[str, Part], declared: set[str], rules: 
         if not ok or any(part not in parts for part in chain):
             continue
         for i, inner in enumerate(chain):
-            outward = [t.part for t in rules.get(inner, ()) if t.part in chain[i + 1:] and t.part != inner]
+            typed = parts[inner].imports_types_only if types_only else ()
+            outward = [t.part for t in rules.get(inner, ()) if t.part in chain[i + 1:] and t.part != inner
+                       and t not in typed]
             problems += [f"{where}: '{inner}' imports '{outer}', which is outward of it" for outer in outward]
         layers[name] = tuple(chain)
     return layers

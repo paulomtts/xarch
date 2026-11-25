@@ -119,7 +119,7 @@ parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports
                               tests | untested, package_only, shared, optional,
                               holds: {classes: {names, immutable, built_by}, functions: {names},
                                       records: {names, immutable}, exceptions: {names}}}}
-never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...]}
+never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...] | {parts*, types_only}}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     docs}}
 fakes:    {folder*, for*, prefix, tiers}
@@ -135,6 +135,11 @@ evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, r
 
 A key on a part is about its own code and reach; a guard is a pre-built check with a scope, which names the parts it
 reads.
+
+A chain of `layers` lists parts from the inside out, and a profile whose `imports.may` lets a part import one after it
+is refused when it loads. Layering is strict: an entry marked `types_only` breaks the chain too, unless the chain is
+written as a map that says so, `layers: {inward: {parts: [domain, services, controller], types_only: true}}`, where a
+part may name one after it as a type only (`types-only` still holds it to that), and any other entry still breaks it.
 
 An entry of a `never` list that is the name of another list includes that list's names in its place, such as
 `published: [pure, typing.Any]`; a list may not take the name of a package of the standard library or of a package the
