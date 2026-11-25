@@ -155,6 +155,7 @@ import hashlib
 import io
 import re
 import tokenize
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
@@ -279,7 +280,7 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
             where: _Where | None = None, declared: tuple[TestForm, ...] = (),
             bound: tuple[tuple[str, ...], ...] = ()) -> SourceFile:
     try:
-        tree = ast.parse(text)
+        tree = _parse(text)
         comments = _comments(text)
     except SyntaxError as e:
         return SourceFile(name, path, (), error=Unparsable(e.lineno or 0, e.msg))
@@ -670,11 +671,19 @@ def _named(tree: ast.AST) -> frozenset[str]:
     return frozenset(found)
 
 
+def _parse(text: str, mode: str = "exec") -> ast.AST:
+    """The tree the parser makes of the text, with the warnings it raises of the code (an invalid escape sequence in a
+    string) left unsaid: they are about the code read, not xarch's to print."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(text, mode=mode)
+
+
 def _expression(text: str) -> ast.Expression | None:
     """The expression a string holds, or None when the parser cannot read it as one: a syntax error, a lone surrogate
     or a null byte it refuses, or a nesting too deep for it."""
     try:
-        return ast.parse(text.strip(), mode="eval")
+        return _parse(text.strip(), "eval")
     except (SyntaxError, ValueError, RecursionError):
         return None
 

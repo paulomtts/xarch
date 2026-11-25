@@ -48,6 +48,9 @@ All notable changes to this project are written here. The format follows
 - `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
   `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
   there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.
+- `xarch check` no longer prints the parser's `SyntaxWarning` lines on stderr (`<unknown>:1: SyntaxWarning: invalid
+  escape sequence '\d'`) for the code it reads, a file with an invalid escape in a string or a string holding one;
+  the warnings are about the user's code, not xarch's output.
 
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as

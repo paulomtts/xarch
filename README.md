@@ -428,7 +428,9 @@ Every violation says what to do about it. A finding is its line, `<file>[:<line>
 hint (`xarch profile explain hints`) for its rule, an indented `hint: <text>` line. The findings come in order of
 file, then line (a whole file first), then rule, then a summary, `OK: no violations` or `<n> violation(s) in <m>
 file(s)`, then the enforcement section (below). Paths are relative to the folder holding the app folder
-(`app/kernel/x.py`, `tests/...`).
+(`app/kernel/x.py`, `tests/...`). What the language's parser warns of the code it reads (for Python, a
+`SyntaxWarning` such as an invalid escape sequence in a string) is not printed: it is about the code, not xarch's
+output, and a linter reports it.
 
 ```
 app/kernel/x.py:1: kernel/ may not import platform/ (app.platform)
