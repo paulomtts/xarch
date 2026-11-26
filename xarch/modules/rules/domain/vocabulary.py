@@ -34,9 +34,9 @@ NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "pat
 """What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns with
 `*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
 
-HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED = "hit", "key", "scope part", "values", "counted"
+HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED, CHAINED = "hit", "key", "scope part", "values", "counted", "chained"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
-its scope names, targets that list values, or a quantifier that counts (at_most, at_least)."""
+its scope names, targets that list values, a quantifier that counts (at_most, at_least), or must_not_reach."""
 
 RENAMED_VARIABLES = {"part": "where"}
 """The variables that were called otherwise: a check that writes the old name is told the new one."""
@@ -368,6 +368,9 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
     Quantifier("must_reach", "a file of the scope is a finding unless it reaches a target: one of its kept facts "
                              "matches, or a link of the kinds `through` names leads from it to a file that does, "
                              "however far", True),
+    Quantifier("must_not_reach", "a file of the scope that reaches a target is a finding, at the line of its first step: "
+                                 "one of its kept facts matches, or a link of the kinds `through` names leads from it "
+                                 "to a file that does, however far; `{chain}` says the way", True),
     Quantifier("must_be_reached", "a kept fact of the scope is a finding unless it is reached: a root file links to it "
                                   "(by a name it mentions, for a declaration; by an import, for a file), or a link "
                                   "of the kinds `then_through` names leads to it from something already reached, "
@@ -442,6 +445,8 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
     Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least)", needs=COUNTED),
     Variable("lines", "how many lines the file holds", ("lines",)),
+    Variable("chain", "the way a file reaches a target under must_not_reach: each file its links lead through, as a "
+                      "dotted name, then what the fact that matched names, joined by ` -> `", needs=CHAINED),
 )
 """Every variable of a message or a fix."""
 
@@ -465,6 +470,7 @@ SLOTS: tuple[Slot, ...] = (
                        "the files it imports",
          "{targets: <target> or [<target>, ...], through: <kind> or [<kind>, ...], through_only: [<filter>, ...]}",
          "targets"),
+    Slot("must_not_reach", "a file that reaches a target is a finding", "as must_reach writes it", "targets"),
     Slot("must_be_reached", "a kept fact that is not reached is a finding. It is reached when a root file (`from`) "
                             "links to it, by a link of the kinds `through` names (`through_only` keeps only those that "
                             "pass its filters), or when something already reached links to it, by a link of the kinds "
@@ -480,8 +486,7 @@ SLOTS: tuple[Slot, ...] = (
                                       "section and fails only `check --strict`); fail when left out"),
     Slot("message", "what was found, said of each finding", "a sentence with {<variable>}s", "variables"),
     Slot("fix", "what to do about it", "an imperative sentence with {<variable>}s", "variables"),
-    Slot("once_per", "say one finding of a file for each value of these variables, the first", "[<variable>, ...]",
-         "variables"),
+    Slot("once_per", "say a file's first finding per value of these variables", "[<variable>, ...]", "variables"),
     Slot("per_line", "say the findings of a file on one line that differ only in these variables as one, the first, "
                      "each of them written as its values in the order found, joined by `, `", "[<variable>, ...]",
          "variables"),

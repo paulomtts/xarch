@@ -73,7 +73,7 @@ from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.rule import AT_LEAST, MUST_REACH, Defined, Fact, Facts, Read, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, FILE_REACH, Defined, Fact, Facts, Read, Rule
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
 from xarch.profile_values.checks import Scope
 
@@ -153,7 +153,7 @@ def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -
     for rule in rules:
         if in_scope(rule.scope, read, facts, profile):
             kinds += [*rule.facts, *rule.spread, *rule.links,
-                      *(("file",) if rule.quantifier in (MUST_REACH, AT_LEAST) else ())]
+                      *(("file",) if rule.quantifier in (*FILE_REACH, AT_LEAST) else ())]
         side, roots = reach_scopes(rule)
         if side is not None and in_scope(side, read, facts, profile):
             kinds += [*rule.facts, *rule.links]
@@ -163,9 +163,10 @@ def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -
 
 
 def reach_scopes(rule: Rule) -> tuple[Scope | None, Scope | None]:
-    """The files a rule of reach reads besides its scope: for MUST_REACH, every file of its scope's side, whose facts
+    """The files a rule of reach reads besides its scope: for MUST_REACH and MUST_NOT_REACH, every file of its scope's
+    side, whose facts
     may match a target or lead to one; for MUST_BE_REACHED, its roots. None where the rule has none."""
-    return (Scope(rule.scope.files) if rule.quantifier == MUST_REACH else None), rule.roots
+    return (Scope(rule.scope.files) if rule.quantifier in FILE_REACH else None), rule.roots
 
 
 def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: Defined,

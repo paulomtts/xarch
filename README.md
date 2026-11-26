@@ -378,7 +378,13 @@ each kept fact of a file after the n-th a finding, at its own line (`read: class
 `at_most: 1`: one port per file), and `at_least: <n>` makes a file that keeps fewer a finding, at line 0; `{count}`
 says how many the file keeps. The kind `file` carries `lines` (the fact `file.lines`), which the filter
 `longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
-each file over 700 lines. A check carries `examples`: code it
+each file over 700 lines. `must_not_reach` is the negation of `must_reach`, written the same way (`targets`, `through`,
+`through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the files its links
+lead to however far, is a finding at the line of its first step, and `{chain}` says the way, each file a link leads
+to as a dotted name, then what matched (`app.store -> app.store.sql -> sqlalchemy`), the shortest found. An import of
+a name from a package file reaches that package file (`import-into-app` follows a name to its own file only when the
+name is a file), and the way then goes on through every file the package file imports, so a name the package only
+re-exports is followed, and so is anything else the package file imports. A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

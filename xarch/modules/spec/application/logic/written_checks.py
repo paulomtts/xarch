@@ -8,7 +8,7 @@ is the rules module's, which reads what this gives back.
       in: {files: app | tests | all, part: <part> | structure, tier: <tier>, where: [<filter>, ...]}
       keep: [<filter>, ...]
       may_not | may_only: <target> | [<target>, ...]
-      must_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
+      must_reach | must_not_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
       must_be_reached: {from: <scope as in>, through: ..., through_only: [...], then_through: <kind> | [...], by_another_file: true}
       at_most | at_least: <whole number>
       except: [<filter>, ...]
@@ -231,11 +231,11 @@ def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: se
         problems.append(f"{where}: must be a map {{{', '.join(REACH_SLOTS[slot])}}}")
         return Quantified(slot)
     problems += _unknown(value, REACH_SLOTS[slot], where)
-    required = ("targets",) if slot == "must_reach" else ("from", "through")
+    required = ("targets",) if slot in ("must_reach", "must_not_reach") else ("from", "through")
     problems += [f"{where}: missing `{key}`" for key in required if key not in value]
     through = _names(value.get("through"), f"{where}.through", problems)
     only = filters(value.get("through_only", []), f"{where}.through_only", problems)
-    if slot == "must_reach":
+    if slot in ("must_reach", "must_not_reach"):
         return Quantified(slot, _targets(value.get("targets", []), f"{where}.targets", problems), through, only)
     elsewhere = value.get("by_another_file", False)
     if not isinstance(elsewhere, bool):

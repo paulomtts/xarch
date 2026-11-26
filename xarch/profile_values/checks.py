@@ -26,9 +26,9 @@ APP, TESTS, ALL = "app", "tests", "all"
 FAIL, LIST = "fail", "list"
 """What a finding is: a violation, or a weak finding listed in the enforcement section."""
 
-QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached", "at_most", "at_least")
+QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached", "at_most", "at_least", "must_not_reach")
 """The slots of which a check writes one, its quantifier."""
-COUNT_SLOTS = QUANTIFIER_SLOTS[4:]
+COUNT_SLOTS = QUANTIFIER_SLOTS[4:6]
 """The quantifiers that count the facts a file keeps, each written with a whole number."""
 
 
@@ -80,7 +80,8 @@ class WrittenTarget:
 
 @dataclass(frozen=True)
 class Quantified:
-    """The quantifier of a check (`may_not`, `may_only`, `must_reach` or `must_be_reached`) and what it says: its
+    """The quantifier of a check (`may_not`, `may_only`, `must_reach`, `must_not_reach`, `must_be_reached`, `at_most`
+    or `at_least`) and what it says: its
     targets (for `must_be_reached`, none); and for a quantifier of reach, the kinds of fact it reaches through, the
     filters a link passes (through_only), and for `must_be_reached` the files the reach starts from (start), the kinds
     of fact through which a declaration reached already reaches further (then_through), and whether a declaration is

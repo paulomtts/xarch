@@ -40,8 +40,8 @@ CATEGORIES: dict[str, tuple[Word, ...]] = {"kinds": KINDS, "quantifiers": QUANTI
 MEANINGS = {
     "kinds": "what a check reads (read, through, then_through): the kinds of fact a file says, each with the "
              "fields it carries",
-    "quantifiers": "what a check does with what it keeps: may_not, may_only, must_reach, must_be_reached, at_most, "
-                   "at_least",
+    "quantifiers": "what a check does with what it keeps: may_not, may_only, must_reach, must_not_reach, "
+                   "must_be_reached, at_most, at_least",
     "targets": "what a kept fact is compared with (may_not, may_only, must_reach.targets)",
     "filters": "what must be true of a file or a fact (in.where, keep, except, cases.when, through_only); "
                "`not <filter>` holds where the filter does not",

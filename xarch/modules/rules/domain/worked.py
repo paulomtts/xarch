@@ -7,7 +7,7 @@ their parts and tiers are those of the smallest profile with a test tier: a part
 it, and test files named check_* (the one beside the code, in a profile that says testing.beside)."""
 from __future__ import annotations
 
-from xarch.modules.rules.domain.rule import AT_LEAST, AT_MOST, EXISTING, MAY_NOT, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, AT_MOST, EXISTING, MAY_NOT, MUST_NOT_REACH, Match, OwnCheck, Rule
 from xarch.profile_values.checks import APP, TESTS, Condition, Saying, Scope
 
 TODO = (Match("text", words=("*TODO*",)),)
@@ -88,5 +88,14 @@ WORKED: tuple[OwnCheck, ...] = (
                   keep=(Condition("longer-than", "2"),), key="checks.short-files"),
              (("documents/notes%extension%", "%comment% one\n%comment% two\n%comment% three\n"),),
              (("documents/notes%extension%", "%comment% one\n"),)),
+    OwnCheck(Rule("types-never-reach-the-store", Scope(APP, where=(Condition("below", "documents/types"),)), ("import",),
+                  MUST_NOT_REACH, (Match("path", names=(("app", "documents", "store"),)),),
+                  (Saying("{file} reaches the store at line {line}: {chain}",
+                          "keep the types of documents apart from where they are saved"),),
+                  key="checks.types-never-reach-the-store", links=("import-into-app",)),
+             (("documents/types/title%extension%", "%import app.documents.rules trim%\n"),
+              ("documents/rules%extension%", "%import app.documents.store Store%\n")),
+             (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),
+              ("documents/rules%extension%", "%import app.documents.store Store%\n"))),
 )
 """The worked checks, the first the example of how a check is written."""

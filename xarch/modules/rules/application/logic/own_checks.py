@@ -23,8 +23,8 @@ from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import (
     COUNTS,
     EXISTING,
+    FILE_REACH,
     MUST_BE_REACHED,
-    MUST_REACH,
     MadeChecks,
     Match,
     OwnCheck,
@@ -105,7 +105,7 @@ def _approximate(checks: tuple[OwnCheck, ...], language: CheckedLanguage) -> tup
 
 def _targets(name: str, check: WrittenCheck, profile: Profile, problems: list[str]) -> tuple[Match, ...]:
     slot = check.quantified.slot
-    where = f"checks.{name}.{slot}" + (".targets" if slot == MUST_REACH else "")
+    where = f"checks.{name}.{slot}" + (".targets" if slot in FILE_REACH else "")
     part = check.within.named_part
     owner = (part, profile.parts[part]) if part in profile.parts else None
     return tuple(match for written in check.quantified.targets

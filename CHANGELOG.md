@@ -20,6 +20,11 @@ All notable changes to this project are written here. The format follows
   check that does not count. The kind `file` carries the new field `lines`, from the new fact `file.lines` (Python's
   reader: exact), which the filter `longer-than: <n>` and the variable `{lines}` read. A filter's value may be written
   as a number. The bundled profiles read nothing new.
+- The quantifier `must_not_reach` of a check of your own, the negation of `must_reach` written the same way (`targets`,
+  `through`, `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the
+  files its links lead to however far, is a finding at the line of its first step, and the new variable `{chain}`
+  says the way (`app.store -> app.store.sql -> sqlalchemy`); a name taken from a package file leads through that
+  package file to every file it imports. The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

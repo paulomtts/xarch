@@ -135,3 +135,33 @@ def test_count_is_said_only_by_a_check_that_counts(tmp_path):
     assert checked.exit_code == 1
     assert ("checks.x.message: {count} is how many facts a file keeps, which only a check under at_most or at_least "
             "counts") in checked.output
+
+
+NEVER_SQL = {
+    "read": "import", "in": {"part": "ui"}, "must_not_reach": {
+        "targets": [{"package": ["sqlalchemy"]}], "through": "import-into-app"},
+    "message": "{file} reaches sqlalchemy at line {line}: {chain}", "fix": "take what it needs through a port",
+    "examples": {"flagged": {"ui/page.py": "import sqlalchemy\n"}, "clean": {"ui/page.py": "import json\n"}}}
+
+
+def test_must_not_reach_finds_a_file_that_reaches_a_target_however_far_and_shows_the_chain(tmp_path):
+    """The page takes Repo from the store's package file, which only re-exports it from sql.py: the chain goes
+    through the package file, and on through every file it imports."""
+    files = {"ui/page.py": "import json\nfrom app.store import Repo\n", "ui/plain.py": "import json\n",
+             "store/__init__.py": "from app.store.sql import Repo\n",
+             "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n"}
+    assert found(tmp_path, {"ui-never-sql": NEVER_SQL}, files) == [
+        ("app/ui/page.py", 2, "app/ui/page.py reaches sqlalchemy at line 2: app.store -> app.store.sql -> sqlalchemy")]
+
+
+def test_must_not_reach_says_a_target_of_the_file_s_own_at_its_line(tmp_path):
+    assert found(tmp_path, {"ui-never-sql": NEVER_SQL}, {"ui/page.py": "import json\nimport sqlalchemy\n"}) == [
+        ("app/ui/page.py", 2, "app/ui/page.py reaches sqlalchemy at line 2: sqlalchemy")]
+
+
+def test_chain_is_said_only_by_a_check_under_must_not_reach(tmp_path):
+    project(tmp_path, {"x": {**LONG, "message": "{file} reaches {chain}"}}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1
+    assert ("checks.x.message: {chain} is the chain of links a file reaches a target by, which only a check under "
+            "must_not_reach follows") in checked.output

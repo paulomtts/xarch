@@ -130,6 +130,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "function": lambda found, facts, profile: found.fact.path[0] if found.fact.path else "",
     "count": lambda found, facts, profile: str(_count(found, facts, profile)),
     "lines": lambda found, facts, profile: str(found.fact.lines),
+    "chain": lambda found, facts, profile: " -> ".join(found.fact.chain),
 }
 """What each variable prints of a finding, by its name."""
 

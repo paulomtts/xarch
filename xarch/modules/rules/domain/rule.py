@@ -21,6 +21,7 @@ from xarch.modules.rules.domain.errors import RuleRefused
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.vocabulary import (
     APP_SIDE,
+    CHAINED,
     COUNTED,
     FILE,
     FILTERS,
@@ -55,12 +56,15 @@ from xarch.profile_values.checks import (
 )
 from xarch.profile_values.placement import Target
 
-MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED, AT_MOST, AT_LEAST = QUANTIFIER_SLOTS
+MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED, AT_MOST, AT_LEAST, MUST_NOT_REACH = QUANTIFIER_SLOTS
 """What a kept fact does with the targets: matches none of them, or matches one of them; what a file or a
 declaration does through links: a file of the scope reaches a target, by one of its own facts or through the files its
 links lead to, however far; a declaration of the scope is reached from a root, by the link of a root, or of a
 declaration reached already when the rule spreads through it; and how many facts a file of the scope keeps: at most,
-or at least, the rule's count. Each is the slot of the format that writes it."""
+or at least, the rule's count; and a file of the scope that reaches a target, as under must_reach, is a finding
+(MUST_NOT_REACH). Each is the slot of the format that writes it."""
+FILE_REACH = (MUST_REACH, MUST_NOT_REACH)
+"""The quantifiers under which a file reaches a target, by a fact of its own or through the files its links lead to."""
 COUNTS = COUNT_SLOTS
 """The quantifiers that count the facts a file keeps: AT_MOST and AT_LEAST."""
 
@@ -139,7 +143,7 @@ class Rule:
     def said_kinds(self) -> tuple[str, ...]:
         """The kinds of fact a finding of the rule is: a file's, for a rule a file must reach by or keep at least so many
         facts; else those it reads."""
-        return ("file",) if self.quantifier in (MUST_REACH, AT_LEAST) else self.facts
+        return ("file",) if self.quantifier in (*FILE_REACH, AT_LEAST) else self.facts
 
     @property
     def needs(self) -> tuple[str, ...]:
@@ -314,7 +318,7 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
     quantifier, problems = rule.quantifier, []
     if quantifier not in _QUANTIFIERS:
         return [f"quantifier: no quantifier is named {quantifier!r}: write one of {', '.join(sorted(_QUANTIFIERS))}"]
-    slot = f"{quantifier}.targets" if quantifier == MUST_REACH else quantifier
+    slot = f"{quantifier}.targets" if quantifier in FILE_REACH else quantifier
     if quantifier in COUNTS:
         if rule.targets != EXISTING:
             problems.append(f"{quantifier}: takes no targets: what it counts is what the check keeps")
@@ -331,10 +335,10 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
         problems += [f"{name}: only a check under {MUST_REACH} or {MUST_BE_REACHED} reaches through links: drop it"
                      for name in extra]
         return problems
-    problems += _links(f"{quantifier}.through", rule.links, "reaches" if quantifier == MUST_REACH else "")
+    problems += _links(f"{quantifier}.through", rule.links, "reaches" if quantifier in FILE_REACH else "")
     linked = [_KINDS[name] for name in rule.links if name in _KINDS]
     problems += _conditions(f"{quantifier}.through_only", rule.via, linked, "", quantifier, f"{quantifier}.through")
-    if quantifier == MUST_REACH:
+    if quantifier in FILE_REACH:
         problems += [f"{quantifier}.{name}: only a check under {MUST_BE_REACHED} has it: drop it"
                      for name, on in (("from", rule.roots), ("then_through", rule.spread),
                                       ("by_another_file", rule.elsewhere)) if on]
@@ -472,6 +476,9 @@ def _variable(slot: str, variable, rule: Rule, kinds: list[Kind], side: str, gua
     if variable.needs == SCOPE_PART and not rule.scope.named_part:
         problems.append(f"{slot}: {{{name}}} is the part the scope names, and this scope names none: write "
                         "`in: {part: <part>}`")
+    if variable.needs == CHAINED and rule.quantifier != MUST_NOT_REACH:
+        problems.append(f"{slot}: {{{name}}} is the chain of links a file reaches a target by, which only a check under "
+                        f"{MUST_NOT_REACH} follows")
     if variable.needs == COUNTED and rule.quantifier not in COUNTS:
         problems.append(f"{slot}: {{{name}}} is how many facts a file keeps, which only a check under {AT_MOST} or "
                         f"{AT_LEAST} counts")
@@ -487,7 +494,8 @@ class Fact(NamedTuple):
     held, receiver, annotated-callable), how many steps of its path the import binding it bound, for an import into
     the app or the tests, the file or package it reaches below that root and where that sits, a text it says, the
     names it mentions (a class's or a file's), the classes a class derives from, however far, each as a dotted
-    path, and how many lines a file holds. A run holds a fact for every import, name read and call of every file,
+    path, how many lines a file holds, and for a file that reaches a target under must_not_reach, the chain of what
+    it reaches, each step as it is said. A run holds a fact for every import, name read and call of every file,
     so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
@@ -501,6 +509,7 @@ class Fact(NamedTuple):
     names: frozenset[str] = frozenset()
     bases: tuple[tuple[str, ...], ...] = ()
     lines: int = 0
+    chain: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
