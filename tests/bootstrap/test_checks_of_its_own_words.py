@@ -312,6 +312,20 @@ def test_passes_positional_reads_the_literals_a_call_passes_by_their_place_from_
         ("app/store/x.py", 7, "app/store/x.py passes a literal second at line 7")]
 
 
+PAGED_IN = {**LIMITS, "keep": [{"passes-positional": "0|1=50"}],
+            "message": "{file} pages by a literal 50 at line {line}, in '{function}'",
+            "accepted": [{"file": "store/x.py", "function": "legacy", "why": "the legacy pager goes with its screen"}]}
+
+
+def test_a_call_carries_its_positional_literals_and_its_function_together(tmp_path):
+    """The place of passes-positional is a name pattern, so 0|1 is either of the first two places; the function the
+    call sits in is said and accepted by name, the same call in another function still found."""
+    files = {"store/x.py": ("def legacy(q):\n    q.limit(50)\n\ndef pages(q):\n    q.limit(size, 50)\n"
+                            "    q.limit(size, size, 50)\n")}
+    assert found(tmp_path, {"paged-in": PAGED_IN}, files) == [
+        ("app/store/x.py", 5, "app/store/x.py pages by a literal 50 at line 5, in 'pages'")]
+
+
 GETTERS = {
     "read": "call", "in": {"part": "ui"}, "keep": [{"named": "get_*"}], "may_only": {"name": ["get_*_controller"]},
     "message": "{path} at line {line} is no controller's getter", "fix": "depend on a controller's getter",

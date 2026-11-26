@@ -72,9 +72,10 @@ All notable changes to this project are written here. The format follows
   answer kept under its own key. An entry answers yes at `evals.placement.yes_line` (0.5 unless written: a
   placeholder, not measured); what the entries say is advisory, a note on the file (`litmus note`, JSON
   `litmus.advisory` true): it never makes a file doubtful, which placement's question alone decides, since entries
-  asked one by one were measured not to tell a part's files from the other parts'. Placement's question describes
-  such a part by its entries joined; a part of one text, or of a list of one entry, is asked and read as before, so the answers kept stay valid. The reading and the dry run say each entry;
-  JSON gains `placement.files[].litmus`, `question.litmus` and `requests[].questions`.
+  asked one by one were measured not to tell a part's files from the other parts'. Placement's question describes such
+  a part by its entries joined; a part of one text, or of a list of one entry, is asked and read as before, so the
+  answers kept stay valid. The reading and the dry run say each entry; JSON gains `placement.files[].litmus`,
+  `question.litmus` and `requests[].questions`.
 - `xarch baseline write [--reset]` records the violations a whole check finds now in `.xarch/baseline.json`, each
   keyed by rule, file and message (digits read alike) with a count; `check` then holds them back and reports only
   what the record does not hold, so a swap (one fixed, one added) is caught. A record above the code passes and says
@@ -107,11 +108,11 @@ All notable changes to this project are written here. The format follows
   templates the code of the checks `profile explain` shows is written with (`subclass`, a class deriving from a base),
   so that the example of `filters.extends` is written in the language. The bundled profiles read nothing new.
 - The quantifiers `at_most: <n>` and `at_least: <n>` of a check of your own count the facts it keeps in each file of
-  its scope, alone: under `at_most` each kept fact after the n-th is a finding at its line, under `at_least` a file
-  that keeps fewer is a finding at line 0; the variable `{count}` says how many the file keeps, and is refused in a
-  check that does not count. The kind `file` carries the new field `lines`, from the new fact `file.lines` (Python's
-  reader: exact), which the filter `longer-than: <n>` and the variable `{lines}` read. A filter's value may be written
-  as a number. The bundled profiles read nothing new.
+  its scope, alone (or, with `per`, above, in the files counted together): under `at_most` each kept fact after the
+  n-th is a finding at its line, under `at_least` a file that keeps fewer is a finding at line 0; the variable
+  `{count}` says how many the file keeps, and is refused in a check that does not count. The kind `file` carries the
+  new field `lines`, from the new fact `file.lines` (Python's reader: exact), which the filter `longer-than: <n>` and
+  the variable `{lines}` read. A filter's value may be written as a number. The bundled profiles read nothing new.
 - The quantifier `must_not_reach` of a check of your own, the negation of `must_reach` written the same way (`targets`,
   `through`, `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the
   files its links lead to however far, is a finding at the line of its first step, and the new variable `{chain}`
@@ -125,8 +126,8 @@ All notable changes to this project are written here. The format follows
   `defaulted`, `annotated`, `returning` and `keyword_call`. The bundled profiles read nothing new.
 - The kinds `call`, `method-call` and `construction` carry the new field `arguments`, from the new fact
   `call.keywords` (Python's reader: exact): each keyword argument a call passes, by name, with its value as written
-  when it is a literal; the filters `passes: <pattern>` and `passes-literal: <pattern>[=<text>]` read it. Positional
-  arguments are not read. The bundled profiles read nothing new.
+  when it is a literal; the filters `passes: <pattern>` and `passes-literal: <pattern>[=<text>]` read it (positional
+  arguments that are literals are the field `positional`, above). The bundled profiles read nothing new.
 - The kind `call` carries the field `name`, the last name of its callee, so the filter `named` and the target `name`
   apply to a call (they were refused there before). The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)

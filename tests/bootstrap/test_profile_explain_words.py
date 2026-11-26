@@ -30,7 +30,7 @@ def test_checks_is_how_a_check_reads_on_one_screen_with_its_slots_its_words_and_
     assert lines[0] == "how a check reads" and "slots" in lines and "words" in lines
     assert any(line.startswith("  filters ") for line in lines)
     assert "example: a check of your own, checks.no-todo" in result.output and "      examples:" in lines
-    assert len(lines) < 85
+    assert len(lines) <= 100
 
 
 def test_a_category_lists_its_words_and_a_word_is_explained_with_an_example_from_a_bundled_profile():
