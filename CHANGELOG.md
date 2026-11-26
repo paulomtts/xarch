@@ -192,6 +192,13 @@ All notable changes to this project are written here. The format follows
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as
   unparsable instead of stopping the run.
+- An entry of an `accepted` list (`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`,
+  `counterparts.<id>.accepted`, `imports.accepted`) written with the app folder's name first (`app/core/ports.py`
+  when the app folder is `app`) still accepts nothing, but its stale-entry finding, reported at `app/app/core/ports.py`,
+  now says what to do: `write the path relative to the app: core/ports.py, not app/core/ports.py`, when the path is
+  there once that name is taken off (or, for `structure.accepted`, is a `structure` finding). Before, its fix only said
+  to drop the entry. A path is still written one way: the prefixed form is not accepted (under `imports.accepted`,
+  such a file usually lies in no part, and the profile is refused when it loads, as before).
 
 ## [0.3.0] - 2026-11-24
 

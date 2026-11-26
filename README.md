@@ -187,6 +187,11 @@ an entry that accepts nothing (the path is there, or mirrors a folder of the app
 rule, so the list can only shrink. Unlike `parts.<part>.optional`, which frees a part in every instance, an entry
 frees one path.
 
+Every `accepted` list (`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`,
+`counterparts.<id>.accepted`, `imports.accepted`) writes a path below the app, never from the folder holding it: when
+the app folder is `app`, an entry written `app/core/ports.py` accepts nothing, and its finding says to write
+`core/ports.py` instead (under `imports.accepted`, such a file lies in no part and the profile is refused).
+
 `counterparts` says what lies with what, path by path: each entry, by an id of its own, has `for`, what must have a
 counterpart, `has`, where it is, and optionally `when`, the paths that must be there too for it to need one, each a
 path below the app or `tests/<path>` below the tests, a folder when it ends in `/` (a folder is there when a file lies
