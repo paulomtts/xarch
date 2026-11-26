@@ -30,7 +30,9 @@ the bundled part does not hold; a part dropped from a tier's `imports.types_only
 a tier's `imports.also` that no
 target of the bundled tier's covers; a tier no longer `uses.apply_never`; a name dropped from `testing.skips`; a `files`
 entry no longer `pinned`; a name the bundled profile `reserved` holds that the custom one does not; a part the bundled
-profile gives a `litmus` that the custom one redefines without one; a public name `guards.dead-code.known` accepts as
+profile gives a `litmus` that the custom one redefines without one, or without any entry of it (one text is kept
+by any litmus, a list by a litmus holding an entry of one of its labels, one text being the entry labelled 1, the
+question as written or reworded, as one text may be reworded); a public name `guards.dead-code.known` accepts as
 only the tests' that the bundled profile's does not; a part `guards.no-twins.translated` lists that the bundled
 profile's does not; a path `review.never` holds back, or a text `review.mask` hides, in the bundled profile that the
 custom one does not write (each compared as written: it sends more); a part whose line under `evals.placement.lines`
@@ -84,6 +86,9 @@ LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.ne
           "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted",
           "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
+ENTRIES = "entries: "
+"""What the `what` of a part that keeps no entry of the litmus list it is compared with starts with, before the labels
+of that list's entries."""
 LOW = 0.75
 """The match below which a comparison is low: less than three in four of the things `check` reads under either
 profile have a counterpart in the other, so how the profile is looser says little of how `check` would do under the
@@ -163,7 +168,7 @@ def _part_keys(architecture: Architecture, name: str, part: Part, packaged: bool
     written = {"imports.may": bool(architecture.rules.get(name)),
                "imports.libraries": libraries is not None and name in libraries,
                "imports.must": bool(part.imports_must), "uses.never": bool(architecture.uses_never.get(name)),
-               "untested": bool(part.untested), LITMUS: bool(part.litmus), "shared": part.shared is not None,
+               "untested": bool(part.untested), LITMUS: _has_litmus(part), "shared": part.shared is not None,
                "entry": part.entry, "package_only": packaged, "optional": part.optional,
                "imports.accepted": bool(part.imports_accepted)}
     keys: list[tuple[object, ...]] = [(key,) for key, held in written.items() if held]
@@ -299,7 +304,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
         before = {(entry.file, entry.written) for entry in base.parts[pairs[name]].imports_accepted}
         found += [("imports.accepted", name, f"{'/'.join(entry.file)}: {entry.written}")
                   for entry in custom.parts[name].imports_accepted if (entry.file, entry.written) not in before]
-    found += [(LITMUS, name, "") for name in shared if base.parts[pairs[name]].litmus and not custom.parts[name].litmus]
+    found += [(LITMUS, name, _dropped(base.parts[pairs[name]], custom.parts[name])) for name in shared
+              if not _keeps(custom.parts[name], base.parts[pairs[name]])]
     found += [("holds", name, kind) for name in shared for kind in _allowed(custom.parts[name])
               if kind not in _allowed(base.parts[pairs[name]])]
     for name in shared:
@@ -477,6 +483,30 @@ def _closest(architecture: Architecture, others: Mapping[str, Architecture]) -> 
     return min((name for name, share in shares.items() if share == best), default=None), best
 
 
+def _has_litmus(part: Part) -> bool:
+    return bool(part.litmus or part.litmus_list)
+
+
+def _labels(part: Part) -> tuple[str, ...]:
+    """The labels of the entries of a part's litmus: of its list, else "1" for one text, none for no litmus."""
+    return tuple(entry.label for entry in part.litmus_list) if part.litmus_list else ("1",) if part.litmus else ()
+
+
+def _keeps(custom: Part, base: Part) -> bool:
+    """Whether a part keeps the litmus the part it pairs with gives it: always when that gives none, never when it has
+    none; one text is kept by any litmus; a list, by a litmus that holds an entry of one of its labels (one text being
+    the entry labelled 1), its question as written or reworded."""
+    if not _has_litmus(base) or not _has_litmus(custom):
+        return not _has_litmus(base)
+    return not base.litmus_list or bool(set(_labels(base)) & set(_labels(custom)))
+
+
+def _dropped(base: Part, custom: Part) -> str:
+    """What of the litmus base gives a part not kept is said with: "" when the part has none, else the labels of the
+    entries of base, after ENTRIES."""
+    return f"{ENTRIES}{', '.join(_labels(base))}" if _has_litmus(custom) else ""
+
+
 def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Architecture],
              bundled: Mapping[str, Architecture]) -> Origin:
     """The origin of a profile compared with the profile file its based_on names, as --strict rests on its anchor:
@@ -494,7 +524,8 @@ def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Archite
     pairs = _paired_parts(architecture, base)
     demanded = tuple(Loosened(LITMUS, name, anchor, _sentence(LITMUS, name, anchor))
                      for name, part in architecture.parts.items()
-                     if not part.litmus and name in pairs and base.parts[pairs[name]].litmus and name not in listed)
+                     if not _has_litmus(part) and name in pairs and _has_litmus(base.parts[pairs[name]])
+                     and name not in listed)
     return replace(origin, baseline_off=tuple(g for g in origin.guards_off if g in excused),
                    looser=origin.looser + demanded, anchor=anchor)
 
@@ -542,6 +573,9 @@ def _sentence(key: str, part: str, what: str = "") -> str:
         case "imports.accepted":
             file, _, imported = what.partition(": ")
             return f"{part} accepts {file} importing {imported} (parts.{part}.imports.accepted)"
+        case "litmus" if what.startswith(ENTRIES):
+            return (f"{part} keeps no entry of the litmus the profile it is compared with gives it "
+                    f"({what.removeprefix(ENTRIES)}), each known by its label (parts.{part}.litmus)")
         case "litmus" if what:
             return (f"{part} has no litmus, though {what}, which --strict rests on, gives the part it pairs with one "
                     f"(parts.{part}.litmus)")

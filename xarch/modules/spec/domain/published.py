@@ -116,7 +116,9 @@ class Loosened:
         uses.never      part no longer forbids what
         untested        part is newly marked untested
         litmus          part has no litmus, though the bundled profile gives it one (LITMUS); with what, though
-                        what, the anchor --strict rests on, gives the part it pairs with one
+                        what, the anchor --strict rests on, gives the part it pairs with one; with what starting
+                        `entries: `, part keeps no entry of the litmus list the bundled profile gives it, whose labels
+                        follow
         imports.types_only
                         the tests of tier part may now call what
         imports.also    the tests of tier part may also import what (a target as a reference: parts.<part> or <word>.<part>)

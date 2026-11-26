@@ -528,3 +528,11 @@ def test_a_mark_in_a_folder_tier_s_may_is_refused_as_any_entry_that_is_no_target
     assert problems(with_guard({"may": [{"parts.store": "types_only"}]})) == [
         "layered.yaml: tiers.guard.imports.may: {'parts.store': 'types_only'} is not a reference: write parts.<part> "
         "or <word>.<part>, optionally followed by /<path> and :<pattern>"]
+
+
+def test_a_tier_s_litmus_list_is_a_tip_panel_of_its_entries_under_its_subsection():
+    document = tiered()
+    document["tiers"]["unit"]["litmus"] = ["Does it decide?", {"ask": "Is it fast?", "label": "fast", "mode": "all"}]
+    assert rendered("{{tier_litmus:3}}", document).split("\n\n### 3.2")[0] == (
+        "### 3.1 unit\n\n> [!TIP]\n> **Litmus tests.** A test belongs here when at least one of these answers yes:\n"
+        "> - **1.** Does it decide?\n>\n> and when each of these answers yes:\n> - **fast.** Is it fast?")

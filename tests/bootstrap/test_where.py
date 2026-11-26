@@ -176,3 +176,14 @@ def test_the_contract_part_never_uses_pure_s_names_then_typing_any_in_order():
     found = document("app/modules/docs/contract/commands.py")
     assert found["never_uses"] == [*PURE, "typing.Any"]
     assert lines("app/modules/docs/contract/commands.py")["never uses"] == ", ".join((*PURE, "typing.Any"))
+
+
+def test_a_part_whose_litmus_is_a_list_shows_each_entry_and_lists_them_in_the_document(tmp_path):
+    (tmp_path / "listed.yaml").write_text(
+        "name: listed\nparts:\n  glue/:\n    role: the glue\n    litmus:\n      - Does it wire?\n"
+        "      - {ask: \"Is it short?\", label: short, mode: all}\n")
+    result = runner.invoke(app, ["where", "app/glue/x.py", "--profile", "listed.yaml"])
+    assert "litmus:         at least one `any` entry and every `all` entry answers yes:\n" \
+           "                1 (any): Does it wire?\n                short (all): Is it short?\n" in result.output
+    assert document("app/glue/x.py", "--profile", "listed.yaml")["part"]["litmus"] == [
+        {"ask": "Does it wire?", "label": "1", "mode": "any"}, {"ask": "Is it short?", "label": "short", "mode": "all"}]

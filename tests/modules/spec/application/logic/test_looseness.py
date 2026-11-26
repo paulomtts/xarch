@@ -128,6 +128,42 @@ def test_a_part_redefined_without_the_litmus_the_base_gives_it_is_looser_and_one
     assert loosened(parsed(base), parsed(base)) == ()
 
 
+def with_api_litmus(value) -> Architecture:
+    document = layered()
+    part_of(document, "api")["litmus"] = value
+    return parsed(document)
+
+
+@pytest.mark.parametrize("base, custom", [
+    pytest.param("Does it answer a request?", "Is it a handler?", id="one text kept by another text"),
+    pytest.param("Does it answer a request?", ["Is it a handler?", {"ask": "Is it a route?", "label": "route"}],
+                 id="one text kept by any list"),
+    pytest.param(["Does it answer?", {"ask": "Is it a route?", "label": "route"}],
+                 [{"ask": "Does it declare a route?", "label": "route"}], id="a list kept by one label of it"),
+    pytest.param(["Does it answer?", {"ask": "Is it a route?", "label": "route"}], "Does it answer a request?",
+                 id="a list kept by one text, the entry labelled 1"),
+])
+def test_a_part_that_keeps_an_entry_of_the_litmus_the_base_gives_it_is_not_looser(base, custom):
+    assert loosened(with_api_litmus(custom), with_api_litmus(base)) == ()
+
+
+@pytest.mark.parametrize("custom", [
+    pytest.param([{"ask": "Is it a handler?", "label": "handler"}], id="a list of other labels"),
+    pytest.param("Does it answer a request?", id="one text, whose label 1 the list does not hold"),
+])
+def test_a_part_that_keeps_no_entry_of_the_litmus_list_the_base_gives_it_is_looser(custom):
+    base = with_api_litmus([{"ask": "Does it answer?", "label": "answer"}, {"ask": "Is it a route?", "label": "route"}])
+    assert loosened(with_api_litmus(custom), base) == (
+        Loosened("litmus", "api", "entries: answer, route",
+                 "api keeps no entry of the litmus the profile it is compared with gives it (answer, route), each "
+                 "known by its label (parts.api.litmus)"),)
+
+
+def test_a_part_with_no_litmus_beside_a_base_litmus_list_is_looser_as_one_with_no_litmus_is():
+    assert [item.sentence for item in loosened(parsed(layered()), with_api_litmus(["Does it answer?"]))] == [
+        "api has no litmus, though the profile it is compared with gives it one (parts.api.litmus)"]
+
+
 def test_a_public_name_accepted_as_only_the_tests_that_the_base_does_not_accept_is_looser():
     def dead(*known: str) -> dict:
         return covered(guards={"dead-code": {"tests_only": True, "known": list(known)}},
