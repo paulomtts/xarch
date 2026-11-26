@@ -165,6 +165,16 @@ def _returns_annotated(found: Found, facts: Facts, profile: Profile, value: str)
     return bool(found.fact.returns) and name_matches(value, found.fact.returns)
 
 
+def _passes(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return any(name_matches(value, name) for name, _ in found.fact.arguments)
+
+
+def _passes_literal(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    name, _, text = value.partition("=")
+    return any(literal and name_matches(name, keyword) and (not text or name_matches(text, literal))
+               for keyword, literal in found.fact.arguments)
+
+
 def _trait(name: str) -> Asked:
     return lambda found, facts, profile, value: name in found.fact.traits
 
@@ -242,7 +252,8 @@ _FACT: dict[str, Asked] = {
     "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "special": _special, "named": _named,
     "fake-named": _fake_named, "extends": _extends, "longer-than": _longer_than,
     "has-parameter": _has_parameter, "parameter-has-default": _parameter_has_default,
-    "parameter-annotated": _parameter_annotated, "returns-annotated": _returns_annotated,
+    "parameter-annotated": _parameter_annotated, "returns-annotated": _returns_annotated, "passes": _passes,
+    "passes-literal": _passes_literal,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
                                        "unreadable", "doc", "public", "type-only")},

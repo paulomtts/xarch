@@ -392,7 +392,12 @@ and then matches no pattern): the filters `has-parameter: <pattern>` (a paramete
 `parameter-has-default: <pattern>` (such a parameter, with a default), `parameter-annotated: <pattern>` (a parameter
 whose annotation matches) and `returns-annotated: <pattern>` read them, and `{parameters}` and `{returns}` say them:
 `keep: [{parameter-has-default: actor}]` finds each function that gives `actor` a default, `keep:
-[{returns-annotated: "*Row*"}]` each that returns a row. A check carries `examples`: code it
+[{returns-annotated: "*Row*"}]` each that returns a row. The kinds `call`, `method-call` and `construction` carry
+their `arguments` (the fact `call.keywords`): each keyword argument they pass, by name, with its value as written when
+it is a literal (`3`, `'x'`, `True`; a name or any other expression is no literal); the filter `passes: <pattern>`
+holds of a call that passes a keyword the pattern names, and `passes-literal: <pattern>` of one that passes it a
+literal, `<pattern>=<text>` matching the value's text too: `read: method-call`, `keep: [{passes-literal:
+skip_locked=True}]` finds each `.with_for_update(skip_locked=True)`. Positional arguments are not read. A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

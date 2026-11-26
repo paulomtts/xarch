@@ -22,10 +22,12 @@ TRAITS = ("relative", "standard", "on-own-object", "top-level", "forwards", "exc
 STORED = {"line": "line", "path": "path", "method": "name", "name": "name", "written": "text", "text": "text",
           "marker": "name", "forwarded": "text", "mentions": "names", "reaches": "target", "returned": "target",
           "place": "at", "bound": "bound", "function": "path", "bases": "bases", "lines": "lines",
-          "parameters": "parameters", "returns": "returns", **{trait: trait for trait in TRAITS}}
+          "parameters": "parameters", "returns": "returns",
+          "arguments": "arguments", **{trait: trait for trait in TRAITS}}
 """Where a fact keeps each field of the vocabulary: an attribute of the fact, or a trait by its name."""
 VALUES = {"named": "Doc*", "extends": "z*", "longer-than": "5", "has-parameter": "z*", "parameter-has-default": "z*",
-          "parameter-annotated": "z*", "returns-annotated": "z*", "below": "fakes", "of-kind": "import", "target-below": "fakes",
+          "parameter-annotated": "z*", "returns-annotated": "z*", "passes": "z*",
+          "passes-literal": "z*", "below": "fakes", "of-kind": "import", "target-below": "fakes",
           "target-allows-under": "built_by"}
 MATCHES = {"exist": Match("exist"), "path": Match("path", names=(("yaml",), ("", "absolute()"))),
            "package": Match("package", words=("json",)), "name": Match("name", words=("Doc*",)),
@@ -45,7 +47,8 @@ def changed(fact: Fact, stored: str) -> Fact:
                "target": () if fact.target else ("zz",), "at": None if fact.at else Place("kernel"),
                "bound": 0 if fact.bound else 9, "bases": () if fact.bases else (("zz",),),
                "lines": 0 if fact.lines else 99,
-               "parameters": () if fact.parameters else (("zz", "zz", True),), "returns": "" if fact.returns else "zz"}
+               "parameters": () if fact.parameters else (("zz", "zz", True),), "returns": "" if fact.returns else "zz",
+               "arguments": () if fact.arguments else (("zz", "zz"),)}
     return fact._replace(**{stored: flipped[stored]})
 
 

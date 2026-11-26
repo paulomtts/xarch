@@ -85,6 +85,10 @@ attributes. A method forwards to that call's callee when it has no decorator, is
 (`self.repo.get(...)`), passing each of its other parameters straight through (a `*args` as `*args`, a `**kwargs` as
 `**kwargs`) and nothing else.
 
+A call, and a method call, lists each keyword argument it passes by name (not `**`), with its value as written when
+that is a literal: a constant (`3`, `"x"` with its quotes, `True`, `None`) or a signed number (`-1`); any other value
+as "".
+
 A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and is no Ref is listed as a method call by
 the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
 staticmethod's; also inside a function nested in that method) or a chain of attributes on it.
@@ -1146,15 +1150,16 @@ class _Calls(ast.NodeVisitor):
             if subject is not None:
                 self._subjects[id(node.func)] = subject
         func = _ref(node.func, self._chain, self._bare)
+        passed = tuple((k.arg, _literal_text(k.value)) for k in node.keywords if k.arg is not None)
         if func is None and isinstance(node.func, ast.Attribute):
-            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
+            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed))
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
                              if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
-                self.found.append(Call(node.lineno, func, args, keywords, unpacked))
+                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed))
             else:
                 assert isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name)
                 self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,
@@ -1212,6 +1217,15 @@ class _Calls(ast.NodeVisitor):
         name, bound = _reached(node, self._chain, self._builtins, self._bare)
         if name is not None:
             self.uses.append(Use(node.lineno, name, bound, self._subjects.get(id(node))))
+
+
+def _literal_text(node: ast.expr) -> str:
+    """A value as written (`ast.unparse`) when it is a literal: a constant (a number, a string with its quotes, `True`,
+    `None`), or a number with a sign; "" for any other expression."""
+    inner = node.operand if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)) else node
+    if isinstance(inner, ast.Constant) and (inner is node or isinstance(inner.value, (int, float, complex))):
+        return ast.unparse(node)
+    return ""
 
 
 def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Function, ...],

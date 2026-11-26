@@ -167,6 +167,28 @@ def test_signature_filters_read_a_function_s_parameters_defaults_annotations_and
         ("app/store/x.py", 5, "__init__ takes the runtime at line 5")]
 
 
+SKIP_LOCKED = {
+    "read": ["method-call"], "in": {"part": "store"}, "keep": [{"passes-literal": "skip_locked=True"}],
+    "may_not": "exist", "message": "{file} claims rows at line {line}", "fix": "claim them through the shared claim",
+    "examples": {"flagged": {"store/x.py": "q.with_for_update(skip_locked=True)\n"},
+                 "clean": {"store/x.py": "q.with_for_update()\n"}}}
+GUARDED = {
+    "read": "call", "in": {"part": "ui"}, "may_not": {"path": ["app.ui.drawer.EditDrawer"]},
+    "except": [{"passes": "unsaved_guard_form"}], "message": "{path} at line {line} guards no form",
+    "fix": "pass unsaved_guard_form",
+    "examples": {"flagged": {"ui/x.py": "from app.ui.drawer import EditDrawer\n\nEditDrawer()\n"},
+                 "clean": {"ui/x.py": "from app.ui.drawer import EditDrawer\n\nEditDrawer(unsaved_guard_form=f)\n"}}}
+
+
+def test_call_argument_filters_read_the_keywords_a_call_passes_and_whether_a_value_is_a_literal(tmp_path):
+    files = {"store/x.py": "q.with_for_update(skip_locked=True)\nq.with_for_update(skip_locked=flag)\n",
+             "ui/x.py": ("from app.ui.drawer import EditDrawer\nfrom app.ui import drawer\n\n"
+                         "EditDrawer(unsaved_guard_form=f)\ndrawer.EditDrawer(title='x')\n")}
+    assert found(tmp_path, {"one-claim": SKIP_LOCKED, "drawers-guard": GUARDED}, files) == [
+        ("app/store/x.py", 1, "app/store/x.py claims rows at line 1"),
+        ("app/ui/x.py", 5, "app.ui.drawer.EditDrawer at line 5 guards no form")]
+
+
 NEVER_SQL = {
     "read": "import", "in": {"part": "ui"}, "must_not_reach": {
         "targets": [{"package": ["sqlalchemy"]}], "through": "import-into-app"},

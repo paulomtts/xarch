@@ -73,7 +73,7 @@ def test_words(given, when, then):
 def test_a_category_is_its_words_each_in_a_line():
     found = explain(FakeProfiles({}))(ExplainWords("filters"))
     assert type(found) is WordsShown
-    assert (found.category.name, found.category.words[0].name, len(found.category.words)) == ("filters", "test", 52)
+    assert (found.category.name, found.category.words[0].name, len(found.category.words)) == ("filters", "test", 54)
 
 
 def test_a_word_s_example_is_the_first_rule_of_the_first_profile_written_with_it():
@@ -91,8 +91,8 @@ def test_a_word_no_rule_of_the_profiles_uses_has_a_check_written_for_the_explana
 
 def test_a_kind_is_explained_with_its_fields_what_it_needs_of_the_language_and_its_verb():
     found = explain(FakeProfiles({}))(ExplainWords("kinds.method-call"))
-    assert [f.name for f in found.fields] == ["line", "method", "name", "on-own-object"]
-    assert (found.needs, found.verb) == (("method_call",), "call")
+    assert [f.name for f in found.fields] == ["line", "method", "name", "on-own-object", "arguments"]
+    assert (found.needs, found.verb) == (("method_call", "call.keywords"), "call")
 
 
 def test_how_a_check_is_written_lists_every_slot_and_every_category_with_its_words():

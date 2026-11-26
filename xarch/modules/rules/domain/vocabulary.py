@@ -191,6 +191,8 @@ FIELDS: dict[str, str] = {
     "lines": "how many lines a file holds",
     "parameters": "the parameters of a function in the order it declares them, each with its name, its annotation as "
                   "written (empty where it has none, or the language writes none) and whether it has a default",
+    "arguments": "the keyword arguments a call passes, each by its name with its value as written when that is a "
+                 "literal (a number, a text, a constant the language writes), else empty",
     "returns": "the return annotation of a function as written, empty where it has none or the language writes none",
     "bases": "the classes a class derives from, however far: each base it names, read through the import that binds "
              "it or as a class of its own file, then the bases of each the project defines, each a dotted name",
@@ -220,13 +222,16 @@ KINDS: tuple[Kind, ...] = (
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
          ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
-         ("line", "method", "name", "on-own-object"), needs=("method_call",), verb="call"),
-    Kind("call", "each call whose callee an import binds, as that dotted path", ("line", "path"),
-         {"place": "target-placed"}, needs=("call", "import.resolved"), verb="call"),
+         ("line", "method", "name", "on-own-object", "arguments"), needs=("method_call",),
+         field_needs={"arguments": ("call.keywords",)}, verb="call"),
+    Kind("call", "each call whose callee an import binds, as that dotted path", ("line", "path", "arguments"),
+         {"place": "target-placed"}, needs=("call", "import.resolved"), field_needs={"arguments": ("call.keywords",)},
+         verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
-                         "that binds it", ("line", "path", "name", "place", "exception", "record"),
+                         "that binds it", ("line", "path", "name", "place", "exception", "record", "arguments"),
          needs=("call", "class", "import.resolved"),
-         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",)}, verb="build"),
+         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",), "arguments": ("call.keywords",)},
+         verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
          ("line", "path", "reaches", "place"), needs=("use", "call", "module_functions", "import.resolved"),
@@ -319,6 +324,11 @@ FILTERS: tuple[Filter, ...] = (
     Filter("immutable", "the class is an immutable record: one of its bases, or one of its decorators called with the "
                         "keywords written beside it, is a name the language marks immutable records with", FACT,
            ("immutable",)),
+    Filter("passes", "the call passes a keyword argument whose name matches the pattern, `*` standing for any text",
+           FACT, ("arguments",), value=PATTERN),
+    Filter("passes-literal", "the call passes a keyword argument whose name matches the pattern with a literal value; "
+                             "written `<name>=<text>`, the value as written must match the text after `=` too", FACT,
+           ("arguments",), value=PATTERN),
     Filter("receiver", "the parameter called is the object or class its method is called on", FACT, ("receiver",)),
     Filter("annotated-callable", "the parameter called is annotated as a callable", FACT, ("annotated-callable",)),
     Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),

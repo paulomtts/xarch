@@ -76,7 +76,7 @@ def test_a_call_keeps_its_arguments_as_paths_or_none(tmp_path):
             "Mock(Notifier, 3, spec=ports.Repo, name='n')\nMock(*specs)\nMock(**options)\n")
     assert parsed(tmp_path, text).calls == (
         Call(4, ("unittest", "mock", "Mock"), (("app", "ports", "Notifier"), None),
-             (("spec", ("app", "ports", "Repo")), ("name", None))),
+             (("spec", ("app", "ports", "Repo")), ("name", None)), passed=(("spec", ""), ("name", "'n'"))),
         Call(5, ("unittest", "mock", "Mock"), unpacked=True),
         Call(6, ("unittest", "mock", "Mock"), unpacked=True))
 
@@ -176,7 +176,8 @@ def test_a_name_imported_relatively_reaches_every_reading_at_its_place_bound_non
     files = {"app/domain/base.py": "class Base: ...\n", "app/domain/ports.py": "class Repo: ...\n", SERVICES: text}
     found = read_at(tmp_path, files, SERVICES)
     assert found.classes[0].bases == (("app", "domain", "base", "Base"),)
-    assert found.calls == (Call(10, ("unittest", "mock", "Mock"), (), (("spec", ("app", "domain", "ports", "Repo")),)),)
+    assert found.calls == (Call(10, ("unittest", "mock", "Mock"), (), (("spec", ("app", "domain", "ports", "Repo")),),
+                                passed=(("spec", ""),)),)
     assert Use(9, ("app", "domain", "ports", "Repo"), 0) in found.uses
 
 
@@ -243,6 +244,15 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
                Method(8, "later", "None")), ("size",), fields=("size",), types=("int",), base_names=("Protocol",)),
         Class(10, "Typed", (("typing", "Protocol"), None), (), base_names=("Protocol", "Base")))
+
+
+def test_a_call_and_a_method_call_list_each_keyword_they_pass_with_its_literal_value_as_written(tmp_path):
+    text = ("from app.store import Store\n\nStore(limit=3, name='x', flag=True, low=-1, size=n, **more)\n"
+            "n.lock(skip_locked=True, of=n)\n")
+    found = parsed(tmp_path, text)
+    assert [c.passed for c in found.calls] == [
+        (("limit", "3"), ("name", "'x'"), ("flag", "True"), ("low", "-1"), ("size", ""))]
+    assert [m.passed for m in found.method_calls] == [(("skip_locked", "True"), ("of", ""))]
 
 
 def test_a_function_lists_its_parameters_in_order_with_their_annotations_and_defaults_and_its_return_annotation(

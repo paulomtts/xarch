@@ -120,5 +120,17 @@ WORKED: tuple[OwnCheck, ...] = (
                   keep=(Condition("returns-annotated", "*Row"),), key="checks.rules-return-no-rows"),
              (("documents/rules%extension%", "%returning title TitleRow%\n"),),
              (("documents/rules%extension%", "%returning title Title%\n"),)),
+    OwnCheck(Rule("stores-take-no-literal-limit", Scope(APP, where=(Condition("placed"),)), ("call",), MAY_NOT,
+                  EXISTING, (Saying("{path} is given a limit as a literal at line {line}",
+                                    "take the limit from the settings"),),
+                  keep=(Condition("passes-literal", "limit"),), key="checks.stores-take-no-literal-limit"),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit 3%\n"),),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit size%\n"),)),
+    OwnCheck(Rule("stores-pass-a-guard", Scope(APP, where=(Condition("placed"),)), ("call",), MAY_NOT,
+                  (Match("path", names=(("app", "documents", "store", "Store"),)),),
+                  (Saying("{path} is built with no guard at line {line}", "pass it the guard"),),
+                  exempt=(Condition("passes", "guard"),), key="checks.stores-pass-a-guard"),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit 3%\n"),),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store guard 1%\n"),)),
 )
 """The worked checks, the first the example of how a check is written."""

@@ -31,6 +31,10 @@ All notable changes to this project are written here. The format follows
   `has-parameter`, `parameter-has-default`, `parameter-annotated` and `returns-annotated` match them by a pattern, and
   the variables `{parameters}` and `{returns}` say them. The language's `worked` templates gain `function`,
   `defaulted`, `annotated`, `returning` and `keyword_call`. The bundled profiles read nothing new.
+- The kinds `call`, `method-call` and `construction` carry the new field `arguments`, from the new fact
+  `call.keywords` (Python's reader: exact): each keyword argument a call passes, by name, with its value as written
+  when it is a literal; the filters `passes: <pattern>` and `passes-literal: <pattern>[=<text>]` read it. Positional
+  arguments are not read. The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.
