@@ -72,7 +72,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "callback"],
                  id="(audit) the verb of a kind that names nothing"),
     pytest.param({"facts": ("function",), "targets": EXISTING, "sayings": say("{function}")},
-                 ["message: {function} prints nothing for function: it reads function; it applies to callback"],
+                 ["message: {function} prints nothing for function: it reads function; it applies to method-call, call, "
+                  "construction and callback"],
                  id="(audit) a variable that named the class of a function"),
     pytest.param({"scope": Scope(TESTS), "targets": EXISTING, "sayings": say("{where}")},
                  ["message: {where} applies only to the files of the app: write it in a check whose scope reads them "

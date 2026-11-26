@@ -206,7 +206,8 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(_function(f) for f in file.functions)
         case "callback":
             return tuple(Fact("callback", c.line, (c.function,), c.parameter,
-                              frozenset(n for n, on in ((_RECEIVER, c.receiver), (_ANNOTATED, c.annotated)) if on))
+                              frozenset(n for n, on in ((_RECEIVER, c.receiver), (_ANNOTATED, c.annotated)) if on),
+                              function=c.function)
                          for c in file.callbacks)
         case "import":
             return tuple(Fact("import", i.line, i.module, traits=_TRAITS[i.relative, i.standard, False]
@@ -218,15 +219,15 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(Fact("use", u.line, u.name, bound=u.bound) for u in file.uses)
         case "method-call":
             return tuple(Fact("method-call", m.line, name=m.name, traits=_TRAITS[False, False, m.held],
-                              arguments=m.passed) for m in file.method_calls)
+                              arguments=m.passed, function=m.function) for m in file.method_calls)
         case "call":
             return tuple(Fact("call", c.line, c.func, c.func[-1],
                               at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None,
-                              arguments=c.passed)
+                              arguments=c.passed, function=c.function)
                          for c in file.calls)
         case "construction":
             return tuple(Fact("construction", c.line, c.func, c.func[-1], _built(c.func, defined),
-                              at=defined.classes[c.func], arguments=c.passed)
+                              at=defined.classes[c.func], arguments=c.passed, function=c.function)
                          for c in file.calls if c.func in defined.classes)
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))

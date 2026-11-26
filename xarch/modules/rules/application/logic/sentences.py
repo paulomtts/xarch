@@ -127,7 +127,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "forwarded": lambda found, facts, profile: found.fact.text,
     "returned": lambda found, facts, profile: ".".join(found.fact.target),
     "verb": lambda found, facts, profile: _VERBS.get(found.fact.kind, ""),
-    "function": lambda found, facts, profile: found.fact.path[0] if found.fact.path else "",
+    "function": lambda found, facts, profile: found.fact.function,
     "count": lambda found, facts, profile: str(_count(found, facts, profile)),
     "lines": lambda found, facts, profile: str(found.fact.lines),
     "chain": lambda found, facts, profile: " -> ".join(found.fact.chain),

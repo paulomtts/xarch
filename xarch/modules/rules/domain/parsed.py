@@ -49,13 +49,16 @@ class Call:
     """A call whose callee is a Ref, and the line it is on: its positional arguments and its keyword arguments as
     (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs; types are the type
     arguments it is given, in the order written, each a Ref as any name is, after passed: each keyword argument as
-    (name, its value as written when it is a literal, else "")."""
+    (name, its value as written when it is a literal, else ""), and before them function, the name of the function of
+    the top level, or of the method of a class of the top level, the call sits in, however deep ("" at the top level of
+    the file)."""
     line: int
     func: tuple[str, ...]
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
     passed: tuple[tuple[str, str], ...] = ()
+    function: str = ""
     types: tuple[Ref, ...] = ()
 
 
@@ -107,11 +110,13 @@ class MethodCall:
     callee an import binds, such as `Path.cwd()` after `from pathlib import Path`, is a Call), and the line it is on:
     the attribute's name, and held: whether the expression is the object a method is called on (its first parameter,
     not a staticmethod's) or a chain of attributes on it, `self.name()` or `self.repo.name()`, as in a function nested
-    in that method too; passed, each keyword argument as a Call holds it."""
+    in that method too; passed, each keyword argument as a Call holds it; function, the function or method it sits in,
+    as a Call holds it."""
     line: int
     name: str
     held: bool = False
     passed: tuple[tuple[str, str], ...] = ()
+    function: str = ""
 
 
 @dataclass(frozen=True)

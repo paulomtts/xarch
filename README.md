@@ -496,7 +496,9 @@ holds of a call that passes a keyword the pattern names, and `passes-literal: <p
 literal, `<pattern>=<text>` matching the value's text too: `read: method-call`, `keep: [{passes-literal:
 skip_locked=True}]` finds each `.with_for_update(skip_locked=True)`. Positional arguments are not read. A `call`
 carries its `name` too, the last name of its callee, so `named` and the target `name` apply to it (`keep: [{named:
-"get_*"}]`). A check carries `examples`: code it
+"get_*"}]`). A `call`, a `method-call` and a `construction` carry their `function` (the fact `call.function`): the
+name of the function of the top level, or of the method of a class of the top level, the call sits in, however deep
+(a call in a function nested in `claim` is in `claim`), empty at the top level of the file; `{function}` says it. A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs, each example read as
 `check` reads a file of the app, with the language's marks of an interface and of an immutable record (so `keep:
 [interface]` and `keep: [immutable]` hold there as they do in the project).
@@ -524,7 +526,9 @@ A check may accept findings one by one, each with a reason, under `accepted`: a 
 file by its path below the app (`tests/<path>` for one below the tests root) and, if need be, the finding by the value
 its check prints for one or more variables (`name: InvoiceClock`). An entry that names no variable accepts every
 finding of the check in that file, the grain of an allowlist of files; one may not name a finding by its `line`,
-which moves with every edit above it. A finding an entry accepts is not reported, and the enforcement section names it
+which moves with every edit above it, but may name a call by the `function` it sits in (`{file: store/jobs.py,
+function: fail_expired, why: ...}` accepts the calls in `fail_expired` alone, so a third one elsewhere in the file is
+still a finding). A finding an entry accepts is not reported, and the enforcement section names it
 under `accepted:` instead; an entry that accepts nothing is itself a finding of the check, at its file, so the list,
 a ratchet, can only shrink. A finding said once for several facts (`once_per`, `per_line`) is matched on the first.
 

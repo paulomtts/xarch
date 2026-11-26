@@ -95,6 +95,7 @@ supplies:
   use: exact
   call: exact
   call.keywords: exact
+  call.function: exact
   method_call: exact
   parameter_call: exact
   callback: exact

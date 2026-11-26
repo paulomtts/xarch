@@ -7,6 +7,10 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- A `call`, a `method-call` and a `construction` carry their `function`, the function of the top level or the method
+  of a class of the top level they sit in, however deep (empty at the top level of the file), supplied by the reader as
+  `call.function` (exact in Python); `{function}` says it, and an entry of `checks.<id>.accepted` that names
+  `function: <name>` accepts the calls of that function alone, so another site in the same file is still a finding.
 - The kind `import-to-definition` reads each import of the app as `import-into-app` does, but a name taken from a
   package file that only passes it on (takes it by an import of its own, under its name or another) is followed to the
   module that defines it, through each package file that passes it on, each once, so `must_not_reach` and

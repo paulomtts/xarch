@@ -308,3 +308,36 @@ def test_import_to_definition_stops_where_package_files_pass_a_name_on_to_each_o
     files = {"ui/page.py": "from app.store import Repo\n", "store/__init__.py": "from app.ui import Repo\n",
              "ui/__init__.py": "from app.store import Repo\nimport sqlalchemy\n"}
     assert [line for _, line, _ in found(tmp_path, {"ui-never-sql": NEVER_SQL_BY_DEFINITION}, files)] == [2, 1]
+
+
+CLAIMING = ("from app.ui.drawer import EditDrawer\n\n"
+            "def fail_expired(q):\n    q.with_for_update()\n    EditDrawer()\n\n"
+            "class Jobs:\n    def claim(self, q):\n        def inner():\n            q.with_for_update()\n"
+            "        return inner\n\n"
+            "q.with_for_update()\n")
+ONE_CLAIM = {
+    "read": "method-call", "in": {"part": "store"}, "keep": [{"named": "with_for_update"}],
+    "may_not": "exist", "message": "{file} claims rows at line {line}, in '{function}'",
+    "fix": "claim them through the shared claim",
+    "examples": {"flagged": {"store/x.py": "def f(q):\n    q.with_for_update()\n"},
+                 "clean": {"store/x.py": "def f(q):\n    q.all()\n"}}}
+DRAWN = {
+    "read": "call", "in": {"part": "store"}, "may_not": {"path": ["app.ui.drawer.EditDrawer"]},
+    "message": "{path} at line {line}, in '{function}'", "fix": "leave the drawer to the ui",
+    "examples": {"flagged": {"store/x.py": "from app.ui.drawer import EditDrawer\n\nEditDrawer()\n"},
+                 "clean": {"store/x.py": "from app.ui.drawer import Other\n\nOther()\n"}}}
+
+
+def test_a_call_carries_the_function_or_method_of_the_top_level_it_sits_in(tmp_path):
+    """A call in a function nested in a method is the method's; one at the top level of the file is in none."""
+    assert found(tmp_path, {"one-claim": ONE_CLAIM, "drawn": DRAWN}, {"store/x.py": CLAIMING}) == [
+        ("app/store/x.py", 4, "app/store/x.py claims rows at line 4, in 'fail_expired'"),
+        ("app/store/x.py", 5, "app.ui.drawer.EditDrawer at line 5, in 'fail_expired'"),
+        ("app/store/x.py", 10, "app/store/x.py claims rows at line 10, in 'claim'"),
+        ("app/store/x.py", 13, "app/store/x.py claims rows at line 13, in ''")]
+
+
+def test_an_accepted_entry_that_names_a_function_accepts_the_calls_in_that_function_alone(tmp_path):
+    accepted = {**ONE_CLAIM, "accepted": [{"file": "store/x.py", "function": "fail_expired",
+                                           "why": "it claims what expired, once"}]}
+    assert [line for _, line, _ in found(tmp_path, {"one-claim": accepted}, {"store/x.py": CLAIMING})] == [10, 13]

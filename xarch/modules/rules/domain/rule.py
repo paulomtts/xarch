@@ -512,8 +512,10 @@ class Fact(NamedTuple):
     path, how many lines a file holds, and for a file that reaches a target under must_not_reach, the chain of what
     it reaches, each step as it is said, and for a function its parameters (name, annotation as written, whether it
     has a default) and its return annotation as written, and for a call the keyword arguments it passes, each with its
-    value as written when that is a literal. A run holds a fact for every import, name read and call of every file,
-    so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
+    value as written when that is a literal, and the function it is in (for a call, the function or method of the top
+    level it sits in, "" at the top level; for a callback, the function whose parameter it calls). A run holds a fact
+    for every import, name read and call of every file, so a fact is a named tuple, which is made several times
+    faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
     path: tuple[str, ...] = ()
@@ -530,6 +532,7 @@ class Fact(NamedTuple):
     parameters: tuple[tuple[str, str, bool], ...] = ()
     returns: str = ""
     arguments: tuple[tuple[str, str], ...] = ()
+    function: str = ""
 
 
 @dataclass(frozen=True)

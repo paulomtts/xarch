@@ -1085,6 +1085,7 @@ class _Calls(ast.NodeVisitor):
         self.callbacks: list[Callback] = []
         self.method_calls: list[MethodCall] = []
         self._subjects: dict[int, tuple[str, ...]] = {}
+        self._function = ""
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -1107,7 +1108,10 @@ class _Calls(ast.NodeVisitor):
         receiver = positional[0].arg if method and positional else ""
         callables = frozenset(x.arg for x in [*positional, *a.kwonlyargs]
                               if x.annotation is not None and self._is_callable(x.annotation))
+        outer = self._function
+        self._function = outer or node.name
         self._within(node, node.body, is_class=False, owner=(node.name, receiver, callables))
+        self._function = outer
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
@@ -1154,14 +1158,16 @@ class _Calls(ast.NodeVisitor):
         func = _ref(node.func, self._chain, self._bare)
         passed = tuple((k.arg, _literal_text(k.value)) for k in node.keywords if k.arg is not None)
         if func is None and isinstance(node.func, ast.Attribute):
-            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed))
+            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed,
+                                                self._function))
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
                              if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
-                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed))
+                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed,
+                                       function=self._function))
             else:
                 assert isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name)
                 self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,

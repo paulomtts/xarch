@@ -30,6 +30,7 @@ FACTS: dict[str, str] = {
     "use": "each name read, as the dotted path the import binding its first name reaches, and how much it bound",
     "call": "each call whose callee an import binds, as that dotted path, with its arguments",
     "call.type_arguments": "the type arguments a call is given",
+    "call.function": "the function or method of the top level a call or a method call sits in",
     "call.keywords": "the keyword arguments a call or a method call passes, each with its value as written when it is "
                      "a literal",
     "method_call": "each call of an attribute no import binds, and whether it is on the object a method is called on",
