@@ -68,17 +68,20 @@ def _plain_file(path: tuple[str, ...], marks: Marks) -> bool:
 
 def place_of(patterns: Mapping[str, tuple[str, ...]], path: tuple[str, ...], marks: Marks,
              files: Collection[tuple[str, ...]] = frozenset()) -> Place:
-    """The place of a path among patterns, by name; Place(None) when no pattern claims it. An instance of a
+    """The place of a path among patterns, by name; Place(None) when no pattern claims it. A pattern that is a
+    package file (the package file of application/) claims that file, or the folder it stands for, and nothing below it: a file
+    beside it falls to the pattern around it, else to none. An instance of a
     repeating folder is a folder the layout does not name: a step a pattern writes beside the repeating step is never
     one, nor is a file (a plain file as written, or a path files holds, each as the language names it) lying in the
     repeating folder's own folder."""
     steps = module_steps(path, marks)
     files = {*files, *((steps,) if _plain_file(path, marks) else ())}
     shaped = {name: module_steps(raw, marks) for name, raw in patterns.items()}
+    alone = {name for name, raw in patterns.items() if stands_for_folder(raw, marks)}
     best = Place(None)
     depth = -1
     for name, pattern in shaped.items():
-        if len(steps) < len(pattern) or len(pattern) <= depth:
+        if len(steps) < len(pattern) or len(pattern) <= depth or (name in alone and len(steps) > len(pattern)):
             continue
         instance = None
         for at, (want, step) in enumerate(zip(pattern, steps)):

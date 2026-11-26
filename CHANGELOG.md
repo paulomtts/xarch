@@ -166,6 +166,12 @@ All notable changes to this project are written here. The format follows
   `--strict` fails on, so a weak finding (`holds`, `immutable`, `pass-through`, a file `dead-code`'s `untested` finds)
   now fails the project's test suite as soon as it appears instead of staying advice. The guard test is pinned, so a
   project written by 0.3.0 sees it listed as changed until it takes the new one.
+- A part written as a package file (`application/__init__.py`, with no part on `application/`) holds that file
+  only. Before, it took every loose file and subfolder of its folder, so `xarch where application/pricing.py`
+  answered that part and `closed-tree` said nothing. Now such a file belongs to the part around its folder when there
+  is one, else to no part: `where` says it is ungoverned and `closed-tree`, when on, reports it, so a project that
+  relied on the package-file part to hold such files sees new findings. A file the layout names beside the package
+  file keeps its own part. The bundled profiles write no such part, and their output is unchanged.
 - The `AGENTS.md` `init` writes no longer tells an agent to read `docs/project/architecture.md` and
   `docs/project/testing.md` (about 20k tokens) before changing anything: it points at `xarch where <path>`, the
   `fix:` lines of `xarch check` and the Placement order section, and names the two docs as reference, not required.

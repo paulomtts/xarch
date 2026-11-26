@@ -209,3 +209,26 @@ and beside a named folder that is a part (adapters/<adapter>/ beside adapters/we
 def test_an_instance_of_a_repeating_folder_is_a_folder_the_layout_does_not_name(path, files, place):
     assert place_of(BESIDE, path, MARKS, frozenset(files)) == place
 
+
+FACADE = {"facade": ("modules", "*", "application", "pkg.src"),
+          "services": ("modules", "*", "application", "services"),
+          "kernel": ("kernel",), "kernel-root": ("kernel", "pkg.src")}
+"""A part written as a folder's package file (application/pkg.src) beside a part of the same folder (services/), and a
+package-file part inside a folder that is a part of its own (kernel/)."""
+
+
+@pytest.mark.parametrize("path, place", [
+    pytest.param(("modules", "docs", "application", "pkg.src"), Place("facade", "docs"), id="the package file itself"),
+    pytest.param(("modules", "docs", "application"), Place("facade", "docs"), id="the folder it stands for"),
+    pytest.param(("modules", "docs", "application", "pricing.src"), Place(None),
+                 id="a loose file beside it lies in no part"),
+    pytest.param(("modules", "docs", "application", "helpers", "x.src"), Place(None),
+                 id="a folder beside it the layout does not name lies in no part"),
+    pytest.param(("modules", "docs", "application", "services", "x.src"), Place("services", "docs", ("x",)),
+                 id="a part beside it keeps what it holds"),
+    pytest.param(("kernel", "pricing.src"), Place("kernel", None, ("pricing",)),
+                 id="a loose file beside it falls to the part of the folder around it"),
+])
+def test_a_part_written_as_a_package_file_holds_only_that_file(path, place):
+    assert place_of(FACADE, path, MARKS) == place
+

@@ -535,7 +535,9 @@ xarch profile explain parts.holds --rule   # the rules a key of your profile exp
 anywhere else is never read and is listed as `ungoverned` in the enforcement section; extra top-level folders and files
 at the app root are ignored unless the profile switches on `closed-tree`, as both bundled profiles do. A folder that is not the app's source at all
 is declared under `excluded`, and then no check looks at it. Extra files and subfolders inside a known part belong to
-that part.
+that part. A part written as a package file (`application/__init__.py`) is that one file: a file or folder beside it
+that the layout does not name belongs to the part around its folder, if there is one, else to no part, and
+`closed-tree` reports it.
 
 Every violation names its rule id, says what was found and, on a `fix:` line, what to do. The ids, with the profile key
 that switches or configures each (`-` for none: the rule is always on):
