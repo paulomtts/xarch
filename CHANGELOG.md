@@ -7,6 +7,22 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- `parts.<part>.litmus` and `tiers.<tier>.litmus` may be a list of entries, each a text or `{ask, label, mode}`:
+  `label` a short name of its own among the entries (its position from 1 without it), `mode` `any` (the default, an
+  alternative) or `all` (a condition). Code belongs when at least one `any` entry (when there is any) and every `all`
+  entry answers yes. An entry is refused at its address for an empty text, a label another entry has, an unknown mode
+  or an unknown key; `xarch profile explain parts.litmus.ask` (and `.label`, `.mode`) says each key. One text reads
+  as before. The generated docs show a list's alternatives, then its conditions; `xarch where` lists each entry, and
+  its JSON gives `litmus` as a list of `{ask, label, mode}` only when a list is written. A part that keeps none of the
+  entries of the litmus list its compared profile gives it (by label; a litmus of one text is kept by any litmus, and
+  counts as the entry labelled `1`) is looser under `litmus`, and fails `check --strict` as a dropped litmus does.
+- `xarch review` asks a file of a part whose litmus is a list of two entries or more each entry as a yes-or-no
+  question of its own, `litmus.<part>.<label>`, in the same request as placement's question, the text sent once, each
+  answer kept under its own key. An entry answers yes at `evals.placement.yes_line` (0.5 unless written: a
+  placeholder, not measured; measure it before relying on it); a file whose part's litmus does not hold reads as
+  doubtful. Placement's question describes such a part by its entries joined; a part of one text, or of a list of
+  one entry, is asked and read as before, so the answers kept stay valid. The reading and the dry run say each entry;
+  JSON gains `placement.files[].litmus`, `question.litmus` and `requests[].questions`.
 - `xarch baseline write [--reset]` records the violations a whole check finds now in `.xarch/baseline.json`, each
   keyed by rule, file and message (digits read alike) with a count; `check` then holds them back and reports only
   what the record does not hold, so a swap (one fixed, one added) is caught. A record above the code passes and says
@@ -117,6 +133,12 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- `xarch review` sends the other orders of placement's question in the same request as its first, each a named
+  question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it always had, so nothing
+  cached is lost: a file near its line costs one request instead of three, and a file whose first answer is not kept
+  is sent every order, read on their mean only near its line as before. Only the questions not kept are sent, and
+  offline reads what is kept. The header counts the answers asked and the requests sent apart, and JSON `sent.calls`
+  counts requests, `sent.answers` (new) the answers asked.
 - `may-import` reports one finding per import line and place: an import taking several names a part may not import
   is one finding whose message lists them (`not A, not B (pkg.mod.A, pkg.mod.B)` for a name pattern; the places
   once each for a part it may not import at all), in the text and in the JSON (`--format json`), where a violation's
