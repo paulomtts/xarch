@@ -483,8 +483,7 @@ SLOTS: tuple[Slot, ...] = (
          "each left out for any; files are app's when left out; a test belongs to the part its folder mirrors",
          "filters"),
     Slot("keep", "the filters a fact must pass, all of them, to be read", "[<filter>, ...]", "filters"),
-    Slot("may_not", "a kept fact that matches one of the targets is a finding", "<target> or [<target>, ...]",
-         "targets"),
+    Slot("may_not", "a kept fact that matches a target is a finding", "<target> or [<target>, ...]", "targets"),
     Slot("may_only", "a kept fact that matches none of the targets is a finding", "<target> or [<target>, ...]",
          "targets"),
     Slot("must_reach", "a file of the scope that reaches no target is a finding. A file reaches one when a kept fact "

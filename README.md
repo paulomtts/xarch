@@ -132,8 +132,8 @@ fakes:    {folder*, for*, prefix | [prefix, ...], tiers}     structure: {accepte
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
-checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_be_reached*, except, accepted, mode,
-                  message*, fix*, once_per, per_line, cases, examples*}}
+checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_not_reach | must_be_reached | at_most |
+                  at_least*, except, accepted, mode, message*, fix*, once_per, per_line, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
 evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
