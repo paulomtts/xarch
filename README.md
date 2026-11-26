@@ -485,7 +485,9 @@ literal, `<pattern>=<text>` matching the value's text too: `read: method-call`, 
 skip_locked=True}]` finds each `.with_for_update(skip_locked=True)`. Positional arguments are not read. A `call`
 carries its `name` too, the last name of its callee, so `named` and the target `name` apply to it (`keep: [{named:
 "get_*"}]`). A check carries `examples`: code it
-must find something in and code it must find nothing in, which `xarch profile check` runs.
+must find something in and code it must find nothing in, which `xarch profile check` runs, each example read as
+`check` reads a file of the app, with the language's marks of an interface and of an immutable record (so `keep:
+[interface]` and `keep: [immutable]` hold there as they do in the project).
 
 ```yaml
 checks:

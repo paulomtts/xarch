@@ -299,8 +299,9 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
-    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
-        return _parsed("", (), text, (), (), (), standard, private, special)
+    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str,
+               immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> SourceFile:
+        return _parsed("", (), text, (), immutable, interface, standard, private, special)
 
     def resolved(self, folder: Path, path: Path) -> Path:
         return self._fs.real(folder / path)

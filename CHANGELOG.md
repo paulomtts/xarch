@@ -175,6 +175,10 @@ All notable changes to this project are written here. The format follows
 
 ### Fixed
 
+- `keep: [interface]` and `keep: [immutable]` now hold in the examples `xarch profile check` runs: an example is read
+  with the language's marks of an interface and of an immutable record, as `check` reads the project, so a flagged
+  example declaring a `Protocol` (or a frozen dataclass) is found instead of being told the check finds nothing in it.
+  The same holds of the files `xarch review` hands the checks to read (an eval's examples and the files it asks of).
 - `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
   `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
   there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.

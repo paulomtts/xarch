@@ -25,7 +25,8 @@ class HoldingService:
         for one that cannot be used."""
         profile = self._profiles.profile(cmd.profile)
         given = [(path, self._tree.parsed(text, profile.language.standard_modules, private=profile.language.private,
-                                          special=profile.language.special))
+                                          special=profile.language.special, immutable=profile.language.immutable,
+                                          interface=profile.language.interface))
                  for path, text in cmd.files]
         others = self._others(profile, cmd.root, {tuple(path.split("/")) for path, _ in cmd.files}) if cmd.root else ()
         found = broken(project(given, profile, cmd.app, reading(profile), others), profile,

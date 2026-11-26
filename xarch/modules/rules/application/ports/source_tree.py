@@ -46,11 +46,12 @@ class SourceTree(Protocol):
         """The text of any file at path, None when there is no file there."""
         ...
 
-    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
+    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str,
+               immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> SourceFile:
         """A source text of the app's language that is in no file, parsed as a file of it is, an absolute import of
         the standard library when its first step is one of the modules `standard` holds, a name public unless it
-        starts with `private`, a class a record as `special` says (see read); one that does not parse holds its
-        error."""
+        starts with `private`, a class a record as `special` says, an immutable record or an interface as the marks
+        `immutable` and `interface` hold say (see read); one that does not parse holds its error."""
         ...
 
     def resolved(self, folder: Path, path: Path) -> Path:

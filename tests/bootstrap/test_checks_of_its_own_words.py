@@ -231,3 +231,24 @@ def test_chain_is_said_only_by_a_check_under_must_not_reach(tmp_path):
     assert checked.exit_code == 1
     assert ("checks.x.message: {chain} is the chain of links a file reaches a target by, which only a check under "
             "must_not_reach follows") in checked.output
+
+
+PORT_IN_UI = {
+    "read": "class", "in": {"part": "ui"}, "keep": ["interface"], "may_not": "exist",
+    "message": "{name} at line {line} is an interface in {where}", "fix": "move {name} to store/",
+    "examples": {"flagged": {"ui/ports.py": "from typing import Protocol\n\nclass ScreenPort(Protocol): ...\n"},
+                 "clean": {"ui/ports.py": "class ScreenPort: ...\n"}}}
+FROZEN_IN_UI = {
+    "read": "class", "in": {"part": "ui"}, "keep": ["immutable"], "may_not": "exist",
+    "message": "{name} at line {line} is an immutable record in {where}", "fix": "move {name} to store/",
+    "examples": {"flagged": {"ui/rows.py": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Row:\n"
+                                          "    a: int\n"},
+                 "clean": {"ui/rows.py": "from dataclasses import dataclass\n\n@dataclass\nclass Row:\n    a: int\n"}}}
+
+
+@pytest.mark.parametrize("check, line", [pytest.param(PORT_IN_UI, 3, id="interface"),
+                                         pytest.param(FROZEN_IN_UI, 4, id="immutable")])
+def test_the_examples_of_a_check_are_read_with_the_language_s_marks_of_an_interface_and_an_immutable_record(
+        tmp_path, check, line):
+    """profile check reads its flagged example's class as an interface (or a record) as check reads the project's."""
+    assert [at for _, at, _ in found(tmp_path, {"x": check}, check["examples"]["flagged"])] == [line]

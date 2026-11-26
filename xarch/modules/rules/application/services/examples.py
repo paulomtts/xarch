@@ -10,6 +10,7 @@ from xarch.modules.rules.application.logic.own_checks import held_problems, made
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import ChecksHeld, ProfileHeld
+from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import OwnCheck
@@ -49,18 +50,19 @@ class ExamplesService:
             rule, problems = evals.made(name, asked, profile.language)
             unread += problems
             for side, files in (("flagged", asked.flagged), ("clean", asked.clean)) if rule is not None else ():
-                facts = project([(path, self._tree.parsed(code, profile.language.standard_modules,
-                                                          private=profile.language.private,
-                                                          special=profile.language.special)) for path, code in files],
-                                profile, app, (rule,))
+                facts = project([(path, self._parsed(code, profile)) for path, code in files], profile, app, (rule,))
                 unread += evals.unread(name, side, files, kept(rule, facts, profile), asked.reads)
         return ChecksHeld(tuple(found), len(profile.written), tuple(unread), len(profile.asked))
 
     def _found(self, own: OwnCheck, files: tuple[tuple[str, str], ...], profile: Profile,
                app: str) -> list[Violation | Weak]:
         rules = (own.rule,)
-        facts = project([(path, self._tree.parsed(code, profile.language.standard_modules,
-                                                  private=profile.language.private,
-                                                  special=profile.language.special)) for path, code in files],
-                        profile, app, rules)
+        facts = project([(path, self._parsed(code, profile)) for path, code in files], profile, app, rules)
         return run(rules, facts, profile)
+
+    def _parsed(self, code: str, profile: Profile) -> SourceFile:
+        """The code of an example read as check reads a file of the app: with the language's standard modules, its
+        private and special names, and its marks of an immutable record and of an interface."""
+        language = profile.language
+        return self._tree.parsed(code, language.standard_modules, private=language.private, special=language.special,
+                                 immutable=language.immutable, interface=language.interface)
