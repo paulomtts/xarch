@@ -31,6 +31,12 @@ ResetOption = Annotated[bool, typer.Option(
          "existing record is only lowered (a finding no longer found dropped, a count lowered), never raised.")]
 
 
+RuleOption = Annotated[str, typer.Option(
+    "--rule", metavar="RULE",
+    help="Write the record of this rule alone (a rule id `check` reports, or a check of the profile's own): its "
+         "violations recorded, or its keys lowered, every other rule's kept as it is.")]
+
+
 def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> None:
     baseline = typer.Typer(help="Record the violations found now, which check then holds back; the record may only go "
                                 "down.", no_args_is_help=True)
@@ -39,7 +45,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
     @baseline.command()
     @rewrapped
     def write(app_path: AppPath = None, profile: ProfileName = None, tests: TestsPath = None,
-              output: FormatOption = Format.text, reset: ResetOption = False) -> None:
+              output: FormatOption = Format.text, reset: ResetOption = False, rule: RuleOption = "") -> None:
         """Record in .xarch/baseline.json, beside the app, the violations a whole check finds now: with no record,
         every one; with one, the record lowered to what is found (never raised, unless --reset). Commit it: check then
         reports only the violations it does not hold, and says when it can be lowered."""
@@ -47,7 +53,7 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
         cwd = in_full(Path())
         app_path = app_for(spec, cwd, app_path, refuse)
         chosen, tests_root = selection(spec, app_path, profile, tests, refuse)
-        match rules.write_baseline(WriteBaseline(app_path, chosen, cwd, tests_root, reset)):
+        match rules.write_baseline(WriteBaseline(app_path, chosen, cwd, tests_root, reset, rule)):
             case NotADirectory(root):
                 raise refuse(not_a_directory(root, cwd))
             case ChecksCannotRun(problems):
@@ -56,5 +62,6 @@ def register(app: typer.Typer, rules: RulesController, spec: SpecController) -> 
                 raise refuse(reason)
             case BaselineWritten() as written:
                 echo([document({"ok": True, "file": written.file, "recorded": written.recorded,
-                                "before": written.before, "reset": written.reset})] if output is Format.json
+                                "before": written.before, "reset": written.reset,
+                                **({"rule": written.rule} if written.rule else {})})] if output is Format.json
                      else [baseline_written(written)])

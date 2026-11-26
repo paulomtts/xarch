@@ -79,6 +79,18 @@ def test_a_check_that_reads_nothing_is_listed_and_fails_strict(tmp_path):
     assert runner.invoke(app, ["check"]).exit_code == 0
 
 
+def test_a_check_under_may_not_that_reads_nothing_is_told_it_guards_a_clean_project(tmp_path):
+    banned = {"read": "class", "in": {"part": "store"}, "keep": [{"named": "*Legacy*"}], "may_not": "exist",
+              "message": "{name} is legacy ({key})", "fix": "drop {name}",
+              "examples": {"flagged": {"store/x.py": "class LegacyStore: ...\n"},
+                           "clean": {"store/x.py": "class DocumentStore: ...\n"}}}
+    project(tmp_path, {"no-legacy": banned}, {"store/a.py": "class DocumentStore: ...\n"})
+    assert runner.invoke(app, ["profile", "check"]).exit_code == 0
+    found = runner.invoke(app, ["check", "--strict"])
+    assert ("  reads nothing: checks.no-legacy reads nothing in the project: nothing it keeps is there, so nothing it "
+            "may not find is either;") in found.output
+
+
 @pytest.mark.parametrize("changes, said", [
     pytest.param({"keep": ["publc"]}, "checks.store-names.keep: no filter is named 'publc': did you mean public or "
                                       "placed?", id="a filter misspelt"),

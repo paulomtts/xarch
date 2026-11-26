@@ -182,6 +182,31 @@ All notable changes to this project are written here. The format follows
 - `fakes.prefix` takes a list of starts besides one (`prefix: [InMemory, Fake]`): a fake may start with any of them,
   `stand-ins` and `dead-code` read each, a fix writes the first, and the new filter `fake-named` says the same in a
   check of one's own. A single start reads as before.
+- `cycles: {accepted, left_out}` says what the `cycles` check accepts one by one. `accepted: [{group, why}, ...]`
+  names groups by their nodes (each an instance of a repeating folder, or a folder the layout names beside them, by
+  its path below the app): a group whose nodes are exactly an entry's is not reported, and the enforcement section
+  names it instead (JSON `enforcement.accepted_findings`, key `cycles.accepted`). `left_out: [{path, why}, ...]`
+  leaves a node out of the graph, such as a composition root that may import everything: a group is what is left
+  without it, and the enforcement section names the node with the group it was in (key `cycles.left_out`). An entry
+  that accepts nothing (no group is its group, its node in no cycle) is a `cycles` finding; a path that is no node is
+  refused when the profile loads; each entry the compared profile does not hold is listed as looser
+  (`cycles.accepted`, `cycles.left_out`); `xarch profile explain cycles` says each key. A profile without the key
+  checks as before.
+- `xarch baseline write --rule <rule>` writes the record of one rule alone: its violations recorded (with no record,
+  or with `--reset`) or its keys lowered, every other rule's keys kept as they are; a rule that is neither one of
+  `check`'s nor a check of the profile's own is refused (exit 2). JSON gains `rule` when it is given.
+- A counterpart's `message` and `fix` may write `{for}`, the match, as they write `{source}`: the variable is named
+  by the key it reads, as `{when}` is.
+- `xarch where` says, in its text and its JSON, the counterparts that apply to a path (each with what the path
+  needs there: `counterparts`, `{"id", "for", "has", "needs"}`), that a part is `optional` (`"optional": true` in
+  `part`), and the imports a part's `imports.accepted` accepts in a file (`accepted_imports`, `{"import", "why"}`);
+  `xarch profile explain --profile` lists the optional parts, the counterparts and the accepted imports, its JSON
+  adding `optional`, `counterparts` and `accepted_imports`. Each is said only when the profile writes it, so the
+  answers under the bundled profiles are as before.
+- The comparison with another profile (`profile check`, the enforcement section) lists as looser a counterpart the
+  compared profile writes and this one drops, by id (`counterparts`), and an `evals.placement.yes_line` other than
+  the compared profile's, changed or left out (`evals.placement.yes_line`). The bundled profiles write neither, so
+  their comparisons are as before.
 
 ### Changed
 
@@ -189,6 +214,14 @@ All notable changes to this project are written here. The format follows
   (`once_per`, `per_line`), not only the first said: `name: dump` accepts the finding of a line that `per_line: [name]`
   says as `takes load, dump`, and the whole finding is accepted. An entry that named the first fact accepts what it
   accepted before.
+- `xarch check --help` says everything `--strict` fails on: a counterpart that reads nothing beside a check of the
+  profile's own, a part that keeps no entry of the litmus list the compared profile gives it, the guards of the
+  anchor and every file of a chain of profile files, and a baseline that records more than is found, the violations
+  it holds back not failed on; the README's list of what `--strict` fails on says the same.
+- A check of the profile's own written under `may_not` that reads nothing is told so in words that fit it: nothing it
+  keeps is there, so the project is clean of what it forbids when what it keeps is only that, else it should widen
+  what it reads. Before, it was told it passes for want of anything to check, to widen what it reads or drop it,
+  which fits a check that must find something. It still fails `--strict` as before.
 - `xarch review` asks the other orders of placement's question of a file near its line together in one second
   request, each a named question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it
   always had, so nothing cached is lost: a file near its line costs two requests instead of three, a file far from it
@@ -210,6 +243,12 @@ All notable changes to this project are written here. The format follows
   `--strict` fails on, so a weak finding (`holds`, `immutable`, `pass-through`, a file `dead-code`'s `untested` finds)
   now fails the project's test suite as soon as it appears instead of staying advice. The guard test is pinned, so a
   project written by 0.3.0 sees it listed as changed until it takes the new one.
+- A part written as a package file (`application/__init__.py`, with no part on `application/`) holds that file
+  only. Before, it took every loose file and subfolder of its folder, so `xarch where application/pricing.py`
+  answered that part and `closed-tree` said nothing. Now such a file belongs to the part around its folder when there
+  is one, else to no part: `where` says it is ungoverned and `closed-tree`, when on, reports it, so a project that
+  relied on the package-file part to hold such files sees new findings. A file the layout names beside the package
+  file keeps its own part. The bundled profiles write no such part, and their output is unchanged.
 - The `AGENTS.md` `init` writes no longer tells an agent to read `docs/project/architecture.md` and
   `docs/project/testing.md` (about 20k tokens) before changing anything: it points at `xarch where <path>`, the
   `fix:` lines of `xarch check` and the Placement order section, and names the two docs as reference, not required.
@@ -260,6 +299,20 @@ All notable changes to this project are written here. The format follows
   there once that name is taken off (or, for `structure.accepted`, is a `structure` finding). Before, its fix only said
   to drop the entry. A path is still written one way: the prefixed form is not accepted (under `imports.accepted`,
   such a file usually lies in no part, and the profile is refused when it loads, as before).
+- `--strict` on a profile based on a profile file held a part to the litmus of the bundled profile the chain rests
+  on only when the part had no litmus at all: a part whose litmus kept none of the entries of the anchor's litmus
+  list passed. It is now held to keep it the way the comparison with the file holds it, and such a part is listed
+  under `litmus` (`keeps no entry of the litmus cli, which --strict rests on, gives the part it pairs with`) and
+  fails `--strict`.
+- A tier's `docs.example` lying in the folder of a tier nested in its own (an example of `unit` in `unit/meta`) was
+  accepted because it lies in the outer tier's folder, though `check` places a test there in the nested tier. It is
+  now refused when the profile loads (`tiers.unit.docs.example: '...' lies in the folder 'unit/meta' of tier 'meta',
+  nested in the tier's folder 'unit'`), as real tests are placed by the deepest tier folder holding them.
+- An entry of `imports.accepted` whose file lies in no part because it writes the app folder's name first is refused
+  with what to write: `'app/core/ports.py' lies in no part: write it below the app (core/ports.py, not
+  app/core/ports.py)`, instead of being told to list it under the part it lies in. The loader does not know the app
+  folder's name, so it reads a path that way when no part starts with its first step and the path below that step
+  lies in the entry's part; any other file in no part is refused as before.
 
 ## [0.3.0] - 2026-11-24
 

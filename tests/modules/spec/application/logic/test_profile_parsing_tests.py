@@ -453,6 +453,17 @@ def test_the_example_of_a_tier_with_a_folder_may_not_lie_outside_it(example):
         "tests folder: the docs would show a place `check` places in no tier"]
 
 
+def test_the_example_of_a_tier_may_not_lie_in_the_folder_of_a_tier_nested_in_its_own():
+    example = "tests/checks/meta/test_x.py"
+    document = covered(docs={"examples": ["ex"]})
+    document["tiers"]["guard"] = {"folder": "checks", "docs": {"example": example}}
+    document["tiers"]["meta"] = {"folder": "checks/meta", "docs": {"example": example}}
+    assert problems(document, folders={"ex": (example,)}) == [
+        f"layered.yaml: tiers.guard.docs.example: '{example}' lies in the folder 'checks/meta' of tier 'meta', nested "
+        "in the tier's folder 'checks': `check` places a test there in meta, so the docs would show it in the wrong "
+        "tier"]
+
+
 def test_a_bad_docs_of_a_tier_is_refused_with_the_address_of_each_key():
     document = covered(docs={"examples": ["ex"]})
     document["tiers"]["unit"]["docs"] = {"may_touch": "a\nb", "colour": 1, "example": 3, "helpers": ["x/../y.py", 4],

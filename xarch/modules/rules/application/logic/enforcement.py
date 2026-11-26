@@ -98,15 +98,16 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding(UNRESOLVED, item) for item in enforcement.unresolved]
     found += [Finding(WEAK, weak) for weak in enforcement.weak]
     found += [Finding(APPROXIMATE, item) for item in enforcement.approximate]
-    found += [Finding(VACUOUS, _vacuous(name)) for name, read in enforcement.checks if not read]
+    found += [Finding(VACUOUS, _vacuous(name, name in enforcement.forbidding)) for name, read in enforcement.checks
+              if not read]
     found += [Finding(VACUOUS, pairing(name, read)) for name, read in enforcement.counterparts if not read]
     found += [Finding(UNPLACED, sentence) for sentence in enforcement.unplaced]
     return tuple(found)
 
 
-def reading(name: str, read: int) -> str:
-    """How much a check of the profile's own read, in words."""
-    return _vacuous(name) if not read else f"checks.{name} read {read} fact{'' if read == 1 else 's'}"
+def reading(name: str, read: int, forbids: bool = False) -> str:
+    """How much a check of the profile's own read, in words; forbids: it is written under may_not."""
+    return _vacuous(name, forbids) if not read else f"checks.{name} read {read} fact{'' if read == 1 else 's'}"
 
 
 def pairing(name: str, read: int) -> str:
@@ -117,8 +118,13 @@ def pairing(name: str, read: int) -> str:
     return f"counterparts.{name} read {read} source{'' if read == 1 else 's'}"
 
 
-def _vacuous(name: str) -> str:
-    """A check of the profile's own that read nothing, in words."""
+def _vacuous(name: str, forbids: bool = False) -> str:
+    """A check of the profile's own that read nothing, in words: one under may_not (forbids), whose point is to find
+    nothing, is told so, and to widen what it reads only when what it keeps is more than what may not be there."""
+    if forbids:
+        return (f"checks.{name} reads nothing in the project: nothing it keeps is there, so nothing it may not find is "
+                "either; if what it keeps is only what may not be there, the project is clean of it and the check "
+                "guards against its return, else widen what it reads")
     return (f"checks.{name} reads nothing in the project, so it passes for want of anything to check: widen what it "
             "reads, or drop it")
 

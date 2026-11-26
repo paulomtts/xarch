@@ -31,7 +31,7 @@ COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, 
     pytest.param(dict(files={"mine.yaml": {**MINE, "colour": 1, "parts": {"core/": {"litmus": "q"}}}}),
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
-                     Problem("load", "mine.yaml: unknown key 'colour': use based_on, checks, counterparts, docs, evals, "
+                     Problem("load", "mine.yaml: unknown key 'colour': use based_on, checks, counterparts, cycles, docs, evals, "
                                      "excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
                                      "reserved, review, structure, testing, tiers"),
                      Problem("load", "mine.yaml: parts.core: missing `role`")), 0, None),
@@ -85,7 +85,7 @@ def test_against_a_profile_with_several_problems_is_refused_with_all_of_them_on_
     broken = {**MINE, "colour": 1, "parts": {"core/": {"litmus": "q"}}}
     spec, _ = spec_controller(files={"mine.yaml": MINE, "broken.yaml": broken})
     assert spec.check_profile(CheckProfile(APP, "mine.yaml", "broken.yaml")) == ProfileRefused(
-        "--against does not load: broken.yaml: unknown key 'colour': use based_on, checks, counterparts, docs, evals, excluded, "
+        "--against does not load: broken.yaml: unknown key 'colour': use based_on, checks, counterparts, cycles, docs, evals, excluded, "
         "fakes, files, guards, hints, language, layers, name, never, parts, reserved, review, structure, testing, tiers; "
         "broken.yaml: parts.core: missing `role`")
 

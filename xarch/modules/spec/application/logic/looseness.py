@@ -36,7 +36,9 @@ question as written or reworded, as one text may be reworded); a public name `gu
 only the tests' that the bundled profile's does not; a part `guards.no-twins.translated` lists that the bundled
 profile's does not; a path `review.never` holds back, or a text `review.mask` hides, in the bundled profile that the
 custom one does not write (each compared as written: it sends more); a part whose line under `evals.placement.lines`
-is below the one the bundled profile gives it (written, else LINE: it flags less); a kind a part's `holds` allows that
+is below the one the bundled profile gives it (written, else LINE: it flags less); an `evals.placement.yes_line`
+other than the bundled profile's (written, else YES_LINE: either way an entry of a litmus list reads otherwise); a
+counterpart the bundled profile writes that the custom one does not (by id); a kind a part's `holds` allows that
 the bundled part's does not (no `holds` allows every kind, and `classes` allows `records` and `exceptions` too); a
 setting of a kind dropped or widened, compared for each kind either part lists and both allow, on the settings each
 holds the kind to (those written under it, else for `records` and `exceptions` those under `classes`, `immutable`
@@ -47,7 +49,9 @@ profile leaves it out; an entry of `testing.shared` the bundled profile does not
 that the bundled profile's does not; an entry of a check's `accepted` (a file, and the variables it names) that the
 bundled profile's check of the same id does not hold; an entry of `structure.accepted` (a path) the bundled profile
 does not hold; an entry of a tier's `accepted` (a file, and what it imports) the bundled tier does not hold; an entry
-of a counterpart's `accepted` (a path) the bundled profile's counterpart of the same id does not hold. Anything
+of a counterpart's `accepted` (a path) the bundled profile's counterpart of the same id does not hold; an entry of
+`cycles.accepted` (a group, its nodes in any order) or of `cycles.left_out` (a node) the bundled profile does not hold.
+Anything
 stricter, and what is compared in no way above (the layout, new parts, the guards' other parameters, `fakes`), is not
 listed.
 
@@ -84,8 +88,10 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
-          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted", "counterparts.accepted",
-          "translated", "review.never", "review.mask", "evals.placement.lines")
+          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted",
+          "counterparts", "counterparts.accepted",
+          "cycles.accepted", "cycles.left_out", "translated", "review.never", "review.mask", "evals.placement.lines",
+          "evals.placement.yes_line")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 ENTRIES = "entries: "
 """What the `what` of a part that keeps no entry of the litmus list it is compared with starts with, before the labels
@@ -360,9 +366,16 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     held = {entry.path for entry in base.structure_accepted}
     found += [("structure.accepted", "", "/".join(entry.path)) for entry in custom.structure_accepted
               if entry.path not in held]
+    written = {item.id for item in custom.counterparts}
+    found += [("counterparts", "", item.id) for item in base.counterparts if item.id not in written]
     paired = {item.id: {entry.path for entry in item.accepted} for item in base.counterparts}
     found += [("counterparts.accepted", "", f"{item.id}: {'/'.join(entry.path)}{'/' if item.source.folder else ''}")
               for item in custom.counterparts for entry in item.accepted if entry.path not in paired.get(item.id, ())]
+    groups = {frozenset(entry.group) for entry in base.cycles_accepted}
+    found += [("cycles.accepted", "", ", ".join("/".join(node) for node in entry.group))
+              for entry in custom.cycles_accepted if frozenset(entry.group) not in groups]
+    left = {entry.node for entry in base.cycles_left_out}
+    found += [("cycles.left_out", "", "/".join(entry.node)) for entry in custom.cycles_left_out if entry.node not in left]
     for name, check in custom.checks.items():
         held = {(entry.file, entry.by) for entry in base.checks[name].accepted} if name in base.checks else set()
         found += [("checks.accepted", "", f"{name}: {_finding(entry)}") for entry in check.accepted
@@ -373,6 +386,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("review.mask", "", text) for text in base.mask if text not in custom.mask]
     found += [("evals.placement.lines", name, f"{custom.lines.get(name, LINE):.2f}") for name in shared
               if custom.lines.get(name, LINE) < base.lines.get(pairs[name], LINE)]
+    found += [("evals.placement.yes_line", "", f"{custom.yes_line:.2f}, not at {base.yes_line:.2f}")
+              ] if custom.yes_line != base.yes_line else []
     return found
 
 
@@ -516,8 +531,9 @@ def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Archite
     """The origin of a profile compared with the profile file its based_on names, as --strict rests on its anchor:
     the bundled profile the last file of the chain says it is based on, else the one of highest match with that file.
     A guard left off is excused only when the anchor and every file of the chain leave it off too, none with no
-    anchor; each part with no litmus that pairs with a part the anchor gives one, and that the comparison with the file
-    does not list already, is listed after the ways it is looser than the file."""
+    anchor; each part that does not keep the litmus the part it pairs with in the anchor gives it, as the comparison
+    with the file reads keeping one (see _keeps), and that the comparison with the file does not list already, is
+    listed after the ways it is looser than the file."""
     last = chain[-1]
     anchor = last.based_on if last.based_on in bundled else _closest(last, bundled)[0]
     if anchor is None:
@@ -526,12 +542,22 @@ def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Archite
     excused = set(_guards_off(base)).intersection(*(_guards_off(file) for file in chain))
     listed = {item.part for item in origin.looser if item.key == LITMUS}
     pairs = _paired_parts(architecture, base)
-    demanded = tuple(Loosened(LITMUS, name, anchor, _sentence(LITMUS, name, anchor))
+    demanded = tuple(_demanded(name, part, base.parts[pairs[name]], anchor)
                      for name, part in architecture.parts.items()
-                     if not _has_litmus(part) and name in pairs and _has_litmus(base.parts[pairs[name]])
-                     and name not in listed)
+                     if name in pairs and not _keeps(part, base.parts[pairs[name]]) and name not in listed)
     return replace(origin, baseline_off=tuple(g for g in origin.guards_off if g in excused),
                    looser=origin.looser + demanded, anchor=anchor)
+
+
+def _demanded(name: str, part: Part, base: Part, anchor: str) -> Loosened:
+    """A part that does not keep the litmus the anchor gives the part it pairs with: with none, said by the anchor;
+    with one that keeps no entry of the anchor's list, by the labels of its entries, as the anchor's."""
+    if not _has_litmus(part):
+        return Loosened(LITMUS, name, anchor, _sentence(LITMUS, name, anchor))
+    what = _dropped(base, part)
+    return Loosened(LITMUS, name, what, f"{name} keeps no entry of the litmus {anchor}, which --strict rests on, gives "
+                                        f"the part it pairs with ({what.removeprefix(ENTRIES)}), each known by its "
+                                        f"label (parts.{name}.litmus)")
 
 
 def _compared(location: str, architecture: Architecture, bundled: bool, base: Architecture, name: str,
@@ -620,9 +646,15 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tier accepts the tiers findings of {what} (tiers.{part}.accepted)"
         case "structure.accepted":
             return f"the layout accepts the finding of {what} (structure.accepted)"
+        case "counterparts":
+            return f"the counterpart {what} is dropped: no source of it needs a counterpart (counterparts.{what})"
         case "counterparts.accepted":
             counterpart, _, source = what.partition(": ")
             return f"the counterpart {counterpart} accepts {source} with none (counterparts.{counterpart}.accepted)"
+        case "cycles.accepted":
+            return f"cycles accepts the cycle of {what} (cycles.accepted)"
+        case "cycles.left_out":
+            return f"cycles leaves {what} out of its graph (cycles.left_out)"
         case "checks.accepted":
             check, _, finding = what.partition(": ")
             return f"the check {check} accepts the findings of {finding} (checks.{check}.accepted)"
@@ -636,6 +668,9 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{what} may be sent again: the profile it is compared with holds it back (review.never)"
         case "review.mask":
             return f"{what} is no longer masked before review sends (review.mask)"
+        case "evals.placement.yes_line":
+            return f"an entry of a litmus list answers yes at {what} as in the profile it is compared with " \
+                   "(evals.placement.yes_line)"
         case "evals.placement.lines":
             return (f"{part} reads as doubtful only below {what}, a lower line than the profile it is compared with "
                     "gives it (evals.placement.lines)")

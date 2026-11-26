@@ -66,6 +66,15 @@ class NoProfile(DomainError):
         self.known = known
 
 
+class UnknownRule(DomainError):
+    """A rule asked for by name that is neither one of check's nor a check of the profile's own (own, by id)."""
+
+    def __init__(self, rule: str, own: tuple[str, ...]):
+        mine = f", or a check of the profile's own: {', '.join(own)}" if own else ""
+        super().__init__(f"{rule} is no rule of check: name a rule id `xarch check` reports{mine}")
+        self.rule = rule
+
+
 class StrictAgainst(DomainError):
     """`check --strict` asked with --against: strict fails on how the profile stands to its baseline, which --against
     does not change, so the two are never run together."""

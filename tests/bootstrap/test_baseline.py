@@ -119,3 +119,39 @@ def test_a_record_that_cannot_be_read_is_refused():
     RECORD.write_text("{")
     result = run("check")
     assert result.exit_code == 2 and "the baseline" in result.stdout + (result.stderr or "")
+
+
+def rules_recorded() -> list[tuple[str, int]]:
+    return [(item["rule"], item["count"]) for item in json.loads(RECORD.read_text())["findings"]]
+
+
+def test_a_write_of_one_rule_records_that_rule_alone():
+    Path("app/core/bad.py").write_text("def (\n")
+    written = run("baseline", "write", "--rule", "may-import", "--format", "json")
+    assert written.exit_code == 0, written.stdout
+    assert json.loads(written.stdout)["rule"] == "may-import"
+    assert rules_recorded() == [("may-import", 1)]
+    code, document = check()
+    assert (code, [v["rule"] for v in document["violations"]]) == (1, ["syntax"])
+
+
+def test_a_write_of_one_rule_lowers_or_resets_that_rule_and_keeps_the_others_as_they_are():
+    Path("app/core/bad.py").write_text("def (\n")
+    run("baseline", "write")
+    assert rules_recorded() == [("may-import", 1), ("syntax", 1)]
+    Path("app/core/bad.py").unlink()
+    Path("app/core/rules.py").write_text("")
+    lowered = run("baseline", "write", "--rule", "syntax")
+    assert "(2 before; only syntax written, every other rule kept)" in lowered.stdout
+    assert rules_recorded() == [("may-import", 1)]
+    Path("app/core/rules.py").write_text("from app.web import page\nfrom app.web import form\n")
+    assert run("baseline", "write", "--rule", "may-import").exit_code == 0
+    assert rules_recorded() == [("may-import", 1)]
+    assert run("baseline", "write", "--rule", "may-import", "--reset").exit_code == 0
+    assert sorted(rules_recorded()) == [("may-import", 1), ("may-import", 1)]
+
+
+def test_a_write_of_a_rule_check_does_not_have_is_refused():
+    written = run("baseline", "write", "--rule", "may-imports")
+    assert written.exit_code == 2
+    assert "may-imports is no rule of check" in written.output

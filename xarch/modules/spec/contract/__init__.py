@@ -39,7 +39,7 @@ from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.litmus import Litmus
-from xarch.profile_values.placement import AcceptedImport, Repeat, Target
+from xarch.profile_values.placement import AcceptedCycle, AcceptedImport, LeftOut, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
@@ -114,8 +114,8 @@ class PartView:
     tier tests it; the names it may not use; what each of its files must import one of; the kinds its files may
     define at the top level, each with its settings (holds; empty: every kind); the targets it may use as types only;
     for a part there to be shared, the fewest users each of its public names must have; the imports its
-    imports.may does not allow that it accepts, each with why; and the entries of its litmus when it is written as a
-    list (litmus is then "")."""
+    imports.may does not allow that it accepts, each with why; the entries of its litmus when it is written as a
+    list (litmus is then ""); and whether it is optional (`optional: true`)."""
     name: str
     pattern: tuple[str, ...]
     imports_may: tuple[Target, ...]
@@ -130,6 +130,7 @@ class PartView:
     shared: int | None = None
     imports_accepted: tuple[AcceptedImport, ...] = ()
     litmus_list: tuple[Litmus, ...] = ()
+    optional: bool = False
 
 
 @dataclass(frozen=True)
@@ -173,7 +174,10 @@ class ProfileView:
     `evals.placement.lines`, by part (any other part's is LINE); the evals of its own, by id, which review asks
     and rules holds to their examples; and the groups of parts one file cannot tell apart (`evals.placement.alike`),
     each its parts by name, which review reads a file of on the sum of the group's probabilities; and the line at or
-    above which review reads an entry of a litmus list as answering yes (YES_LINE unless written: not measured)."""
+    above which review reads an entry of a litmus list as answering yes (YES_LINE unless written: not measured); and
+    the groups of the cycles graph the profile accepts (`cycles.accepted`) and the nodes it leaves out of it
+    (`cycles.left_out`), each in the order written; and what the profile says lies with what (`counterparts`),
+    which `xarch where` names for a path."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
@@ -194,6 +198,9 @@ class ProfileView:
     evals: dict[str, Eval] = field(default_factory=dict)
     alike: tuple[tuple[str, ...], ...] = ()
     yes_line: float = YES_LINE
+    cycles_accepted: tuple[AcceptedCycle, ...] = ()
+    cycles_left_out: tuple[LeftOut, ...] = ()
+    counterparts: tuple[Counterpart, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -371,12 +378,16 @@ class ViewProfile:
 @dataclass(frozen=True)
 class ProfileViewed:
     """A profile's folder tree (with the role of each folder) and its import table, as text; bundled: it ships with
-    xarch."""
+    xarch; and what only some profiles write, each in the order of the file: the parts marked optional, as the docs
+    name them; the counterparts; and the imports each part accepts (imports.accepted), each its part and entry."""
     location: str
     name: str
     tree: str
     imports: str
     bundled: bool
+    optional: tuple[str, ...] = ()
+    counterparts: tuple[Counterpart, ...] = ()
+    accepted: tuple[tuple[str, AcceptedImport], ...] = ()
 
 
 ViewResult = ProfileViewed | NoProfileChosen | ProfileRefused

@@ -45,6 +45,7 @@ def where_lines(where: WhereAnswer) -> list[str]:
             lines += _test_lines(where)
         case Fake():
             lines += [_line("kind", where.kind), _line("fakes", f"live in {where.fakes_path}")]
+    lines += [_line("counterparts", f"{pair.id}: needs {pair.needs} (for {pair.source})") for pair in where.counterparts]
     note = _note(where)
     if note:
         lines.append(_line("note", note))
@@ -60,6 +61,7 @@ def _none_lines(kind: str, nearest: tuple[NearestView, ...]) -> list[str]:
 
 def _part_lines(where: InPart) -> list[str]:
     lines = [_line("part", _part(where.part)), _line("role", where.part.role),
+             *([_line("optional", "yes: structure does not ask for it")] if where.part.optional else []),
              *_litmus_lines("litmus", where.part.litmus or "none", where.part.litmus_list),
              _line("may import", where.may_import_text), _line("libraries", _libraries(where.libraries))]
     if where.uses_never:
@@ -71,6 +73,8 @@ def _part_lines(where: InPart) -> list[str]:
             lines.append(_line("tested by", f"nothing: {reason}"))
         case None:
             lines.append(_line("tested by", "no tier"))
+    lines += [_line("accepted", f"{entry.written}: {entry.why} (parts.{where.part.name}.imports.accepted)")
+              for entry in where.accepted]
     return lines
 
 
@@ -145,6 +149,8 @@ def where_document(profile: str, where: WhereAnswer) -> str:
             shown |= {"part": _part_document(where.part), "may_import": [_reach(r) for r in where.may_import],
                          "may_import_text": where.may_import_text or None, "libraries": _list(where.libraries),
                          "never_uses": list(where.uses_never)}
+            if where.accepted:
+                shown["accepted_imports"] = [{"import": entry.written, "why": entry.why} for entry in where.accepted]
             match where.tested:
                 case CoveringTest(tier=tier, folder=folder, file=file):
                     shown |= {"tier": _tier(tier), "tested_in": {"folder": folder, "file": file}}
@@ -167,12 +173,16 @@ def where_document(profile: str, where: WhereAnswer) -> str:
         case Fake():
             shown |= {"test": {"may_use_fakes": False, "fakes_path": where.fakes_path or None, "types_only": [],
                                   "code_from": where.code_from or None}, "note": where.note or None}
+    if where.counterparts:
+        shown["counterparts"] = [{"id": pair.id, "for": pair.source, "has": pair.has, "needs": pair.needs}
+                                 for pair in where.counterparts]
     return document(shown)
 
 
 def _part_document(part: PartShown) -> dict[str, Any]:
     return {"name": part.name, "folder": part.folder, "instance": part.instance, "singular": part.singular,
-            "role": part.role, "litmus": _litmus_document(part.litmus, part.litmus_list)}
+            "role": part.role, "litmus": _litmus_document(part.litmus, part.litmus_list),
+            **({"optional": True} if part.optional else {})}
 
 
 def _reach(reach: ReachView) -> dict[str, str]:

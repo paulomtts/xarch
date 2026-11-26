@@ -52,7 +52,7 @@ MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 MISPLACED = "a key of uses: write uses: {never: <list>}"
 PART_USE = "holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses"
 TIER_USE = "accepted, docs, folder, imports, litmus, plain_tables, proves, uses"
-PROFILE_USE = ("based_on, checks, counterparts, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
+PROFILE_USE = ("based_on, checks, counterparts, cycles, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, "
                "parts, reserved, review, structure, testing, tiers")
 GUARD_USE = ("closed-tree, dead-code, no-callbacks, no-comments, no-duplicates, no-twins, pass-through, "
              "private-imports, scenario-coverage, stand-ins")

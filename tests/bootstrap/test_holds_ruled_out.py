@@ -122,6 +122,7 @@ RULED_OUT = {
         "modules/scaffold/application/logic/pyproject_record.py",
         "modules/spec/application/logic/checked_tier.py",
         "modules/spec/application/logic/counterparts.py",
+        "modules/spec/application/logic/cycles_key.py",
         "modules/spec/application/logic/docs_files.py",
         "modules/spec/application/logic/docs_template.py",
         "modules/spec/application/logic/evals.py",

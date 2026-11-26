@@ -11,7 +11,7 @@ from xarch.kernel.logic.names import outside_text
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, of_an_entry, plain, shown
 from xarch.modules.spec.application.logic.profile_needs import read_less
 from xarch.modules.spec.domain.key_table import KEYS, SLOTS
-from xarch.modules.spec.domain.profile_keys import HELD, PART, PROFILE, TIER, Key
+from xarch.modules.spec.domain.profile_keys import CYCLES, HELD, PART, PROFILE, TIER, Key
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.capabilities import Shortfall, Supply
 
@@ -83,11 +83,12 @@ def supplied(fact: str, language: Language) -> Supply | None:
 
 def overview_keys() -> list[tuple[Key, int]]:
     """The keys of the file, each followed by the keys it holds, with how far below the file each sits; the keys held
-    by one that another command than `check` reads are left to its own explanation, which lists them."""
+    by one that another command than `check` reads, and those of `cycles`, which its line names, are left to its own
+    explanation, which lists them."""
     found: list[tuple[Key, int]] = []
     for key in keys_of(PROFILE):
         found.append((key, 0))
-        found += [(held, 1) for held in keys_of(key.opens)] if key.opens and not key.read_by else []
+        found += [(held, 1) for held in keys_of(key.opens)] if key.opens and not key.read_by and key.opens != CYCLES else []
     return found
 
 

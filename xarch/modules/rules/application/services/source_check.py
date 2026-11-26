@@ -37,6 +37,7 @@ from xarch.modules.rules.domain.outcomes import Checked, Enforcement
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
+from xarch.modules.rules.domain.rule import MAY_NOT
 
 
 class SourceCheckService:
@@ -56,7 +57,8 @@ class SourceCheckService:
             state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
                                                   enforcement.approximation(a.address, a.fact, a.note or "", a.unread))
                                   for a in state.approximate),
-            tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
+            tuple(OwnCheckView(name, read, enforcement.reading(name, read, name in state.forbidding))
+                  for name, read in state.checks),
             state.known, state.translated,
             unresolved=tuple(UnresolvedView(item, enforcement.detail(item)) for item in state.unresolved),
             accepted=state.accepted, excused=state.excused,
@@ -110,7 +112,8 @@ class SourceCheckService:
         found = run(book["syntax"], facts, rules) + run(book["may-import"], facts, rules) + list(ratchet.stale)
         found += run(book["libraries"], facts, rules)
         found += run(book["never-use"], facts, rules)
-        found += cycles.violations(app, rules, package)
+        looped = cycles.checked(app, rules, package)
+        found += [item for item in looped.kept if isinstance(item, Violation)] + list(looped.stale)
         tiered = excusing.tiers(book["tiers"], facts, rules)
         found += [item for item in tiered.kept if isinstance(item, Violation)] + list(tiered.stale)
         found += run(book["types-only tiers"], facts, rules)
@@ -142,7 +145,9 @@ class SourceCheckService:
                                   run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *only.listed, *written])
         state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own), known=only.known,
-                        translated=twinned.translated, accepted=ratchet.accepted, excused=(*tiered.excused, *sifted.excused))
+                        forbidding=tuple(rule.id for rule in own if rule.quantifier == MAY_NOT),
+                        translated=twinned.translated, accepted=ratchet.accepted,
+                        excused=(*looped.excused, *tiered.excused, *sifted.excused))
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)
 
     def _enforcement(self, resolved: Path, package: str, location: str, rules: Profile, app: list[SourceFile],

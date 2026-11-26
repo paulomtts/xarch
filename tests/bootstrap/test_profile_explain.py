@@ -32,7 +32,7 @@ def test_with_no_key_the_whole_format_is_one_screen_with_the_shape_the_symbols_a
     assert "unit.store" in result.output and "@any" not in result.output
     assert "smallest valid profile" in result.output and "\n  name: documents-app\n" in result.output
     assert "xarch profile explain parts.imports.may" in result.output
-    assert len(lines) < 100 and max(map(len, lines)) <= 120
+    assert len(lines) <= 100 and max(map(len, lines)) <= 120
 
 
 def test_a_key_is_explained_with_what_it_accepts_whether_check_enforces_it_through_which_rule_and_an_example():

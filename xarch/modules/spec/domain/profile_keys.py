@@ -38,6 +38,7 @@ FAKES = "fakes"
 STRUCTURE = "structure"
 COUNTERPARTS = "counterparts"
 COUNTERPART = "counterparts.<id>"
+CYCLES = "cycles"
 GUARD = "guard"
 SCENARIO_COVERAGE = "guard.scenario-coverage"
 NO_DUPLICATES = "guard.no-duplicates"
@@ -81,6 +82,7 @@ SCOPES = {
     FAKES: "fakes",
     STRUCTURE: "structure",
     COUNTERPARTS: "counterparts",
+    CYCLES: "cycles",
     GUARD: "guards",
     SCENARIO_COVERAGE: "guards.scenario-coverage",
     NO_DUPLICATES: "guards.no-duplicates",

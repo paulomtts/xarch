@@ -215,6 +215,7 @@ def baseline_written(written: BaselineWritten) -> str:
     """What `xarch baseline write` says it wrote."""
     before = ("no record before" if written.before is None
               else f"{written.before} before{', written afresh' if written.reset else ''}")
+    before += f"; only {written.rule} written, every other rule kept" if written.rule else ""
     return (f"baseline: {written.file} records {written.recorded} violation(s) ({before}); commit it: check holds "
             "them back and reports any other")
 

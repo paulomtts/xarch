@@ -7,9 +7,9 @@ import pytest
 
 from tests.modules.rules.builders import BRACE, PYTHON
 from xarch.kernel.placement import EVERYTHING, Place
-from xarch.modules.rules.application.logic.where import describe, resolve
+from xarch.modules.rules.application.logic.where import applying, describe, resolve
 from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Resolved, StructurePlace, SuitePlace, UngovernedPlace
-from xarch.modules.rules.domain.profile import PartInfo, Profile
+from xarch.modules.rules.domain.profile import Paired, PartInfo, Profile
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework
 from xarch.profile_values.testing import TestForm as DeclaredForm
@@ -339,3 +339,26 @@ def test_a_file_of_any_ending_of_the_language_has_its_test_file_and_a_package_fi
     assert where("modules", "docs", "domain", "index.mts", profile=BRACED).test_file == "index.test.ts"
     assert where("modules", "docs", "domain", "index.tsx", profile=BRACED).test_file == ""
     assert where("modules", "docs", "domain", "index.ts", profile=BRACED).test_file == ""
+
+
+PAIRED = Profile(parts={"domain": ("modules", "*", "domain"), "web": ("modules", "web")}, rules={},
+                 repeats=(Repeat("module", ("modules",)),), default_tests="tests",
+                 counterparts=(Paired("has-tests", ("modules", "<module>"), True, ("tests", "<module>"), True),
+                               Paired("repo-has-port", ("modules", "<module>", "domain", "<name>_repo.py"), False,
+                                      ("modules", "<module>", "ports", "<name>.py"), False)))
+"""A profile whose counterparts bind the instance of modules/<module>/ and part of a file's name."""
+
+
+@pytest.mark.parametrize("within, steps, applied", [
+    pytest.param("app", ("modules", "docs", "domain", "x.py"), [("has-tests", "tests/docs/")],
+                 id="a path below a folder of for"),
+    pytest.param("app", ("modules", "docs", "domain", "sql_repo.py"),
+                 [("has-tests", "tests/docs/"), ("repo-has-port", "modules/docs/ports/sql.py")],
+                 id="a file for matches with part of its name bound"),
+    pytest.param("app", ("modules", "web", "page.py"), [], id="a folder the layout names beside the instances"),
+    pytest.param("app", ("kernel", "ids.py"), [], id="a path no for matches"),
+    pytest.param("project", ("modules", "docs"), [], id="a path outside the app and the tests"),
+])
+def test_the_counterparts_that_apply_to_a_path_say_what_it_needs(within, steps, applied):
+    found = Resolved(within, steps, Path("/p", *steps), True, "/".join(steps))
+    assert [(paired.id, needs) for paired, needs in applying(PAIRED, found)] == applied

@@ -195,7 +195,11 @@ def _entries(value: Any, where: str, problems: list[str], required: tuple[str, .
         if steps is not None and owner is not None:
             name_of, patterns, marks = owner
             lies = place_of(patterns, steps, marks).part
-            if lies != name_of:
+            if lies is None and _app_first(steps, name_of, patterns, marks):
+                below = "/".join(steps[1:])
+                problems.append(f"{at}.file: {file!r} lies in no part: write it below the app ({below}, not "
+                                f"{'/'.join(steps)})")
+            elif lies != name_of:
                 problems.append(f"{at}.file: {file!r} lies in {f'part {lies}' if lies else 'no part'}, not in "
                                 f"{name_of}: list it under the part it lies in")
         path, _, name = target.rpartition(":") if isinstance(target, str) and ":" in target else (target, "", "")
@@ -207,6 +211,14 @@ def _entries(value: Any, where: str, problems: list[str], required: tuple[str, .
         if len(problems) == count and steps is not None and aimed is not None:
             found.append(AcceptedImport(steps, aimed, name, why, target or ""))
     return tuple(found)
+
+
+def _app_first(steps: tuple[str, ...], part: str, patterns: Mapping[str, tuple[str, ...]], marks: Marks) -> bool:
+    """Whether a path in no part reads as one written with the app folder's name first: no part starts with its first
+    step, and below that step it lies in the part. The loader does not know the app folder's name, so the first step
+    stands for it."""
+    return (len(steps) > 1 and all(pattern[:1] != steps[:1] for pattern in patterns.values())
+            and place_of(patterns, steps[1:], marks).part == part)
 
 
 def _marked(entry: Mapping[Any, Any], where: str, problems: list[str]) -> Any:

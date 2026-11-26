@@ -79,7 +79,8 @@ class Enforcement:
     accepts, which may-import then does not report; and excused, the findings the profile's other entries accept
     (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted, counterparts.<id>.accepted), which are then not
     reported; and counterparts, what the profile says lies with what, each by its id with how many matches of its
-    source it read in the project (one that read none passes for want of anything to check, and fails `--strict`)."""
+    source it read in the project (one that read none passes for want of anything to check, and fails `--strict`);
+    and forbidding, the ids of the checks of the profile's own written under may_not, whose point is to find nothing."""
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
@@ -100,6 +101,7 @@ class Enforcement:
     accepted: tuple[AcceptedEdge, ...] = ()
     excused: tuple[Excused, ...] = ()
     counterparts: tuple[tuple[str, int], ...] = ()
+    forbidding: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

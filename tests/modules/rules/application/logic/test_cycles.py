@@ -4,7 +4,8 @@ its imports, at the first import of the first of them."""
 import pytest
 
 from tests.modules.rules.builders import PROFILE, TWO, imp, profile, source
-from xarch.modules.rules.application.logic.cycles import violations
+from xarch.modules.rules.application.logic.cycles import checked, violations
+from xarch.profile_values.placement import AcceptedCycle, LeftOut
 
 
 def adapter(instance: str, *imports, file: str = "adapters/peer.py") -> object:
@@ -185,3 +186,58 @@ def test_instances_of_one_repeating_folder_still_form_a_cycle_beside_another_one
     found = violations([adapter("a", uses(1, "b")), adapter("b", uses(1, "a")), hooks("p", imp(1, "app.kernel"))],
                        TWO, "app")
     assert [v.rule for v in found] == ["cycles"]
+
+
+def nodes(*names: str) -> tuple[tuple[str, ...], ...]:
+    return tuple(("modules", name) for name in names)
+
+
+TRIO = [adapter("a", uses(1, "b")), adapter("b", uses(1, "c")), adapter("c", uses(1, "a"))]
+"""Three instances in one cycle, a → b → c → a."""
+
+
+def test_a_group_cycles_accepted_names_by_its_members_is_not_reported_and_is_named_instead():
+    found = checked(TRIO, profile(cycles_accepted=(AcceptedCycle(nodes("c", "a", "b"), "the trio splits next"),)),
+                    "app")
+    assert (found.kept, found.stale) == ((), ())
+    assert [(e.rule, e.file, e.line, e.key, e.why) for e in found.excused] == [
+        ("cycles", "app/modules/c/adapters/peer.py", 1, "cycles.accepted", "the trio splits next")]
+
+
+def test_an_entry_of_cycles_accepted_that_names_another_group_accepts_nothing_and_is_a_finding():
+    found = checked(TRIO, profile(cycles_accepted=(AcceptedCycle(nodes("a", "b"), "a and b only"),)), "app")
+    assert [v.rule for v in found.kept] == ["cycles"]
+    assert [(v.file, v.line, v.message, v.fix) for v in found.stale] == [
+        ("app/modules/a", 0, "cycles.accepted accepts a cycle of modules/a and modules/b, and cycles finds none "
+                             "(cycles.accepted)",
+         "drop the entry of modules/a and modules/b from cycles.accepted, or write its group as a cycles finding "
+         "names it")]
+    assert found.excused == ()
+
+
+def test_a_node_cycles_left_out_leaves_out_is_in_no_cycle_and_is_named_instead():
+    found = checked(TRIO, profile(cycles_left_out=(LeftOut(("modules", "b"), "b wires every module"),)), "app")
+    assert (found.kept, found.stale) == ((), ())
+    assert [(e.rule, e.file, e.line, e.key, e.message, e.why) for e in found.excused] == [
+        ("cycles", "app/modules/b", 0, "cycles.left_out",
+         "modules/b is left out of cycles, though it is in a cycle of modules/a, modules/b and modules/c",
+         "b wires every module")]
+
+
+def test_what_is_left_without_the_node_left_out_is_still_a_cycle():
+    found = checked([*TRIO, adapter("b", uses(2, "a"), file="adapters/back.py")],
+                    profile(cycles_left_out=(LeftOut(("modules", "c"), "c wires"),)), "app")
+    assert [v.message.split(" import each other")[0] for v in found.kept] == [AB]
+
+
+def test_an_entry_of_cycles_left_out_whose_node_is_in_no_cycle_is_a_finding():
+    found = checked(TRIO, profile(cycles_left_out=(LeftOut(("modules", "d"), "d wires"),)), "app")
+    assert [v.rule for v in found.kept] == ["cycles"]
+    assert [(v.file, v.line, v.message, v.fix, v.rule) for v in found.stale] == [
+        ("app/modules/d", 0, "cycles.left_out leaves out modules/d, which is in no cycle (cycles.left_out)",
+         "drop the entry of modules/d from cycles.left_out", "cycles")]
+
+
+def test_violations_hold_the_findings_and_the_entries_that_accept_nothing():
+    stale = profile(cycles_accepted=(AcceptedCycle(nodes("a", "b"), "gone"),))
+    assert [v.file for v in violations(TRIO, stale, "app")] == ["app/modules/c/adapters/peer.py", "app/modules/a"]

@@ -38,7 +38,7 @@ xarch check [PATH ...] [--files-from FILE|-] [--app PATH] [--profile NAME|FILE] 
                                                              # report every violation in the app and its tests, each
                                                              # with its fix, then the state of the check's own enforcement;
                                                              # with paths, only those of the files at or below them
-xarch baseline write [--reset] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+xarch baseline write [--reset] [--rule RULE] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # record the violations found now, which check then holds
                                                              # back; the record may only go down
 xarch hook claude [--command TEXT]                           # print Claude Code hooks that run the check after each edit
@@ -129,6 +129,7 @@ never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain
 tiers:    {<tier>: {proves, litmus: <text> | [...], uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     accepted: [{file*, import, why*}, ...], docs}}
 fakes:    {folder*, for*, prefix | [prefix, ...], tiers}     structure: {accepted: [{path*, why*}, ...]}
+cycles:   {accepted: [{group*, why*}, ...], left_out: [{path*, why*}, ...]}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
@@ -190,7 +191,28 @@ frees one path.
 Every `accepted` list (`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`,
 `counterparts.<id>.accepted`, `imports.accepted`) writes a path below the app, never from the folder holding it: when
 the app folder is `app`, an entry written `app/core/ports.py` accepts nothing, and its finding says to write
-`core/ports.py` instead (under `imports.accepted`, such a file lies in no part and the profile is refused).
+`core/ports.py` instead (under `imports.accepted`, such a file lies in no part and the profile is refused, told
+`write it below the app (core/ports.py, not app/core/ports.py)` when no part starts with that first step and the path
+below it lies in the part).
+
+`cycles` says what the `cycles` check accepts one by one. Its nodes are the instances of the repeating folders and the
+folders the layout names beside them, each written by its path below the app (`adapters/demo/`, a trailing `/`
+optional). `accepted: [{group, why}, ...]` lists groups by their nodes: a group whose nodes are exactly an entry's
+(in any order) is not reported, and the enforcement section names it under `accepted:`; a group with a node more or
+less is reported, and the entry is then a finding. `left_out: [{path, why}, ...]` leaves a node out of the graph,
+such as a composition root that may import everything: no dependency runs from or to it, a group is what is left
+without it, and the enforcement section names it, with the group of the whole graph it was in. An entry of either
+list that accepts nothing (no group is its group, or its node is in no cycle) is a `cycles` finding, so both lists
+can only shrink; a path that is no node (its folder holds no repeating folder) is refused when the profile loads, and
+`profile check` lists each entry the compared profile does not hold as looser.
+
+```yaml
+cycles:
+  accepted:
+    - {group: [modules/billing, modules/orders], why: billing and orders merge in the next release}
+  left_out:
+    - {path: adapters/demo/, why: the demo seeds wire every context, as the factories do}
+```
 
 `counterparts` says what lies with what, path by path: each entry, by an id of its own, has `for`, what must have a
 counterpart, `has`, where it is, and optionally `when`, the paths that must be there too for it to need one, each a
@@ -199,8 +221,8 @@ below it). `<word>` binds the text of a step, or part of one (`<port>_repo.py`),
 stands for that text in `has` and `when`; the word of a repeating folder at that folder's place binds only its
 instances, never a folder the layout names beside them (`sql/models/` beside `sql/<store>/`); `*` is any text within a
 step, and several matches of `has` satisfy it. Each match of `for` with no counterpart is a `counterpart` finding at it,
-with `message` and `fix` of the profile's own if it writes them (`{source}`, `{expected}`, `{when}`, `{key}` and each
-placeholder). `accepted` lists the matches that need none, each with a reason, as `structure.accepted` writes them; an
+with `message` and `fix` of the profile's own if it writes them (`{source}` or `{for}`, the match; `{expected}`, `{when}`,
+`{key}` and each placeholder). `accepted` lists the matches that need none, each with a reason, as `structure.accepted` writes them; an
 entry that no longer accepts anything (its source gone, or now with its counterpart) is itself a finding. A counterpart
 whose `for` matches nothing is listed as `reads nothing` in the enforcement section and fails `--strict`. A placeholder
 of `has` or `when` that `for` does not bind, or two placeholders side by side in a step, are refused when the profile
@@ -323,7 +345,8 @@ A tier's `folder` holds the tests below it that mirror no part (`tiers: {unit: {
 [...]}}}`): they import of the app what its `imports.may` allows, and test code from their own folder, the top folder
 below the tests root. A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`), never be the same one:
 a test has the tier of the deepest folder holding it, that folder is its own folder, and the outer tier's own folder
-leaves it out.
+leaves it out. A tier's `docs.example` is placed the same way: one of `unit` lying in `unit/meta` is refused, since
+`check` would place a test there in `meta`.
 A part's `untested: <reason>` says that no tier covers the part through tests that mirror its folder, the only link
 `check` draws between a part and its tests; it does not say that the part has no tests. A suite laid out tier first
 (`tests/<tier>/...`, each tier placed by its `folder`, helpers shared through `testing.shared` and the fakes opened
@@ -552,7 +575,8 @@ checks:
 
 Its findings carry its id as their `rule`; `hints` may name it. The enforcement section lists each check of your own
 with how many facts it read, and one that read nothing (`reads nothing`), which passes for want of anything to check,
-fails `--strict`. A check whose words do not exist or do not apply where they are written (a filter it keeps, or that
+fails `--strict`; one written under `may_not` is told that this is the clean state when what it keeps is only what may
+not be there, else to widen what it reads. A check whose words do not exist or do not apply where they are written (a filter it keeps, or that
 its links pass, must apply to every kind they read, or it would drop that kind whole), or that needs a fact the
 language's reader does not supply, is refused with every problem at once, each at its address (`checks.<id>.keep`).
 
@@ -589,7 +613,9 @@ xarch profile explain parts.holds --rule   # the rules a key of your profile exp
 anywhere else is never read and is listed as `ungoverned` in the enforcement section; extra top-level folders and files
 at the app root are ignored unless the profile switches on `closed-tree`, as both bundled profiles do. A folder that is not the app's source at all
 is declared under `excluded`, and then no check looks at it. Extra files and subfolders inside a known part belong to
-that part.
+that part. A part written as a package file (`application/__init__.py`) is that one file: a file or folder beside it
+that the layout does not name belongs to the part around its folder, if there is one, else to no part, and
+`closed-tree` reports it.
 
 Every violation names its rule id, says what was found and, on a `fix:` line, what to do. The ids, with the profile key
 that switches or configures each (`-` for none: the rule is always on):
@@ -605,7 +631,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app, but one `structure.accepted` names; an entry `tests/<path>` of it that names no finding | `tiers`, `testing`, `structure.accepted` |
 | `counterpart` | a match of a counterpart's `for`, where its `when` matches too, with no match of its `has`, but one its `accepted` names; an entry of `accepted` that accepts nothing (its source gone, or now with its counterpart) | `counterparts` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
-| `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too, and through a folder the layout names beside the instances, such as `adapters/web/` beside `adapters/<adapter>/`, which takes part in the graph though it is no instance); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle | - (needs a repeating folder) |
+| `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too, and through a folder the layout names beside the instances, such as `adapters/web/` beside `adapters/<adapter>/`, which takes part in the graph though it is no instance); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle; but a group `cycles.accepted` names by its nodes, and a node `cycles.left_out` leaves out of the graph; an entry of either that accepts nothing | `cycles.accepted`, `cycles.left_out` (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
 | `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.imports.must`, `tiers.imports.must` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier; with no table form, a variant named by no test | `guards.scenario-coverage`, `tiers.plain_tables` |
@@ -728,7 +754,8 @@ run in which a part's `imports.accepted` accepts an import also has `"accepted"`
 `{"file", "line", "part", "import", "why"}`, the import as the entry writes it. A run in which an entry of a
 check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcement`: each `{"rule", "file", "line",
 "key", "message", "why"}`, the finding as it would be reported, and `key` the entry's list
-(`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`, `counterparts.<id>.accepted`).
+(`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`, `counterparts.<id>.accepted`,
+`cycles.accepted`, `cycles.left_out`).
 
 - `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
@@ -799,7 +826,7 @@ enforcement
   pairs with is no candidate, and with none left nothing is compared. In JSON, `enforcement.profile.compared_with`
   holds the same object as `profile check`'s (`null` when nothing is compared). `--strict` with `--against` is
   refused (exit 2): `--strict` judges the profile against its baseline, which `--against` leaves as it is, so the
-  violations and `strict_failures` are the same with it and without it. When `based_on` is the path of a profile file, `--strict` rests on a bundled profile, its anchor: the bundled profile the chain of files ends on, else the bundled profile closest to its last file, else none. The line says it, `mine.yaml (custom; compared with ../team.yaml, based_on; match 92%; --strict rests on cli)` (`--strict rests on no bundled profile` with none), and `compared_with.anchor` holds it in JSON: a bundled name, or `null` (with `--against`, and for a profile compared with a bundled one it is that one). A guard left off is excused only when the anchor and every file of the chain leave it off too, and a part fails `litmus` when it lacks a litmus that the path file gives the part it pairs with there, or that the anchor gives the part it pairs with in the anchor: a file of one's own can tighten `--strict`, never loosen it. `guards off` lists every guard xarch has that the profile does not switch on, for a bundled profile
+  violations and `strict_failures` are the same with it and without it. When `based_on` is the path of a profile file, `--strict` rests on a bundled profile, its anchor: the bundled profile the chain of files ends on, else the bundled profile closest to its last file, else none. The line says it, `mine.yaml (custom; compared with ../team.yaml, based_on; match 92%; --strict rests on cli)` (`--strict rests on no bundled profile` with none), and `compared_with.anchor` holds it in JSON: a bundled name, or `null` (with `--against`, and for a profile compared with a bundled one it is that one). A guard left off is excused only when the anchor and every file of the chain leave it off too, and a part fails `litmus` when it does not keep the litmus that the path file gives the part it pairs with there, or that the anchor gives the part it pairs with in the anchor, kept the same way in both (no litmus, or none of the entries of a list): a file of one's own can tighten `--strict`, never loosen it. `guards off` lists every guard xarch has that the profile does not switch on, for a bundled profile
   too; one of them, `package-only`, is switched on by a part's `package_only: true` rather than under `guards`, and the
   line names that key. For a custom file, each way it is looser than the one it is compared with, compared only on
   the parts and tiers that pair (a part renamed in place is still compared, under its own name): a target added to a part's `imports.may`, a `types_only` mark dropped from an entry of it, an outside package
@@ -817,7 +844,9 @@ enforcement
   part's `imports.accepted` (a file and what it imports) the other's part does not hold, and an entry of a check's
   `accepted` (a file, and the variables it names) the other's check of the same id does not hold, and an entry of
   `structure.accepted` (a path) the other does not hold, and an entry of a tier's `accepted` (a file, and what it
-  imports) the other's tier does not hold.
+  imports) the other's tier does not hold, and an entry of a counterpart's `accepted` or of `cycles.accepted` or
+  `cycles.left_out` the other does not hold, a counterpart the other writes that this one drops (by id), and an
+  `evals.placement.yes_line` other than the other's (written, or 0.5 when it is left out).
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.
@@ -868,8 +897,10 @@ Without `--strict` the section never changes the exit code. `--strict` fails (ex
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
 every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
-unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
-them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
+unresolved import; each weak finding; each approximate key; each check of the profile's own and each counterpart
+that reads nothing; each part that keeps no litmus, or no entry of the litmus list, the compared profile (or the
+anchor of a chain of profile files) gives it; and a baseline that records more than is found. The violations a
+baseline holds back are not failed on. The text lists them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
 [Project files](#project-files)): a fresh project of either bundled profile has no such finding.
 
 ## Adopting xarch on existing code: `xarch baseline write`
@@ -880,6 +911,7 @@ back, so that only what is new is reported, and the record may only go down:
 ```
 xarch baseline write            # record every violation a whole check finds now in .xarch/baseline.json
 xarch baseline write --reset    # write it afresh, raising it where it is lower (the diff shows it in review)
+xarch baseline write --rule tiers   # write the record of one rule alone, every other rule kept as it is
 ```
 
 `.xarch/baseline.json` sits in the folder holding the app, beside the record of accepted files: a version, then each
@@ -899,8 +931,12 @@ of one key are counted, and its count is its ceiling. Commit the file.
   violations of the paths given; the `baseline:` line counts the whole app's.
 - `baseline write` with a record only lowers it: a key no longer found is dropped and a count lowered, never raised,
   and a new finding stays a violation; `--reset` writes every violation found now.
+- `baseline write --rule <rule>` writes that rule alone (a rule id `check` reports, or a check of the profile's own;
+  any other is refused): its violations recorded when there is no record, or with `--reset`, else its keys lowered;
+  every other rule's keys are kept as they are. JSON then has `"rule"`.
 - An entry that accepts a finding (`imports.accepted`, `checks.<id>.accepted`, `structure.accepted`,
-  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`) is applied first: an accepted finding is no violation, so it
+  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`, `cycles.accepted`, `cycles.left_out`) is applied first: an
+  accepted finding is no violation, so it
   is never recorded, and a stale entry is a violation like any other.
 
 In JSON, `enforcement.baseline` is present only when the record is: `{"file", "recorded", "baselined", "below",
@@ -1052,6 +1088,13 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   may import the fakes, where they live, the parts it may use as types and never call, and the folder it may import test
   code from; a profile with `testing.shared` adds `"shared"` to a tiered test's object, the shared folders (ending in
   `/`) and files below the project root. `note`: one line where the kind alone does not say it.
+- Only when the profile writes them: `counterparts`, each counterpart whose `for` the path matches or lies below,
+  `{"id", "for", "has", "needs"}`, `needs` being `has` with the words of `for` bound (the text says `counterparts:
+  <id>: needs <path> (for <for>)`); `"optional": true` in `part` for a part marked `optional` (text `optional:`); and,
+  for a file of a part, `accepted_imports`, each import its part's `imports.accepted` accepts in it, `{"import",
+  "why"}` (text `accepted:`). The view of a profile (`xarch profile explain --profile`) lists the same under
+  `optional`, `counterparts` and `accepted imports`, and its JSON adds `optional`, `counterparts` (`{"id", "for",
+  "has"}`) and `accepted_imports` (`{"part", "file", "import", "why"}`) only when there is any.
 
 ## xarch review: an advisory reading
 

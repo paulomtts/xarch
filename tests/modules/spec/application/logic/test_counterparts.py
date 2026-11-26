@@ -100,7 +100,7 @@ def test_counterparts_written_wrong_are_refused(value, problem):
     pytest.param({**SOURCE, "message": "a\nb"}, "counterparts.x.message: must be one line of text", id="a message of "
                                                                                                        "two lines"),
     pytest.param({**SOURCE, "fix": "write {file}"}, "counterparts.x.fix: {file} is no variable: use {source}, "
-                                                    "{expected}, {when}, {key} or a placeholder of for ({module})",
+                                                    "{for}, {expected}, {when}, {key} or a placeholder of for ({module})",
                  id="a variable that is none"),
     pytest.param({**SOURCE, "accepted": [{"path": "src/billing/store/"}]}, "counterparts.x.accepted.0: missing `why`",
                  id="an accepted entry with no reason"),
@@ -116,8 +116,9 @@ def test_a_counterpart_written_wrong_is_refused_at_its_address(entry, problem):
 def test_a_counterpart_written_right_loads_with_every_variable_of_its_message():
     architecture = parsed(layered(counterparts={"x": {**SOURCE, "when": ["tests/fakes/<module>/"],
                                                       "message": "{source} {expected} {when} {key} {module}",
-                                                      "fix": "write {expected}"}}))
+                                                      "fix": "write {expected} for {for}"}}))
     assert architecture.counterparts[0].message == "{source} {expected} {when} {key} {module}"
+    assert architecture.counterparts[0].fix == "write {expected} for {for}"
 
 
 def test_profile_explain_counterparts_shows_every_slot_and_finds_one_under_any_id():
