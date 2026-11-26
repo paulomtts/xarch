@@ -240,8 +240,8 @@ KINDS: tuple[Kind, ...] = (
     Kind("import-into-app", "each import of a file or package of the app, as the file or package it reaches (an "
                             "import that takes a name from a file or package reaches the name's own file when it is "
                             "one, else the file or package it takes the name from)",
-         ("line", "reaches"), {"name": "takes-a-name", "place": "target-placed"}, needs=("import", "import.relative"),
-         verb="import"),
+         ("line", "reaches", "type-only"), {"name": "takes-a-name", "place": "target-placed"},
+         needs=("import", "import.relative"), field_needs={"type-only": ("import.type_only",)}, verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",
          ("line", "reaches"), side=TESTS_SIDE, needs=("import", "import.relative"), verb="import"),
     Kind("comment", "each comment, its text as written", ("line", "text", "marker", "doc"), needs=("comment",),

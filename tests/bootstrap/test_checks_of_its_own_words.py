@@ -252,3 +252,26 @@ def test_the_examples_of_a_check_are_read_with_the_language_s_marks_of_an_interf
         tmp_path, check, line):
     """profile check reads its flagged example's class as an interface (or a record) as check reads the project's."""
     assert [at for _, at, _ in found(tmp_path, {"x": check}, check["examples"]["flagged"])] == [line]
+
+
+FOR_THE_CHECKER = "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.ui.page import Page\n"
+WHEN_IT_RUNS = "from app.ui.page import Page\n"
+STORE_BLIND = {
+    "read": "import-into-app", "in": {"part": "store"}, "keep": ["not type-only"], "may_not": {"part": ["ui"]},
+    "message": "{file} imports the ui at line {line} when its code runs", "fix": "import it only for the type checker",
+    "examples": {"flagged": {"store/x.py": WHEN_IT_RUNS, "ui/page.py": "class Page: ...\n"},
+                 "clean": {"store/x.py": FOR_THE_CHECKER, "ui/page.py": "class Page: ...\n"}}}
+STORE_NEVER_SQL = {
+    "read": "import", "in": {"part": "store"}, "must_not_reach": {
+        "targets": [{"package": ["sqlalchemy"]}], "through": "import-into-app", "through_only": ["not type-only"]},
+    "message": "{file} reaches sqlalchemy at line {line}: {chain}", "fix": "take what it needs through a port",
+    "examples": {"flagged": {"store/x.py": WHEN_IT_RUNS, "ui/page.py": "import sqlalchemy\n\nclass Page: ...\n"},
+                 "clean": {"store/x.py": FOR_THE_CHECKER, "ui/page.py": "import sqlalchemy\n\nclass Page: ...\n"}}}
+
+
+def test_an_import_into_the_app_carries_whether_it_is_made_only_for_the_type_checker(tmp_path):
+    """Kept, and as a link of a closure, an import under TYPE_CHECKING is skipped by `not type-only`."""
+    files = {"store/a.py": WHEN_IT_RUNS, "store/b.py": FOR_THE_CHECKER, "ui/page.py": "import sqlalchemy\n\nclass Page: ...\n"}
+    assert found(tmp_path, {"store-blind": STORE_BLIND, "store-never-sql": STORE_NEVER_SQL}, files) == [
+        ("app/store/a.py", 1, "app/store/a.py imports the ui at line 1 when its code runs"),
+        ("app/store/a.py", 1, "app/store/a.py reaches sqlalchemy at line 1: app.ui.page -> sqlalchemy")]

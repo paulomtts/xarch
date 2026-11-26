@@ -24,7 +24,8 @@ turns its language's imports and names into such paths, and a fact into the app 
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
                         root and at where that sits (None when no part and no folder of the layout governs it), name
                         the name it takes when that is no file; a test's relative imports are its own and none is one,
-                        but a test beside the code reads them from its own package in the app
+                        but a test beside the code reads them from its own package in the app; type-only when the
+                        import is made only for the type checker
     import-into-tests   each import of a test file into the tests' own package, the target it reaches below the tests
                         root
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
@@ -222,14 +223,16 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))
         case "import-into-app" if read.in_tests:
-            return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target))
-                         for line, target in targets(file.imports if file.beside else
-                                                     (i for i in file.imports if not i.relative),
-                                                     package if file.beside else (), facts.known | facts.beside, root)
+            return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target),
+                              traits=_TYPE_ONLY if i.type_only else frozenset())
+                         for i in (file.imports if file.beside else tuple(i for i in file.imports if not i.relative))
+                         for line, target in targets((i,), package if file.beside else (),
+                                                     facts.known | facts.beside, root)
                          if target not in facts.beside)
         case "import-into-app":
-            return tuple(Fact("import-into-app", line, name=name, target=target, at=_placed(profile, cache, target))
-                         for line, target, name in named_targets(file.imports, package, facts.known, root))
+            return tuple(Fact("import-into-app", line, name=name, target=target, at=_placed(profile, cache, target),
+                              traits=_TYPE_ONLY if i.type_only else frozenset())
+                         for i in file.imports for line, target, name in named_targets((i,), package, facts.known, root))
         case "import-into-tests":
             return tuple(Fact("import-into-tests", line, target=target)
                          for line, target in _into_tests(read, package, facts)) if read.in_tests else ()

@@ -175,6 +175,10 @@ All notable changes to this project are written here. The format follows
 
 ### Fixed
 
+- `import-into-app` carries `type-only` (the fact `import.type_only`), so `keep: [not type-only]` and
+  `must_not_reach.through_only: [not type-only]` (or `must_reach`'s) are no longer refused on it: a check can skip the
+  imports of the app made only for the type checker, and a closure can follow only those made when the code runs. The
+  bundled profiles find what they found before.
 - `keep: [interface]` and `keep: [immutable]` now hold in the examples `xarch profile check` runs: an example is read
   with the language's marks of an interface and of an immutable record, as `check` reads the project, so a flagged
   example declaring a `Protocol` (or a frozen dataclass) is found instead of being told the check finds nothing in it.

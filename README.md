@@ -450,8 +450,10 @@ file must reach a target (`must_reach`) or a fact be reached from some files (`m
 once for each value of its variables; `per_line` says the findings of one line that differ only in its variables as
 one, each written as its values joined by `, `). An import made only for the type checker, never when the code
 runs, carries the field `type-only` (the fact `import.type_only`; Python's reader sets it on each import in the body of
-an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import` or
-`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A class carries its
+an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import`,
+`imported-name` or `import-into-app` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`),
+and a closure may follow only the imports made when the code runs (`must_not_reach: {targets: ..., through:
+import-into-app, through_only: [not type-only]}`). A class carries its
 `bases` (the fact `class.bases`): each base it names, read through the import that binds it (an alias by the name it
 was imported as) or as a class of its own file, then the bases of each class the project defines, in the app or in
 the tests, however far; the filter `extends: <pattern>` holds of a class one of those matches by its name, so
