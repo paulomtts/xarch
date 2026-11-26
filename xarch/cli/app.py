@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import typer
 
-from xarch.cli.commands import check, hook, profile, review, scaffold, where
+from xarch.cli.commands import baseline, check, hook, profile, review, scaffold, where
 from xarch.modules.review.application.controller import ReviewController
 from xarch.modules.rules.application.controller import RulesController
 from xarch.modules.scaffold.application.controller import ScaffoldController
@@ -30,6 +30,7 @@ def build(rules: RulesController, scaffolding: ScaffoldController, spec: SpecCon
         """Runs before any command; `--version` is handled by its callback."""
 
     check.register(app, rules, spec)
+    baseline.register(app, rules, spec)
     scaffold.register(app, scaffolding, spec)
     where.register(app, rules, spec)
     profile.register(app, spec, rules)

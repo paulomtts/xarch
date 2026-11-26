@@ -11,6 +11,7 @@ from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.published import (
     APPROXIMATE,
+    BASELINE,
     DYNAMIC,
     EXCLUDED,
     GUARDS_OFF,
@@ -31,14 +32,17 @@ from xarch.modules.rules.domain.published import (
     WEAK,
     AcceptedEdge,
     At,
+    BaselineStanding,
     Drift,
     Excused,
     KeyFacts,
     KnownName,
     Loosened,
     Piece,
+    Recorded,
     Resemblance,
     Reviewed,
+    RuleCeiling,
     Slot,
     Translation,
     Unresolved,
@@ -46,6 +50,8 @@ from xarch.modules.rules.domain.published import (
 )
 
 __all__ = ["At", "Weak", "Piece", "AcceptedEdge", "Excused", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS",
+           "BASELINE", "Recorded", "RuleCeiling", "BaselineStanding", "WriteBaseline", "BaselineWritten",
+           "WriteBaselineResult",
            "GUARDS_OFF", "UNGOVERNED",
            "INIT_FILES", "SKIPPED", "DYNAMIC", "UNRESOLVED", "Unresolved",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
@@ -132,6 +138,7 @@ class EnforcementView:
     unresolved: tuple[UnresolvedView, ...] = ()
     accepted: tuple[AcceptedEdge, ...] = ()
     excused: tuple[Excused, ...] = ()
+    baseline: BaselineStanding | None = None
 
 
 @dataclass(frozen=True)
@@ -333,6 +340,32 @@ class AppChecked:
 
 
 CheckAppResult = AppChecked | NotADirectory | ChecksCannotRun | CheckRefused
+
+
+@dataclass(frozen=True)
+class WriteBaseline:
+    """Record the violations a whole check of the app below root finds now in its baseline, under the profile, the
+    tests below tests (None: no tests), a relative root or tests folder read from cwd: with reset, every one of them,
+    in place of what the record held; else, with a record, only lowering it (a key no longer found dropped, a count
+    lowered), and with none, every one."""
+    root: Path
+    profile: str
+    cwd: Path
+    tests: Path | None = None
+    reset: bool = False
+
+
+@dataclass(frozen=True)
+class BaselineWritten:
+    """The baseline written: the file, from the folder holding the app; how many violations it records now, and how
+    many it recorded before (None: there was no record); and whether it was written afresh (reset)."""
+    file: str
+    recorded: int
+    before: int | None
+    reset: bool
+
+
+WriteBaselineResult = BaselineWritten | NotADirectory | ChecksCannotRun | CheckRefused
 
 
 @dataclass(frozen=True)

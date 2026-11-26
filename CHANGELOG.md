@@ -7,6 +7,12 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- `xarch baseline write [--reset]` records the violations a whole check finds now in `.xarch/baseline.json`, each
+  keyed by rule, file and message (digits read alike) with a count; `check` then holds them back and reports only
+  what the record does not hold, so a swap (one fixed, one added) is caught. A record above the code passes and says
+  how far below it is, `--strict` fails on it until it is lowered (`strict_failures` key `baseline`), a write only
+  lowers an existing record unless `--reset`, `check PATH ...` holds the record against the whole run first, and
+  JSON gains `enforcement.baseline` when the file is there. With no file, `check` is unchanged.
 - `tiers.<tier>.accepted: [{file, import, why}, ...]` accepts `tiers` findings one by one: a test of the tier, or one
   in no tier, and, if need be, what it imports (written as `imports.accepted` writes it); without `import`, every
   `tiers` finding of the file, that it lies in no tier included. A finding accepted is not reported, every `check`

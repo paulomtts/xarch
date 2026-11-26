@@ -8,6 +8,7 @@ from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import (
     AcceptedEdge,
     At,
+    BaselineStanding,
     Drift,
     Excused,
     KnownName,
@@ -137,6 +138,13 @@ class StructureFound:
     which it does not report."""
     violations: tuple[Violation, ...]
     excused: tuple[Excused, ...] = ()
+
+
+@dataclass(frozen=True)
+class Baselined:
+    """What the baseline comes to on a run: the violations it does not hold back, in their order, and how it stands."""
+    shown: tuple[Violation, ...]
+    standing: BaselineStanding
 
 
 @dataclass(frozen=True)

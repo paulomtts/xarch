@@ -27,13 +27,15 @@ from dataclasses import dataclass
 
 CHECKS = "checks"
 """The address `profile explain` explains how a check is written at, and the first step of a slot's (checks.keep)."""
-GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, UNRESOLVED, WEAK, APPROXIMATE, VACUOUS, UNPLACED = (
+GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, UNRESOLVED, WEAK, APPROXIMATE, VACUOUS, UNPLACED, BASELINE = (
     "guards_off", "ungoverned", "init_files", "skipped", "dynamic", "unresolved", "weak", "approximate", "vacuous",
-    "litmus")
+    "litmus", "baseline")
 """The keys of the sections of the enforcement a finding `--strict` fails on is under: a guard left off, an
 ungoverned file, an init file, a skip, a dynamic import, an import the reader could not follow, a weak finding, an
-approximate key, a check of the profile's own that reads nothing, and a part redefined without its litmus."""
-SECTIONS = (GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, UNRESOLVED, WEAK, APPROXIMATE, VACUOUS, UNPLACED)
+approximate key, a check of the profile's own that reads nothing, a part redefined without its litmus, and a
+baseline that records more than is found."""
+SECTIONS = (GUARDS_OFF, UNGOVERNED, INIT_FILES, SKIPPED, DYNAMIC, UNRESOLVED, WEAK, APPROXIMATE, VACUOUS, UNPLACED,
+            BASELINE)
 """Every key of a section of the enforcement, in the order the sections are shown."""
 
 
@@ -84,6 +86,39 @@ class AcceptedEdge:
     part: str
     written: str
     why: str
+
+
+@dataclass(frozen=True)
+class Recorded:
+    """A finding the baseline records: its rule, its file as shown, its message as found when it was recorded, and how
+    many violations of its key (rule, file, and message with its digits read alike) it holds back."""
+    rule: str
+    file: str
+    message: str
+    count: int
+
+
+@dataclass(frozen=True)
+class RuleCeiling:
+    """How the baseline stands for one rule: how many violations it records, and how many of them were found."""
+    rule: str
+    recorded: int
+    found: int
+
+
+@dataclass(frozen=True)
+class BaselineStanding:
+    """How the baseline stands on a check: the file it is recorded in, from the folder holding the app; by rule, how
+    many violations it records and how many of those were found; how many it holds back; and how many it records that
+    were not found (below: the record can be lowered)."""
+    file: str
+    rules: tuple[RuleCeiling, ...]
+    held: int
+    below: int
+
+    @property
+    def recorded(self) -> int:
+        return sum(item.recorded for item in self.rules)
 
 
 @dataclass(frozen=True)

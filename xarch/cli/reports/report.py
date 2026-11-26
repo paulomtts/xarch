@@ -21,6 +21,7 @@ from xarch.cli.reports.shown import shown
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.contract import (
     APPROXIMATE,
+    BASELINE,
     DYNAMIC,
     GUARDS_OFF,
     INIT_FILES,
@@ -32,6 +33,8 @@ from xarch.modules.rules.contract import (
     WEAK,
     AppChecked,
     At,
+    BaselineStanding,
+    BaselineWritten,
     EnforcementView,
     FindingView,
     Partial,
@@ -46,7 +49,7 @@ SHOWN = 5
 """How many places a text line of skips or dynamic imports names before it counts the rest."""
 LABELS = {GUARDS_OFF: "guards off", UNGOVERNED: "ungoverned", INIT_FILES: "init files", SKIPPED: "skipped",
           DYNAMIC: "dynamic", UNRESOLVED: "unresolved", WEAK: "weak", APPROXIMATE: "approximate",
-          VACUOUS: "reads nothing", UNPLACED: "litmus"}
+          VACUOUS: "reads nothing", UNPLACED: "litmus", BASELINE: "baseline"}
 """How each section of the enforcement is labelled, by its key."""
 
 
@@ -111,6 +114,8 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd
                                 f"accepted accepts: {item.why}", 2) for item in state.accepted]
     lines += [_line("accepted", f"{item.file}{f':{item.line}' if item.line else ''}: {item.message}, which {item.key} "
                                 f"accepts: {item.why}", 2) for item in state.excused]
+    if state.baseline is not None:
+        lines.append(_line(LABELS[BASELINE], _baseline_words(state.baseline), 2))
     lines += [_line(LABELS[INIT_FILES], f"{'/'.join(item.path)} is {item.state}", 2) for item in state.init_files]
     if state.skipped:
         lines.append(_line(LABELS[SKIPPED], f"{_count(len(state.skipped), 'skip')} ({_places(state.skipped)})", 2))
@@ -184,10 +189,30 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
            if state.checks else {}),
         **({"accepted": [{"file": item.file, "line": item.line, "part": item.part, "import": item.written,
                           "why": item.why} for item in state.accepted]} if state.accepted else {}),
+        **({"baseline": {"file": state.baseline.file, "recorded": state.baseline.recorded,
+                         "baselined": state.baseline.held, "below": state.baseline.below,
+                         "rules": [{"rule": item.rule, "recorded": item.recorded, "found": item.found}
+                                   for item in state.baseline.rules]}} if state.baseline is not None else {}),
         **({"accepted_findings": [{"rule": item.rule, "file": item.file, "line": item.line, "key": item.key,
                                    "message": item.message, "why": item.why} for item in state.excused]}
            if state.excused else {}),
     }
+
+
+def _baseline_words(baseline: BaselineStanding) -> str:
+    """How the baseline stands, as the enforcement section says it."""
+    said = f"{baseline.file} holds back {baseline.held} of the {baseline.recorded} violation(s) it records"
+    if baseline.below:
+        said += f"; {baseline.below} below baseline: run `xarch baseline write` to lower it"
+    return said
+
+
+def baseline_written(written: BaselineWritten) -> str:
+    """What `xarch baseline write` says it wrote."""
+    before = ("no record before" if written.before is None
+              else f"{written.before} before{', written afresh' if written.reset else ''}")
+    return (f"baseline: {written.file} records {written.recorded} violation(s) ({before}); commit it: check holds "
+            "them back and reports any other")
 
 
 def _at(places: Sequence[At]) -> list[dict[str, Any]]:

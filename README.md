@@ -38,6 +38,9 @@ xarch check [PATH ...] [--files-from FILE|-] [--app PATH] [--profile NAME|FILE] 
                                                              # report every violation in the app and its tests, each
                                                              # with its fix, then the state of the check's own enforcement;
                                                              # with paths, only those of the files at or below them
+xarch baseline write [--reset] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+                                                             # record the violations found now, which check then holds
+                                                             # back; the record may only go down
 xarch hook claude [--command TEXT]                           # print Claude Code hooks that run the check after each edit
                                                              # and before the agent stops; writes nothing
 xarch where PATH [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
@@ -605,7 +608,8 @@ check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcem
   `{"rule", "file", "line", "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items
   `{"key", "fact", "note"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`,
   `init_files`, `skipped`, `dynamic`, `unresolved`, `weak`, `approximate`, `vacuous` (a check of the profile's own
-  that read nothing), `litmus` (a part redefined without the litmus its compared profile gives it). `strict_failures`
+  that read nothing), `litmus` (a part redefined without the litmus its compared profile gives it), `baseline` (a
+  baseline that records more than is found). `strict_failures`
   is filled whether or not `--strict` was given: it is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on
   stdout, so a caller always gets JSON. Only an error in the command line itself (an unknown option, a `--format`
@@ -718,6 +722,41 @@ every guard left off); each ungoverned file; each missing or changed init file; 
 unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
 them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
 [Project files](#project-files)): a fresh project of either bundled profile has no such finding.
+
+## Adopting xarch on existing code: `xarch baseline write`
+
+A project that adopts xarch with violations it cannot fix at once records them in a baseline, which `check` then holds
+back, so that only what is new is reported, and the record may only go down:
+
+```
+xarch baseline write            # record every violation a whole check finds now in .xarch/baseline.json
+xarch baseline write --reset    # write it afresh, raising it where it is lower (the diff shows it in review)
+```
+
+`.xarch/baseline.json` sits in the folder holding the app, beside the record of accepted files: a version, then each
+finding with its `rule`, `file`, `message` and `count`, one entry per key. A finding is keyed by its rule, its file and
+its message with every run of digits read as one mark, so that a line moving or a count changing keeps it; findings
+of one key are counted, and its count is its ceiling. Commit the file.
+
+- No file: `check` is exactly as it was.
+- A violation whose key the record holds, up to its count, is held back: not shown, counted on the `baseline:` line
+  of the enforcement section (JSON `enforcement.baseline`). Every other violation is shown and fails the check: a new
+  finding never hides behind an old one, since a fix in one place and a new finding in another (or in the same file,
+  of another name) is a new key.
+- A record above the code (a finding fixed, or moved) passes, and the line says `N below baseline: run \`xarch
+  baseline write\` to lower it`; `--strict` fails on it (`strict_failures` key `baseline`), so the guard test keeps the
+  record as low as the code. `--strict` does not fail on the findings held back: that is what the record is for.
+- `check PATH ...` holds the record against the whole run first (every check runs on the whole app), then shows the
+  violations of the paths given; the `baseline:` line counts the whole app's.
+- `baseline write` with a record only lowers it: a key no longer found is dropped and a count lowered, never raised,
+  and a new finding stays a violation; `--reset` writes every violation found now.
+- An entry that accepts a finding (`imports.accepted`, `checks.<id>.accepted`, `structure.accepted`,
+  `tiers.<tier>.accepted`) is applied first: an accepted finding is no violation, so it is never recorded, and a stale
+  entry is a violation like any other.
+
+In JSON, `enforcement.baseline` is present only when the record is: `{"file", "recorded", "baselined", "below",
+"rules": [{"rule", "recorded", "found"}]}`. `xarch baseline write --format json` prints `{"ok", "file", "recorded",
+"before", "reset"}`, `before` `null` when there was no record. A record that cannot be read is refused (exit 2).
 
 ## Running the check from an agent's hooks: `xarch hook claude`
 

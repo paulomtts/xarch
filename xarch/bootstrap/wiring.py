@@ -23,6 +23,7 @@ from xarch.modules.review.application.services.accepting import AcceptingService
 from xarch.modules.review.application.services.answering import AnsweringService
 from xarch.modules.review.application.services.calibrating import CalibrationService
 from xarch.modules.review.application.services.reviewing import ReviewService
+from xarch.modules.rules.adapters.fs_baseline import FsBaselines
 from xarch.modules.rules.adapters.fs_source_tree import FsSourceTree
 from xarch.modules.rules.adapters.layout_structure import LayoutStructure
 from xarch.modules.rules.adapters.spec_check_format import SpecCheckFormat
@@ -126,7 +127,9 @@ def _build_rules(tree: FsSourceTree, spec: SpecController, layout: LayoutControl
     profiles = SpecProfiles(spec)
     source = SourceCheckService(tree, profiles)
     explaining = ExplainingService(profiles, SpecCheckFormat(spec))
-    return RulesController(LocateService(tree, profiles), AppCheckService(source, LayoutStructure(layout), tree),
+    return RulesController(LocateService(tree, profiles),
+                           AppCheckService(source, LayoutStructure(layout), tree,
+                                           FsBaselines(FileSystem(), DataFileReader(), DataFileWriter())),
                            explaining, ExamplesService(tree, profiles), SourcesService(tree, profiles),
                            AskingService(tree, profiles), HoldingService(tree, profiles))
 
