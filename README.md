@@ -458,10 +458,16 @@ the tests, however far; the filter `extends: <pattern>` holds of a class one of 
 `keep: [{named: "*Page"}, {extends: Reactive}]` finds a page that derives from `Reactive` through any number of classes
 between, and `except: [{extends: "*Port"}]` excuses a fake that derives from a port. A base taken from a package file
 that only re-exports it is followed no further than its name. Two quantifiers count instead of matching targets,
-in each file of the scope alone (never across a part or the instances of a repeating folder): `at_most: <n>` makes
-each kept fact of a file after the n-th a finding, at its own line (`read: class`, `keep: [{named: "*Port"}]`,
-`at_most: 1`: one port per file), and `at_least: <n>` makes a file that keeps fewer a finding, at line 0; `{count}`
-says how many the file keeps. The kind `file` carries `lines` (the fact `file.lines`), which the filter
+in each file of the scope alone: `at_most: <n>` makes each kept fact of a file after the n-th a finding, at its own
+line (`read: class`, `keep: [{named: "*Port"}]`, `at_most: 1`: one port per file), and `at_least: <n>` makes a file
+that keeps fewer a finding, at line 0; `{count}` says how many the file keeps. Written as a map, `{count: <n>, per:
+file | part | instance | all}`, either counts the files of the scope together: `file` each alone (the default),
+`part` the files of each part (a test those of the parts its folder mirrors), `instance` the files of each instance
+of a repeating folder (a file in no instance with the files of its part in none; a file in no part alone), `all`
+every file of the scope. Under `at_most` each kept fact of a group after the n-th, in the order of the files and then
+of the facts, is a finding at its own line in its own file; under `at_least` a group that keeps fewer is one finding,
+at line 0 of the group's first file; `{count}` says how many the group keeps (`at_most: {count: 1, per: instance}`:
+one composition root in each module). The kind `file` carries `lines` (the fact `file.lines`), which the filter
 `longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
 each file over 700 lines. `must_not_reach` is the negation of `must_reach`, written the same way (`targets`, `through`,
 `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the files its links

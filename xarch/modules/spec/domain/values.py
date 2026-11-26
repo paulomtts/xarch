@@ -48,6 +48,8 @@ REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
                "must_not_reach": ("targets", "through", "through_only"),
                "must_be_reached": ("from", "through", "through_only", "then_through", "by_another_file")}
 """The slots of a quantifier of reach, in the order they are written."""
+COUNT_KEYS = ("count", "per")
+"""The keys of a quantifier that counts written as a map."""
 CASE_SLOTS = ("when", "message", "fix", "once_per", "per_line")
 """The slots of a case."""
 ACCEPTED_SLOTS = ("file", "why")

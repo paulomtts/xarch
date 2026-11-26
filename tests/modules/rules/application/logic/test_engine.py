@@ -12,7 +12,7 @@ from xarch.modules.rules.application.logic.engine import read, run
 from xarch.modules.rules.application.logic.facts import facts_of
 from xarch.modules.rules.domain.parsed import Class
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.rule import EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, AT_MOST, EXISTING, LIST, MAY_NOT, MAY_ONLY, MUST_BE_REACHED, MUST_REACH, Match, Rule
 from xarch.profile_values.checks import ALL, ANY, APP, STRUCTURE, TESTS, Condition, Saying, Scope
 
 DOMAIN, KERNEL = "modules/docs/domain/doc.py", "kernel/ids.py"
@@ -176,3 +176,42 @@ def test_a_rule_reads_only_the_facts_of_its_kinds_when_the_facts_are_read_for_it
     imports = rule(scope=Scope(APP, "domain"))
     facts = facts_of(FILES, [], PROFILE, "app", rules=(imports,))
     assert {kind for file in facts.files for kind in file.facts} == {"import"}
+
+
+COUNTED_FILES = [source("modules/docs/domain/a.py", imp(1, "yaml"), imp(2, "json")),
+                 source("modules/docs/adapters/b.py", imp(1, "csv")), source("modules/mail/domain/c.py", imp(1, "re")),
+                 source("modules/mail/domain/d.py"), source("modules/note/domain/e.py"), source("kernel/ids.py")]
+"""Four imports in the instance docs (two in its domain, one in its adapters), one in the domain of mail, none in
+note, and a file of the kernel, in no instance, importing nothing."""
+
+
+def counted(quantifier: str, count: int, per: str, scope: Scope = Scope(APP)) -> list[str]:
+    counting = rule(scope=scope, quantifier=quantifier, targets=EXISTING, count=count, per=per,
+                    sayings=(Saying("{file} keeps {count}", "x"),))
+    return [f"{v.file}:{v.line}: {v.message}" for v in
+            run((counting,), facts_of(COUNTED_FILES, [], PROFILE, "app", rules=(counting,)), PROFILE)]
+
+
+@pytest.mark.parametrize("per, scope, found", [
+    pytest.param("file", Scope(APP), [], id="file"),
+    pytest.param("part", Scope(APP, "domain"), ["app/modules/mail/domain/c.py:1: app/modules/mail/domain/c.py keeps 3"],
+                 id="part"),
+    pytest.param("instance", Scope(APP),
+                 ["app/modules/docs/adapters/b.py:1: app/modules/docs/adapters/b.py keeps 3"], id="instance"),
+    pytest.param("all", Scope(APP), ["app/modules/docs/adapters/b.py:1: app/modules/docs/adapters/b.py keeps 4",
+                                     "app/modules/mail/domain/c.py:1: app/modules/mail/domain/c.py keeps 4"], id="all"),
+])
+def test_at_most_counts_the_kept_facts_of_the_files_per_groups_together_each_after_the_count_a_finding(per, scope, found):
+    assert counted(AT_MOST, 2, per, scope) == found
+
+
+@pytest.mark.parametrize("per, found", [
+    pytest.param("file", ["app/modules/mail/domain/d.py:0: app/modules/mail/domain/d.py keeps 0",
+                          "app/modules/note/domain/e.py:0: app/modules/note/domain/e.py keeps 0",
+                          "app/kernel/ids.py:0: app/kernel/ids.py keeps 0"], id="file"),
+    pytest.param("instance", ["app/modules/note/domain/e.py:0: app/modules/note/domain/e.py keeps 0",
+                              "app/kernel/ids.py:0: app/kernel/ids.py keeps 0"], id="instance"),
+    pytest.param("part", ["app/kernel/ids.py:0: app/kernel/ids.py keeps 0"], id="part"),
+])
+def test_at_least_finds_a_group_that_keeps_fewer_at_line_0_of_its_first_file(per, found):
+    assert counted(AT_LEAST, 1, per) == found

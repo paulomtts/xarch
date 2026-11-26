@@ -16,6 +16,7 @@ from xarch.profile_values.checks import (
     COUNT_SLOTS,
     FAIL,
     NEGATION,
+    PER_FILE,
     STRUCTURE,
     Condition,
     Quantified,
@@ -97,6 +98,8 @@ class YamlProfileFormat:
 
     def _quantified(self, quantified: Quantified) -> list[str]:
         if quantified.slot in COUNT_SLOTS:
+            if quantified.per != PER_FILE:
+                return [f"{quantified.slot}: {{count: {quantified.count}, per: {quantified.per}}}"]
             return [f"{quantified.slot}: {quantified.count}"]
         if quantified.slot not in REACH_SLOTS:
             return [f"{quantified.slot}: {self._targets(quantified.targets)}"]

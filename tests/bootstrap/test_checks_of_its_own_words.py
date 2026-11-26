@@ -105,6 +105,33 @@ def test_at_least_finds_each_file_of_the_scope_that_keeps_fewer_facts_than_the_n
         ("app/store/none.py", None, "app/store/none.py declares 0 interfaces, and needs one")]
 
 
+ONE_PORT_PER_PART = {
+    **ONE_PORT, "at_most": {"count": 1, "per": "part"},
+    "examples": {"flagged": {"store/a.py": PORT, "store/b.py": PORT.replace("Store", "Cache")},
+                 "clean": {"store/a.py": PORT}}}
+
+
+def test_at_most_per_part_counts_the_files_of_a_part_together_finding_each_fact_after_the_number(tmp_path):
+    files = {"store/a.py": PORT, "store/b.py": PORTS, "ui/c.py": PORT}
+    assert found(tmp_path, {"one-port-per-part": ONE_PORT_PER_PART}, files) == [
+        ("app/store/b.py", 3, "app/store/b.py declares 4 interfaces, and StorePort at line 3 is one too many"),
+        ("app/store/b.py", 4, "app/store/b.py declares 4 interfaces, and CachePort at line 4 is one too many"),
+        ("app/store/b.py", 5, "app/store/b.py declares 4 interfaces, and LockPort at line 5 is one too many")]
+
+
+def test_at_least_per_part_finds_a_part_that_keeps_fewer_at_its_first_file(tmp_path):
+    some = {**SOME_PORT, "at_least": {"count": 1, "per": "part"}, "in": {}, "message": "{file} and its part keep {count}"}
+    some["examples"] = {"flagged": {"store/a.py": "x = 1\n"}, "clean": {"store/a.py": PORT}}
+    files = {"store/a.py": PORT, "ui/a.py": "x = 1\n", "ui/b.py": "y = 1\n"}
+    assert found(tmp_path, {"a-port-per-part": some}, files) == [("app/ui/a.py", None, "app/ui/a.py and its part keep 0")]
+
+
+def test_a_count_written_as_a_map_is_written_back_as_one(tmp_path):
+    project(tmp_path, {"one-port-per-part": ONE_PORT_PER_PART}, {})
+    shown = runner.invoke(app, ["profile", "explain", "checks.one-port-per-part", "--rule"])
+    assert "at_most: {count: 1, per: part}" in shown.output, shown.output
+
+
 LONG = {
     "read": "file", "in": {"part": "store"}, "keep": [{"longer-than": 3}], "may_not": "exist",
     "message": "{file} holds {lines} lines", "fix": "split it",
@@ -119,6 +146,12 @@ def test_longer_than_holds_of_a_file_of_more_lines_than_the_number(tmp_path):
 @pytest.mark.parametrize("changes, said", [
     pytest.param({"at_most": -1}, "checks.x.at_most: must be a whole number, 0 or more", id="a negative number"),
     pytest.param({"at_most": "one"}, "checks.x.at_most: must be a whole number, 0 or more", id="a word"),
+    pytest.param({"at_most": {"count": 1, "per": "folder"}},
+                 "checks.x.at_most.per: no files are counted per 'folder': write one of file, part, instance, all",
+                 id="an unknown per"),
+    pytest.param({"at_most": {"count": 1, "by": "part"}}, "checks.x.at_most: unknown key `by`: use count, per",
+                 id="an unknown key"),
+    pytest.param({"at_most": {"per": "part"}}, "checks.x.at_most: missing `count`", id="no count"),
     pytest.param({"keep": [{"longer-than": "many"}]},
                  "checks.x.keep: longer-than 'many': write a whole number, such as 700", id="a length that is no number"),
 ])

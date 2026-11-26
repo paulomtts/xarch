@@ -66,7 +66,7 @@ def check_of(rule: Rule, member: str, flagged: tuple[tuple[str, str], ...] = (),
     targets = () if rule.quantifier in (MUST_BE_REACHED, *COUNTS) else tuple(
         _target(match, member, words) for match in rule.targets)
     quantified = Quantified(rule.quantifier, targets, rule.links, rule.via, rule.roots, rule.spread, rule.elsewhere,
-                            rule.count)
+                            rule.count, rule.per)
     return WrittenCheck(rule.facts, rule.scope, quantified, rule.sayings, rule.keep, rule.exempt, rule.mode, flagged,
                         clean)
 

@@ -399,9 +399,11 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
                                   "of the kinds `then_through` names leads to it from something already reached, "
                                   "however far", True),
     Quantifier("at_most", "a file of the scope may keep at most the number of facts: each kept fact after that many, "
-                          "in the order the file says them, is a finding, counted in that file alone"),
+                          "in the order the file says them, is a finding, counted in that file alone (or, with `per`, in the "
+                          "files counted together)"),
     Quantifier("at_least", "a file of the scope that keeps fewer facts than the number is a finding, its file fact the "
-                           "fact said, counted in that file alone"),
+                           "fact said, counted in that file alone (or, with `per`, a group of files counted together, its "
+                           "first file's file fact the fact said)"),
 )
 """What a check does with what it keeps."""
 
@@ -466,7 +468,8 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("returned", "the attributes a forwarding method returns of the call's result, dotted", ("returned",)),
     Variable("verb", "what the file does with what the fact names: import, use, call, build or reference"),
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
-    Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least)", needs=COUNTED),
+    Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least); with `per`, "
+                      "the files counted with it", needs=COUNTED),
     Variable("lines", "how many lines the file holds", ("lines",)),
     Variable("parameters", "the names of a function's parameters, in order, joined by `, `", ("parameters",)),
     Variable("returns", "a function's return annotation as written", ("returns",)),
@@ -503,8 +506,10 @@ SLOTS: tuple[Slot, ...] = (
                             "test names, directly or by way of a class a test names",
          "{from: <files, as `in` writes them>, through: <kind> or [...], through_only: [<filter>, ...], then_through: <kind> "
          "or [...], by_another_file: true}", "kinds"),
-    Slot("at_most", "each kept fact of a file after this many is a finding", "<number>"),
-    Slot("at_least", "a file that keeps fewer kept facts is a finding", "<number>"),
+    Slot("at_most", "each kept fact of a file (of the files `per` counts together) after this many is a finding",
+         "<number> or {count: <number>, per: file | part | instance | all}"),
+    Slot("at_least", "a file (the files `per` counts together) that keeps fewer kept facts is a finding",
+         "as at_most"),
     Slot("except", "the filters of which any one excuses a finding", "[<filter>, ...]", "filters"),
     Slot("accepted", "findings accepted one by one",
          "[{file, <variable>: <value>, why}]", "variables"),

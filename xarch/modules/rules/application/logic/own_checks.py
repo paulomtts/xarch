@@ -83,7 +83,7 @@ def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule
                 EXISTING if quantified.slot in (MUST_BE_REACHED, *COUNTS) else targets, check.sayings, keep=check.keep,
                 exempt=check.exempt, mode=check.mode, key=f"checks.{name}", links=quantified.through,
                 via=quantified.through_only, roots=quantified.start, spread=quantified.then_through,
-                elsewhere=quantified.by_another_file, count=quantified.count)
+                elsewhere=quantified.by_another_file, count=quantified.count, per=quantified.per)
 
 
 def unsupplied(address: str, rule: Rule, language: CheckedLanguage, what: str) -> list[str]:

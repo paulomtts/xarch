@@ -48,6 +48,8 @@ from xarch.profile_values.checks import (
     COUNT_SLOTS,
     FAIL,
     LIST,
+    PER,
+    PER_FILE,
     QUANTIFIER_SLOTS,
     TESTS,
     Condition,
@@ -113,7 +115,7 @@ class Rule:
     through which a declaration reached already reaches further (spread), and whether a declaration is reached only
     from a root other than its own file (elsewhere). A link reaches the declarations it names (the names it mentions,
     for a fact that has them) or the file it leads to (what it reaches). A rule that counts (AT_MOST, AT_LEAST) says how
-    many facts a file keeps at most or at least (count).
+    many facts a file keeps at most or at least (count), and which files it counts together (per, one of PER).
 
     A rule that names a word of no slot, or one that does not apply to what the slot reads, is refused (RuleRefused),
     with every problem at once."""
@@ -133,6 +135,7 @@ class Rule:
     spread: tuple[str, ...] = ()
     elsewhere: bool = False
     count: int = 0
+    per: str = PER_FILE
 
     def __post_init__(self) -> None:
         found = self.problems()
@@ -334,11 +337,15 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
     if quantifier not in _QUANTIFIERS:
         return [f"quantifier: no quantifier is named {quantifier!r}: write one of {', '.join(sorted(_QUANTIFIERS))}"]
     slot = f"{quantifier}.targets" if quantifier in FILE_REACH else quantifier
+    if quantifier not in COUNTS and rule.per != PER_FILE:
+        problems.append(f"{quantifier}: counts no files together: drop per, which only {AT_MOST} and {AT_LEAST} take")
     if quantifier in COUNTS:
         if rule.targets != EXISTING:
             problems.append(f"{quantifier}: takes no targets: what it counts is what the check keeps")
         if rule.count < 0:
             problems.append(f"{quantifier}: is {rule.count}: write a whole number, 0 or more")
+        if rule.per not in PER:
+            problems.append(f"{quantifier}.per: no files are counted per {rule.per!r}: write one of {', '.join(PER)}")
     elif quantifier == MUST_BE_REACHED:
         if rule.targets != EXISTING:
             problems.append(f"{quantifier}: takes no targets: what must be reached is what the check keeps")

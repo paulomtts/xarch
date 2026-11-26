@@ -25,20 +25,24 @@ way it reaches, each file a link leads to then what the fact that matched names,
 
 A rule that counts reads the kept facts of each file of its scope alone, in the order the file says them: under AT_MOST
 each one after its count is a finding, under AT_LEAST a file that keeps fewer than its count is one, its file fact the
-fact said; an exemption excuses a finding as any other.
+fact said; an exemption excuses a finding as any other. A rule that counts per part, instance or all reads the kept
+facts of the files of each such group together, in the order of the files and then of the facts: under AT_MOST each
+one after its count is a finding, in its own file; under AT_LEAST a group that keeps fewer is one, the file fact of its
+first file the fact said.
 
 How many facts a rule reads at all is counted apart (read): a rule that reads none passes for want of anything to
 check.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Hashable, Iterable
 from dataclasses import replace
 from string import Formatter
 
 from xarch.kernel.violations import RULES, Violation
 from xarch.modules.rules.application.logic.facts import reach_scopes
 from xarch.modules.rules.application.logic.filters import Question, in_scope, question
+from xarch.modules.rules.application.logic.groups import group
 from xarch.modules.rules.application.logic.sentences import said, value
 from xarch.modules.rules.application.logic.targets import finding, matched
 from xarch.modules.rules.domain.profile import Profile
@@ -59,6 +63,7 @@ from xarch.modules.rules.domain.rule import (
     Read,
     Rule,
 )
+from xarch.profile_values.checks import PER_FILE
 
 Reached = dict[tuple[str, ...] | str, set[int]]
 """What the links of a rule of reach reached: each declaration by its name, each file by its steps, with the files
@@ -88,12 +93,17 @@ def standing(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Stan
     reached = {index: _reach(rule, facts, profile) for index, rule in enumerate(rules)
                if rule.quantifier in (MUST_REACH, MUST_BE_REACHED)}
     ways = {index: _ways(rule, facts, profile) for index, rule in enumerate(rules) if rule.quantifier == MUST_NOT_REACH}
+    grouped = {index: _grouped(rule, facts, profile) for index, rule in enumerate(rules)
+               if rule.quantifier in COUNTS and rule.per != PER_FILE}
     found: list[Stands] = []
     for position, read in enumerate(facts.files):
         for index, rule in enumerate(rules):
             if in_scope(rule.scope, read, facts, profile):
                 if rule.quantifier not in COUNTS and index not in ways and index not in reached:
                     found += _file(rule, read, facts, profile)
+                    continue
+                if index in grouped:
+                    found += [(item, (of,)) for item, of in grouped[index].get(position, ())]
                     continue
                 found += [(item, (of,)) for item, of in (
                     _reaching(rule, read, ways[index], facts, profile) if index in ways
@@ -291,6 +301,34 @@ def _counted(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Sai
         if exempt and _any(exempt, candidate, facts, profile):
             continue
         found.append((_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile), candidate))
+    return found
+
+
+def _grouped(rule: Rule, facts: Facts, profile: Profile) -> dict[int, list[Said]]:
+    """The findings of a rule that counts the files of each group together, by the place in the run of the file each
+    is said in: under AT_MOST the kept facts of a group after the count, each in its file; under AT_LEAST the file fact
+    of a group's first file when the group keeps fewer than the count; those an exemption excuses dropped."""
+    keep, exempt = _questions(rule.keep), _questions(rule.exempt)
+    groups: dict[Hashable, list[int]] = {}
+    for position, read in enumerate(facts.files):
+        if in_scope(rule.scope, read, facts, profile):
+            groups.setdefault(group(rule.per, read, profile), []).append(position)
+    subjects: list[tuple[int, Fact]] = []
+    for positions in groups.values():
+        held = [(position, fact) for position in positions for kind in rule.facts
+                for fact in facts.files[position].facts.get(kind, ())
+                if _all(keep, Found(rule, facts.files[position], fact), facts, profile)]
+        if rule.quantifier == AT_MOST:
+            subjects += held[rule.count:]
+        elif len(held) < rule.count:
+            subjects += [(positions[0], fact) for fact in facts.files[positions[0]].facts.get("file", ())]
+    found: dict[int, list[Said]] = {}
+    for position, fact in subjects:
+        candidate = Found(rule, facts.files[position], fact)
+        if exempt and _any(exempt, candidate, facts, profile):
+            continue
+        said_here = _said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile)
+        found.setdefault(position, []).append((said_here, candidate))
     return found
 
 

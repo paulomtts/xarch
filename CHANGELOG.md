@@ -7,6 +7,14 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- `at_most` and `at_least` take a map `{count: <n>, per: file | part | instance | all}` besides a number, which counts
+  the files of the scope together: each alone (`file`, the default, as a number counts), the files of each part (a test
+  those of the parts its folder mirrors), of each instance of a repeating folder (a file in no instance with the files
+  of its part in none), or every file of the scope (`all`). Under `at_most` each kept fact of a group after the count,
+  in the order of the files and then of the facts, is a finding at its own line; under `at_least` a group that keeps
+  fewer is one finding at line 0 of its first file; `{count}` says how many the group keeps. An unknown `per`, an
+  unknown key or a map with no `count` is refused at its address, and `per` on a quantifier that does not count is
+  refused. A count written as a number reads as before.
 - `counterparts: {<id>: {for, has, when, accepted, message, fix}}` says what lies with what, path by path: each match
   of `for` (a folder ending in `/`, else a file, below the app or `tests/<path>` below the tests), where every path of
   `when` matches too, with no match of `has` is a new `counterpart` finding at it. `<word>` binds the text of a step or
