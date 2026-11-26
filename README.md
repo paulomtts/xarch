@@ -163,6 +163,33 @@ an entry that accepts nothing (the path is there, or mirrors a folder of the app
 rule, so the list can only shrink. Unlike `parts.<part>.optional`, which frees a part in every instance, an entry
 frees one path.
 
+`counterparts` says what lies with what, path by path: each entry, by an id of its own, has `for`, what must have a
+counterpart, `has`, where it is, and optionally `when`, the paths that must be there too for it to need one, each a
+path below the app or `tests/<path>` below the tests, a folder when it ends in `/` (a folder is there when a file lies
+below it). `<word>` binds the text of a step, or part of one (`<port>_repo.py`), to a name that is no private one, and
+stands for that text in `has` and `when`; the word of a repeating folder at that folder's place binds only its
+instances, never a folder the layout names beside them (`sql/models/` beside `sql/<store>/`); `*` is any text within a
+step, and several matches of `has` satisfy it. Each match of `for` with no counterpart is a `counterpart` finding at it,
+with `message` and `fix` of the profile's own if it writes them (`{source}`, `{expected}`, `{when}`, `{key}` and each
+placeholder). `accepted` lists the matches that need none, each with a reason, as `structure.accepted` writes them; an
+entry that no longer accepts anything (its source gone, or now with its counterpart) is itself a finding. A counterpart
+whose `for` matches nothing is listed as `reads nothing` in the enforcement section and fails `--strict`. A placeholder
+of `has` or `when` that `for` does not bind, or two placeholders side by side in a step, are refused when the profile
+loads.
+
+```yaml
+counterparts:
+  sql-fakes-have-conformance:
+    for: adapters/persistence/sql/<store>/
+    when: [tests/fakes/<store>/]
+    has: tests/conformance/<store>/
+  transaction-has-contract:
+    for: adapters/persistence/sql/<store>/transaction.py
+    has: tests/conformance/<store>/test_*_transaction_contract.py
+    accepted:
+      - {path: adapters/persistence/sql/filesystem/transaction.py, why: "no memory-vs-sql contract yet"}
+```
+
 A key on a part is about its own code and reach; a guard is a pre-built check with a scope, which names the parts it
 reads.
 
@@ -383,7 +410,7 @@ two decimals (`0.8`), `counts` `{"parts",
 
 ### Checks of your own
 
-Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `stand-ins`, `scenario-coverage`,
+Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `counterpart`, `stand-ins`, `scenario-coverage`,
 `no-duplicates`, `no-twins` and `shared`) is a rule written in a small vocabulary, and a profile may write rules of its own in the
 same words under `checks`: each reads the facts of a kind (`read`) in some files (`in`), keeps those its filters pass
 (`keep`), and says that a kept fact may not match its targets (`may_not`), may only match them (`may_only`), or that a
