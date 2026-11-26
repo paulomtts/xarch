@@ -1,4 +1,10 @@
 {
+  "xarch/cli/reports/hook_report.py": {
+    "part": "reports",
+    "reads_as": "platform",
+    "hash": "bf851badd76283870b92b383094832033a3b9545a5d88b876d991181fcd5e23b",
+    "why": "It turns one input, the command that runs xarch, into the fixed JSON of Claude Code's hooks: it chooses the words and the layout of that text and decides no rule of a module. It takes no Result, which the reports litmus speaks of, so it reads low there; but cli/ says that what chooses words belongs in reports/, and no module owns Claude Code's settings, so reports is where it fits."
+  },
   "xarch/modules/review/domain/published.py": {
     "part": "domain",
     "reads_as": "contract",
