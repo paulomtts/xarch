@@ -10,7 +10,8 @@ is the rules module's, which reads what this gives back.
       may_not | may_only: <target> | [<target>, ...]
       must_reach | must_not_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
       must_be_reached: {from: <scope as in>, through: ..., through_only: [...], then_through: <kind> | [...], by_another_file: true}
-      at_most | at_least: <whole number>
+      at_most | at_least: <whole number> | {count: <whole number>, per: file | part | instance | all}
+      unique: <field> | {field: name | path | text, per: file | part | instance | all}
       except: [<filter>, ...]
       accepted: [{file: <path below the app, or tests/<path>>, <variable>: <value>, ..., why: <reason>}, ...]
       mode: fail | list
@@ -39,12 +40,15 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.domain.values import (
     ACCEPTED_SLOTS,
     CASE_SLOTS,
+    COUNT_KEYS,
     EXAMPLE_SLOTS,
     LINE_VARIABLE,
     REACH_SLOTS,
     SCOPE_SLOTS,
     SLOTS,
     STRUCTURE_WORD,
+    UNIQUE_KEYS,
+    UNIQUE_SLOT,
     Language,
     Tier,
 )
@@ -52,6 +56,9 @@ from xarch.profile_values.checks import (
     ANY,
     APP,
     COUNT_SLOTS,
+    PER,
+    PER_ALL,
+    PER_FILE,
     QUANTIFIER_SLOTS,
     STRUCTURE,
     AcceptedFinding,
@@ -263,10 +270,9 @@ def _targets(value: Any, where: str, problems: list[str]) -> tuple[WrittenTarget
 def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: set[str],
                 problems: list[str], words: Collection[str]) -> Quantified:
     if slot in COUNT_SLOTS:
-        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-            problems.append(f"{where}: must be a whole number, 0 or more")
-            return Quantified(slot)
-        return Quantified(slot, count=value)
+        return _counted(slot, value, where, problems)
+    if slot == UNIQUE_SLOT:
+        return _unique(slot, value, where, problems)
     if slot not in REACH_SLOTS:
         return Quantified(slot, _targets(value, where, problems))
     if not isinstance(value, Mapping):
@@ -285,6 +291,44 @@ def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: se
     return Quantified(slot, (), through, only, scope(value.get("from", {}), f"{where}.from", declared, tiers, problems,
                                                       words=words),
                       _names(value.get("then_through"), f"{where}.then_through", problems), elsewhere is True)
+
+
+def _counted(slot: str, value: Any, where: str, problems: list[str]) -> Quantified:
+    """A quantifier that counts: a whole number, or a map {count, per} that says which files are counted together."""
+    per = PER_FILE
+    if isinstance(value, Mapping):
+        problems += _unknown(value, COUNT_KEYS, where)
+        if "count" not in value:
+            problems.append(f"{where}: missing `count`")
+            return Quantified(slot)
+        per = value.get("per", PER_FILE)
+        if not isinstance(per, str):
+            problems.append(f"{where}.per: must be one of {', '.join(PER)}")
+            per = PER_FILE
+        value = value["count"]
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        problems.append(f"{where}: must be a whole number, 0 or more")
+        return Quantified(slot)
+    return Quantified(slot, count=value, per=per)
+
+
+def _unique(slot: str, value: Any, where: str, problems: list[str]) -> Quantified:
+    """`unique`: the field it compares, alone (every file of the scope compared together), or a map {field, per}."""
+    per = PER_ALL
+    if isinstance(value, Mapping):
+        problems += _unknown(value, UNIQUE_KEYS, where)
+        if "field" not in value:
+            problems.append(f"{where}: missing `field`")
+            return Quantified(slot)
+        per = value.get("per", PER_ALL)
+        if not isinstance(per, str):
+            problems.append(f"{where}.per: must be one of {', '.join(PER)}")
+            per = PER_ALL
+        value = value["field"]
+    if not isinstance(value, str) or not value.strip():
+        problems.append(f"{where}: must be a field, such as name, or a map {{{', '.join(UNIQUE_KEYS)}}}")
+        return Quantified(slot)
+    return Quantified(slot, per=per, field=value.strip())
 
 
 def _cases(value: Any, where: str, problems: list[str]) -> tuple[Saying, ...]:

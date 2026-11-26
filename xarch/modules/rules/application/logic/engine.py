@@ -7,8 +7,9 @@ MAY_ONLY when it matches none. A finding any of the rule's exemptions excuses is
 saying whose conditions hold of it, and a saying that keeps its findings once drops one whose variables it has said
 already in that file; one that lists variables per line says the findings of one line that differ only in those
 variables as one, the first, each such variable written as its values in the order found, joined by `, ` (a value
-found again written once). A rule in FAIL mode makes violations, one in LIST mode weak findings. So every finding of a file
-comes before those of the next, and within a file those of a rule before those of the next.
+found again written once); a finding said once for several facts stands for each of them. A rule in FAIL mode
+makes violations, one in LIST mode weak findings. So every finding of a file comes before those of the next, and
+within a file those of a rule before those of the next.
 
 A rule of reach is worked out over every file first. Under MUST_REACH, a file on its scope's side (the app or the
 tests) reaches when one of its kept facts matches a target, or when one of its links that passes the rule's via leads
@@ -24,20 +25,28 @@ way it reaches, each file a link leads to then what the fact that matched names,
 
 A rule that counts reads the kept facts of each file of its scope alone, in the order the file says them: under AT_MOST
 each one after its count is a finding, under AT_LEAST a file that keeps fewer than its count is one, its file fact the
-fact said; an exemption excuses a finding as any other.
+fact said; an exemption excuses a finding as any other. A rule that counts per part, instance or all reads the kept
+facts of the files of each such group together, in the order of the files and then of the facts: under AT_MOST each
+one after its count is a finding, in its own file; under AT_LEAST a group that keeps fewer is one, the file fact of its
+first file the fact said.
+
+A rule under UNIQUE reads the kept facts of the files it compares together (per, as a rule that counts) in the order
+of the files and then of the facts: each one whose field a fact before it has is a finding, in its own file, with
+where the first of them is (first: its file and line); an exemption excuses a finding as any other.
 
 How many facts a rule reads at all is counted apart (read): a rule that reads none passes for want of anything to
 check.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Hashable, Iterable
 from dataclasses import replace
 from string import Formatter
 
 from xarch.kernel.violations import RULES, Violation
 from xarch.modules.rules.application.logic.facts import reach_scopes
 from xarch.modules.rules.application.logic.filters import Question, in_scope, question
+from xarch.modules.rules.application.logic.groups import group
 from xarch.modules.rules.application.logic.sentences import said, value
 from xarch.modules.rules.application.logic.targets import finding, matched
 from xarch.modules.rules.domain.profile import Profile
@@ -52,12 +61,14 @@ from xarch.modules.rules.domain.rule import (
     MUST_BE_REACHED,
     MUST_NOT_REACH,
     MUST_REACH,
+    UNIQUE,
     Fact,
     Facts,
     Found,
     Read,
     Rule,
 )
+from xarch.profile_values.checks import PER_FILE
 
 Reached = dict[tuple[str, ...] | str, set[int]]
 """What the links of a rule of reach reached: each declaration by its name, each file by its steps, with the files
@@ -67,6 +78,10 @@ whose links reached it, by their place in the run."""
 Said = tuple[Violation | Weak, Found]
 """A finding as said, with the fact it was said of (the first, for one said once for several)."""
 
+Stands = tuple[Violation | Weak, tuple[Found, ...]]
+"""A finding as said, with every fact it stands for: the one it was said of first, then, for one said once for
+several, the others in the order found."""
+
 
 def run(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Violation | Weak]:
     return [item for item, _ in said_of(rules, facts, profile)]
@@ -74,18 +89,32 @@ def run(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Violation
 
 def said_of(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Said]:
     """What run finds, each finding with the fact it was said of."""
+    return [(item, founds[0]) for item, founds in standing(rules, facts, profile)]
+
+
+def standing(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Stands]:
+    """What run finds, each finding with every fact it stands for, the one it was said of first."""
     rules = tuple(rules)
     reached = {index: _reach(rule, facts, profile) for index, rule in enumerate(rules)
                if rule.quantifier in (MUST_REACH, MUST_BE_REACHED)}
     ways = {index: _ways(rule, facts, profile) for index, rule in enumerate(rules) if rule.quantifier == MUST_NOT_REACH}
-    found: list[Said] = []
+    grouped = {index: _grouped(rule, facts, profile) for index, rule in enumerate(rules)
+               if rule.quantifier in COUNTS and rule.per != PER_FILE}
+    grouped |= {index: _repeated(rule, facts, profile) for index, rule in enumerate(rules) if rule.quantifier == UNIQUE}
+    found: list[Stands] = []
     for position, read in enumerate(facts.files):
         for index, rule in enumerate(rules):
             if in_scope(rule.scope, read, facts, profile):
-                found += (_reaching(rule, read, ways[index], facts, profile) if index in ways
-                          else _unreached(rule, read, position, reached[index], facts, profile) if index in reached
-                          else _counted(rule, read, facts, profile) if rule.quantifier in COUNTS
-                          else _file(rule, read, facts, profile))
+                if rule.quantifier not in (*COUNTS, UNIQUE) and index not in ways and index not in reached:
+                    found += _file(rule, read, facts, profile)
+                    continue
+                if index in grouped:
+                    found += [(item, (of,)) for item, of in grouped[index].get(position, ())]
+                    continue
+                found += [(item, (of,)) for item, of in (
+                    _reaching(rule, read, ways[index], facts, profile) if index in ways
+                    else _unreached(rule, read, position, reached[index], facts, profile) if index in reached
+                    else _counted(rule, read, facts, profile))]
     return found
 
 
@@ -281,6 +310,71 @@ def _counted(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Sai
     return found
 
 
+def _grouped(rule: Rule, facts: Facts, profile: Profile) -> dict[int, list[Said]]:
+    """The findings of a rule that counts the files of each group together, by the place in the run of the file each
+    is said in: under AT_MOST the kept facts of a group after the count, each in its file; under AT_LEAST the file fact
+    of a group's first file when the group keeps fewer than the count; those an exemption excuses dropped."""
+    keep, exempt = _questions(rule.keep), _questions(rule.exempt)
+    subjects: list[tuple[int, Fact]] = []
+    for positions in _groups(rule, facts, profile):
+        held = [(position, fact) for position in positions for kind in rule.facts
+                for fact in facts.files[position].facts.get(kind, ())
+                if _all(keep, Found(rule, facts.files[position], fact), facts, profile)]
+        if rule.quantifier == AT_MOST:
+            subjects += held[rule.count:]
+        elif len(held) < rule.count:
+            subjects += [(positions[0], fact) for fact in facts.files[positions[0]].facts.get("file", ())]
+    found: dict[int, list[Said]] = {}
+    for position, fact in subjects:
+        candidate = Found(rule, facts.files[position], fact)
+        if exempt and _any(exempt, candidate, facts, profile):
+            continue
+        said_here = _said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile)
+        found.setdefault(position, []).append((said_here, candidate))
+    return found
+
+
+def _groups(rule: Rule, facts: Facts, profile: Profile) -> list[list[int]]:
+    """The places in the run of the files of the rule's scope, by the groups its per compares together."""
+    groups: dict[Hashable, list[int]] = {}
+    for position, read in enumerate(facts.files):
+        if in_scope(rule.scope, read, facts, profile):
+            groups.setdefault(group(rule.per, read, profile), []).append(position)
+    return list(groups.values())
+
+
+def _repeated(rule: Rule, facts: Facts, profile: Profile) -> dict[int, list[Said]]:
+    """The findings of a rule under UNIQUE, by the place in the run of the file each is said in: each kept fact whose
+    field a kept fact before it in its group has, with where the first is; those an exemption excuses dropped."""
+    keep, exempt = _questions(rule.keep), _questions(rule.exempt)
+    found: dict[int, list[Said]] = {}
+    for positions in _groups(rule, facts, profile):
+        first: dict[str, str] = {}
+        for position in positions:
+            read = facts.files[position]
+            for kind in rule.facts:
+                for fact in read.facts.get(kind, ()):
+                    if not _all(keep, Found(rule, read, fact), facts, profile):
+                        continue
+                    value = _field(rule.field, fact)
+                    if value not in first:
+                        first[value] = f"{read.file.name}:{fact.line}"
+                        continue
+                    candidate = Found(rule, read, fact, first=first[value])
+                    if exempt and _any(exempt, candidate, facts, profile):
+                        continue
+                    said_here = _said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile)
+                    found.setdefault(position, []).append((said_here, candidate))
+    return found
+
+
+def _field(name: str, fact: Fact) -> str:
+    """The field of a fact a rule under UNIQUE compares, as text: its name, its dotted path, or its text."""
+    if name == "path":
+        return ".".join(fact.path)
+    return (fact.name or "") if name == "name" else fact.text
+
+
 def _saying(rule: Rule, found: Found, facts: Facts, profile: Profile):
     """The first saying of the rule whose conditions all hold of the finding, and where it is in the rule's sayings;
     the last holds always."""
@@ -317,10 +411,12 @@ def _joined(text: str, values: list[list[str]]) -> str:
     return text
 
 
-def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Said]:
-    found: list[Said] = []
+def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Stands]:
+    """The findings of a rule that compares facts in one file, each with every fact it stands for: a fact a saying
+    keeps once, or lists per line, joins the finding said first for it."""
+    found: list[Stands] = []
     listed: dict[tuple, tuple[int, list[list[str]]]] = {}
-    seen: set[tuple[int, tuple[str, ...]]] = set()
+    seen: dict[tuple[int, tuple[str, ...]], int] = {}
     keep, exempt = _questions(rule.keep), _questions(rule.exempt)
     targets, quantifier = rule.targets, rule.quantifier
     for kind in rule.facts:
@@ -335,24 +431,28 @@ def _file(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Said]:
             if exempt and _any(exempt, candidate, facts, profile):
                 continue
             index, saying = _saying(rule, candidate, facts, profile)
-            if saying.once:
-                key = (index, tuple(value(name, candidate, facts, profile) for name in saying.once))
-                if key in seen:
-                    continue
-                seen.add(key)
+            key = (index, tuple(value(name, candidate, facts, profile) for name in saying.once))
+            if saying.once and key in seen:
+                item, of = found[seen[key]]
+                found[seen[key]] = (item, (*of, candidate))
+                continue
             if saying.per_line:
                 texts, values = _listed(saying, candidate, facts, profile)
                 at = (fact.line, index, texts)
                 if at not in listed:
                     listed[at] = (len(found), [[] for _ in values])
-                    found.append((_said(rule, saying, candidate, facts, profile), candidate))
+                    found.append((_said(rule, saying, candidate, facts, profile), ()))
                 place, gathered = listed[at]
                 for into, one in zip(gathered, values):
                     into.append(one)
                 first, of = found[place]
-                found[place] = (replace(first, message=_joined(texts[0], gathered), fix=_joined(texts[1], gathered)), of)
-                continue
-            found.append((_said(rule, saying, candidate, facts, profile), candidate))
+                found[place] = (replace(first, message=_joined(texts[0], gathered), fix=_joined(texts[1], gathered)),
+                                (*of, candidate))
+            else:
+                place = len(found)
+                found.append((_said(rule, saying, candidate, facts, profile), (candidate,)))
+            if saying.once:
+                seen[key] = place
     return found
 
 

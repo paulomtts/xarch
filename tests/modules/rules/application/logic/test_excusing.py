@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from tests.modules.rules.builders import imp, profile, source
+from xarch.kernel.logic.conditions import condition
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.excusing import checks
 from xarch.modules.rules.application.logic.facts import facts_of
@@ -68,3 +69,25 @@ def test_an_entry_written_with_the_app_folder_first_is_told_to_write_its_path_be
     (item,) = sifted(entry("app/kernel/a.py")).stale
     assert (item.file, item.fix) == (
         "app/app/kernel/a.py", "write the path relative to the app: kernel/a.py, not app/kernel/a.py")
+
+
+def _said_once(saying: Saying, *entries: AcceptedFinding):
+    """What a check reading imported names comes to on kernel/a.py taking db and io from platform on line 1, and
+    platform's sql on line 2, said by saying, with the entries given."""
+    files = [source("kernel/a.py", imp(1, "app.platform", "db", "io"), imp(2, "app.platform", "sql")),
+             source("platform/db.py"), source("platform/io.py"), source("platform/sql.py")]
+    check = WrittenCheck(("imported-name",), Scope(APP, "kernel"),
+                         Quantified("may_not", (WrittenTarget("path", ("app.platform",)),)), (saying,),
+                         keep=(condition("takes-a-name"),), accepted=entries)
+    checked = resolved(profile(written={"no-platform": check}))
+    return checks(tuple(c.rule for c in checked.checks), facts_of(files, [], checked, "app"), checked)
+
+
+@pytest.mark.parametrize("saying, name", [
+    pytest.param(Saying("{file} takes {name}", "drop it", per_line=("name",)), "io", id="per_line, the second value"),
+    pytest.param(Saying("{file} takes {name}", "drop it", once=("file",)), "sql", id="once_per, a fact not said"),
+])
+def test_an_entry_accepts_a_finding_said_once_for_several_facts_by_any_one_of_them(saying, name):
+    found = _said_once(saying, entry("kernel/a.py", ("name", name)))
+    assert found.stale == ()
+    assert [item.line for item in found.excused] == [1]

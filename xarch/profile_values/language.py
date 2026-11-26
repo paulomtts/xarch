@@ -115,14 +115,15 @@ class Worked:
     class that derives from a base, {name} and {base} standing for the class's name and its base's; function, a function
     of one parameter, {name} and {parameter}; defaulted, the same whose parameter has a default, {value}; annotated,
     the same whose parameter has an annotation, {annotation}; returning, a function of no parameter with a return
-    annotation, {name} and {returns}; and keyword_call, a call passing one keyword argument, {callee}, {keyword} and
-    {value}."""
+    annotation, {name} and {returns}; keyword_call, a call passing one keyword argument, {callee}, {keyword} and
+    {value}; and positional_call, a call passing one positional argument, {callee} and {value}."""
     subclass: str = ""
     function: str = ""
     defaulted: str = ""
     annotated: str = ""
     returning: str = ""
     keyword_call: str = ""
+    positional_call: str = ""
 
 
 @dataclass(frozen=True)

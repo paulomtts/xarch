@@ -35,8 +35,10 @@ NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "pat
 `*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
 
 HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED, CHAINED = "hit", "key", "scope part", "values", "counted", "chained"
+FIRST_SITE = "first site"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
-its scope names, targets that list values, a quantifier that counts (at_most, at_least), or must_not_reach."""
+its scope names, targets that list values, a quantifier that counts (at_most, at_least), must_not_reach, or unique
+(FIRST_SITE)."""
 
 RENAMED_VARIABLES = {"part": "where"}
 """The variables that were called otherwise: a check that writes the old name is told the new one."""
@@ -193,6 +195,8 @@ FIELDS: dict[str, str] = {
                   "written (empty where it has none, or the language writes none) and whether it has a default",
     "arguments": "the keyword arguments a call passes, each by its name with its value as written when that is a "
                  "literal (a number, a text, a constant the language writes), else empty",
+    "positional": "the positional arguments a call passes that are literals, each by its place from 0 with its value "
+                  "as written, up to the first argument it unpacks",
     "returns": "the return annotation of a function as written, empty where it has none or the language writes none",
     "bases": "the classes a class derives from, however far: each base it names, read through the import that binds "
              "it or as a class of its own file, then the bases of each the project defines, each a dotted name",
@@ -222,16 +226,18 @@ KINDS: tuple[Kind, ...] = (
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
          ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
-         ("line", "method", "name", "on-own-object", "arguments"), needs=("method_call",),
-         field_needs={"arguments": ("call.keywords",)}, verb="call"),
+         ("line", "method", "name", "on-own-object", "arguments", "positional"), needs=("method_call",),
+         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",)}, verb="call"),
     Kind("call", "each call whose callee an import binds, as that dotted path, its name the callee's last",
-         ("line", "path", "name", "arguments"),
-         {"place": "target-placed"}, needs=("call", "import.resolved"), field_needs={"arguments": ("call.keywords",)},
-         verb="call"),
+         ("line", "path", "name", "arguments", "positional"),
+         {"place": "target-placed"}, needs=("call", "import.resolved"),
+         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",)}, verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
-                         "that binds it", ("line", "path", "name", "place", "exception", "record", "arguments"),
+                         "that binds it",
+         ("line", "path", "name", "place", "exception", "record", "arguments", "positional"),
          needs=("call", "class", "import.resolved"),
-         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",), "arguments": ("call.keywords",)},
+         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",), "arguments": ("call.keywords",),
+                      "positional": ("call.positional",)},
          verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
@@ -330,6 +336,9 @@ FILTERS: tuple[Filter, ...] = (
     Filter("passes-literal", "the call passes a keyword argument whose name matches the pattern with a literal value; "
                              "written `<name>=<text>`, the value as written must match the text after `=` too", FACT,
            ("arguments",), value=PATTERN),
+    Filter("passes-positional", "the call passes a literal as a positional argument at the place the pattern matches, "
+                                "counted from 0; written `<place>=<text>`, the value as written must match the text "
+                                "after `=` too", FACT, ("positional",), value=PATTERN),
     Filter("receiver", "the parameter called is the object or class its method is called on", FACT, ("receiver",)),
     Filter("annotated-callable", "the parameter called is annotated as a callable", FACT, ("annotated-callable",)),
     Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),
@@ -399,9 +408,14 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
                                   "of the kinds `then_through` names leads to it from something already reached, "
                                   "however far", True),
     Quantifier("at_most", "a file of the scope may keep at most the number of facts: each kept fact after that many, "
-                          "in the order the file says them, is a finding, counted in that file alone"),
+                          "in the order the file says them, is a finding, counted in that file alone (or, with `per`, in the "
+                          "files counted together)"),
     Quantifier("at_least", "a file of the scope that keeps fewer facts than the number is a finding, its file fact the "
-                           "fact said, counted in that file alone"),
+                           "fact said, counted in that file alone (or, with `per`, a group of files counted together, its "
+                           "first file's file fact the fact said)"),
+    Quantifier("unique", "a kept fact whose field (`field`: name, path or text) a kept fact before it has, in the "
+                         "files compared together (`per`: file, part, instance or all, the default), is a finding, "
+                         "and `{first}` says where the first is"),
 )
 """What a check does with what it keeps."""
 
@@ -466,12 +480,15 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("returned", "the attributes a forwarding method returns of the call's result, dotted", ("returned",)),
     Variable("verb", "what the file does with what the fact names: import, use, call, build or reference"),
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
-    Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least)", needs=COUNTED),
+    Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least); with `per`, "
+                      "the files counted with it", needs=COUNTED),
     Variable("lines", "how many lines the file holds", ("lines",)),
     Variable("parameters", "the names of a function's parameters, in order, joined by `, `", ("parameters",)),
     Variable("returns", "a function's return annotation as written", ("returns",)),
     Variable("chain", "the way a file reaches a target under must_not_reach: each file its links lead through, as a "
                       "dotted name, then what the fact that matched names, joined by ` -> `", needs=CHAINED),
+    Variable("first", "where the first fact of the same value is, under unique: its file and line, <file>:<line>",
+             needs=FIRST_SITE),
 )
 """Every variable of a message or a fix."""
 
@@ -503,8 +520,12 @@ SLOTS: tuple[Slot, ...] = (
                             "test names, directly or by way of a class a test names",
          "{from: <files, as `in` writes them>, through: <kind> or [...], through_only: [<filter>, ...], then_through: <kind> "
          "or [...], by_another_file: true}", "kinds"),
-    Slot("at_most", "each kept fact of a file after this many is a finding", "<number>"),
-    Slot("at_least", "a file that keeps fewer kept facts is a finding", "<number>"),
+    Slot("at_most", "each kept fact of a file (of the files `per` counts together) after this many is a finding",
+         "<number> or {count: <number>, per: file | part | instance | all}"),
+    Slot("at_least", "a file (the files `per` counts together) that keeps fewer kept facts is a finding",
+         "as at_most"),
+    Slot("unique", "a kept fact whose field one before it in the files `per` compares has is a finding",
+         "<field> or {field: name | path | text, per: file | part | instance | all}"),
     Slot("except", "the filters of which any one excuses a finding", "[<filter>, ...]", "filters"),
     Slot("accepted", "findings accepted one by one",
          "[{file, <variable>: <value>, why}]", "variables"),

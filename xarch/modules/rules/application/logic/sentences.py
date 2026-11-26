@@ -10,11 +10,13 @@ from string import Formatter
 
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EVERYTHING
-from xarch.modules.rules.application.logic.filters import question
+from xarch.modules.rules.application.logic.filters import in_scope, question
+from xarch.modules.rules.application.logic.groups import group
 from xarch.modules.rules.application.logic.places import label, narrowed, targets_of
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import Facts, Found, Match
 from xarch.modules.rules.domain.vocabulary import KINDS
+from xarch.profile_values.checks import PER_FILE
 
 OWNERS = 3
 """How many parts that may import or call what a finding is about a fix names before it says "or another part"."""
@@ -129,6 +131,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "verb": lambda found, facts, profile: _VERBS.get(found.fact.kind, ""),
     "function": lambda found, facts, profile: found.fact.path[0] if found.fact.path else "",
     "count": lambda found, facts, profile: str(_count(found, facts, profile)),
+    "first": lambda found, facts, profile: found.first,
     "lines": lambda found, facts, profile: str(found.fact.lines),
     "chain": lambda found, facts, profile: " -> ".join(found.fact.chain),
     "parameters": lambda found, facts, profile: ", ".join(name for name, _, _ in found.fact.parameters),
@@ -144,11 +147,15 @@ _VERBS = {kind.name: kind.verb for kind in KINDS if kind.verb}
 
 
 def _count(found: Found, facts: Facts, profile: Profile) -> int:
-    """How many facts of its rule's kinds the finding's file keeps."""
+    """How many facts of its rule's kinds the finding's file keeps; for a rule that counts per part, instance or all,
+    the files of its scope counted with it (see groups)."""
     rule, read = found.rule, found.read
     keep = [question(condition) for condition in rule.keep]
-    return sum(1 for kind in rule.facts for fact in read.facts.get(kind, ())
-               if all(asked(Found(rule, read, fact), facts, profile) for asked in keep))
+    counted = [read] if rule.per == PER_FILE else [
+        other for other in facts.files if in_scope(rule.scope, other, facts, profile)
+        and group(rule.per, other, profile) == group(rule.per, read, profile)]
+    return sum(1 for other in counted for kind in rule.facts for fact in other.facts.get(kind, ())
+               if all(asked(Found(rule, other, fact), facts, profile) for asked in keep))
 
 
 def _package(found: Found, facts: Facts) -> str:

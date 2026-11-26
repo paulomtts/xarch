@@ -30,7 +30,7 @@ def test_checks_is_how_a_check_reads_on_one_screen_with_its_slots_its_words_and_
     assert lines[0] == "how a check reads" and "slots" in lines and "words" in lines
     assert any(line.startswith("  filters ") for line in lines)
     assert "example: a check of your own, checks.no-todo" in result.output and "      examples:" in lines
-    assert len(lines) < 80
+    assert len(lines) < 85
 
 
 def test_a_category_lists_its_words_and_a_word_is_explained_with_an_example_from_a_bundled_profile():
@@ -65,7 +65,7 @@ def test_json_gives_each_of_them_as_one_document():
     checks = json.loads(explain("checks", "--format", "json").output)
     assert checks["ok"] is True and checks["slots"][0]["name"] == "read" and checks["example"]["profile"] is None
     word = json.loads(explain("kinds.call", "--format", "json").output)
-    assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call", "import.resolved", "call.keywords"])
+    assert (word["name"], word["verb"], word["needs"]) == ("call", "call", ["call", "import.resolved", "call.keywords", "call.positional"])
     assert {"name": "place", "meaning": "where what it leads to sits: a part, or a folder of the layout",
             "when": "target-placed"} in word["fields"]
     rule = json.loads(explain("parts.holds.classes.names", "--rule", "--profile", "cli", "--format", "json").output)

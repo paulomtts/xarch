@@ -105,6 +105,89 @@ def test_at_least_finds_each_file_of_the_scope_that_keeps_fewer_facts_than_the_n
         ("app/store/none.py", None, "app/store/none.py declares 0 interfaces, and needs one")]
 
 
+ONE_PORT_PER_PART = {
+    **ONE_PORT, "at_most": {"count": 1, "per": "part"},
+    "examples": {"flagged": {"store/a.py": PORT, "store/b.py": PORT.replace("Store", "Cache")},
+                 "clean": {"store/a.py": PORT}}}
+
+
+def test_at_most_per_part_counts_the_files_of_a_part_together_finding_each_fact_after_the_number(tmp_path):
+    files = {"store/a.py": PORT, "store/b.py": PORTS, "ui/c.py": PORT}
+    assert found(tmp_path, {"one-port-per-part": ONE_PORT_PER_PART}, files) == [
+        ("app/store/b.py", 3, "app/store/b.py declares 4 interfaces, and StorePort at line 3 is one too many"),
+        ("app/store/b.py", 4, "app/store/b.py declares 4 interfaces, and CachePort at line 4 is one too many"),
+        ("app/store/b.py", 5, "app/store/b.py declares 4 interfaces, and LockPort at line 5 is one too many")]
+
+
+def test_at_least_per_part_finds_a_part_that_keeps_fewer_at_its_first_file(tmp_path):
+    some = {**SOME_PORT, "at_least": {"count": 1, "per": "part"}, "in": {}, "message": "{file} and its part keep {count}"}
+    some["examples"] = {"flagged": {"store/a.py": "x = 1\n"}, "clean": {"store/a.py": PORT}}
+    files = {"store/a.py": PORT, "ui/a.py": "x = 1\n", "ui/b.py": "y = 1\n"}
+    assert found(tmp_path, {"a-port-per-part": some}, files) == [("app/ui/a.py", None, "app/ui/a.py and its part keep 0")]
+
+
+def test_a_count_written_as_a_map_is_written_back_as_one(tmp_path):
+    project(tmp_path, {"one-port-per-part": ONE_PORT_PER_PART}, {})
+    shown = runner.invoke(app, ["profile", "explain", "checks.one-port-per-part", "--rule"])
+    assert "at_most: {count: 1, per: part}" in shown.output, shown.output
+
+
+UNIQUE_NAMES = {
+    "read": "class", "unique": {"field": "name", "per": "all"},
+    "message": "{name} at line {line} is declared already, at {first}", "fix": "rename one of the two",
+    "examples": {"flagged": {"store/a.py": "class Title: ...\n", "ui/b.py": "class Title: ...\n"},
+                 "clean": {"store/a.py": "class Title: ...\n", "ui/b.py": "class Draft: ...\n"}}}
+
+
+def test_unique_finds_a_class_named_as_one_before_it_naming_where_the_first_is_and_an_entry_accepts_it(tmp_path):
+    files = {"store/a.py": "class Title: ...\nclass Draft: ...\n", "ui/b.py": "class Title: ...\n",
+             "ui/c.py": "class Draft: ...\n"}
+    assert found(tmp_path, {"unique-names": UNIQUE_NAMES}, files) == [
+        ("app/ui/b.py", 1, "Title at line 1 is declared already, at app/store/a.py:1"),
+        ("app/ui/c.py", 1, "Draft at line 1 is declared already, at app/store/a.py:2")]
+    accepted = {**UNIQUE_NAMES, "accepted": [{"file": "ui/c.py", "name": "Draft", "why": "the ui keeps its own draft"}]}
+    assert found(tmp_path, {"unique-names": accepted}, files) == [
+        ("app/ui/b.py", 1, "Title at line 1 is declared already, at app/store/a.py:1")]
+
+
+def test_unique_written_as_a_field_alone_compares_every_file_of_the_scope(tmp_path):
+    files = {"store/a.py": "class Title: ...\n", "ui/b.py": "class Title: ...\n"}
+    assert found(tmp_path, {"unique-names": {**UNIQUE_NAMES, "unique": "name"}}, files) == [
+        ("app/ui/b.py", 1, "Title at line 1 is declared already, at app/store/a.py:1")]
+
+
+@pytest.mark.parametrize("unique, written", [
+    pytest.param({"field": "name", "per": "instance"}, "unique: {field: name, per: instance}", id="a map"),
+    pytest.param({"field": "name"}, "unique: name", id="every file compared together"),
+])
+def test_unique_is_written_back_as_it_was_written(tmp_path, unique, written):
+    project(tmp_path, {"unique-names": {**UNIQUE_NAMES, "unique": unique}}, {})
+    shown = runner.invoke(app, ["profile", "explain", "checks.unique-names", "--rule"])
+    assert written in shown.output, shown.output
+
+
+@pytest.mark.parametrize("unique, said", [
+    pytest.param({"field": "colour"}, "checks.x.unique.field: compares no field 'colour': write one of name, path, text",
+                 id="an unknown field"),
+    pytest.param({"field": "text"}, "checks.x.unique.field: text is not carried by class: read a kind that carries it",
+                 id="a field the kind does not carry"),
+    pytest.param({"field": "name", "by": "all"}, "checks.x.unique: unknown key `by`: use field, per", id="an unknown key"),
+    pytest.param({"per": "all"}, "checks.x.unique: missing `field`", id="no field"),
+])
+def test_unique_written_wrong_is_refused_at_its_address(tmp_path, unique, said):
+    project(tmp_path, {"x": {**UNIQUE_NAMES, "unique": unique}}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1 and said in checked.output, checked.output
+
+
+def test_first_is_said_only_by_a_check_under_unique(tmp_path):
+    project(tmp_path, {"x": {**LONG, "message": "{file} again, first at {first}"}}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1
+    assert ("checks.x.message: {first} is where the first fact of the same value is, which only a check under unique "
+            "finds") in checked.output
+
+
 LONG = {
     "read": "file", "in": {"part": "store"}, "keep": [{"longer-than": 3}], "may_not": "exist",
     "message": "{file} holds {lines} lines", "fix": "split it",
@@ -119,6 +202,12 @@ def test_longer_than_holds_of_a_file_of_more_lines_than_the_number(tmp_path):
 @pytest.mark.parametrize("changes, said", [
     pytest.param({"at_most": -1}, "checks.x.at_most: must be a whole number, 0 or more", id="a negative number"),
     pytest.param({"at_most": "one"}, "checks.x.at_most: must be a whole number, 0 or more", id="a word"),
+    pytest.param({"at_most": {"count": 1, "per": "folder"}},
+                 "checks.x.at_most.per: no files are counted per 'folder': write one of file, part, instance, all",
+                 id="an unknown per"),
+    pytest.param({"at_most": {"count": 1, "by": "part"}}, "checks.x.at_most: unknown key `by`: use count, per",
+                 id="an unknown key"),
+    pytest.param({"at_most": {"per": "part"}}, "checks.x.at_most: missing `count`", id="no count"),
     pytest.param({"keep": [{"longer-than": "many"}]},
                  "checks.x.keep: longer-than 'many': write a whole number, such as 700", id="a length that is no number"),
 ])
@@ -187,6 +276,24 @@ def test_call_argument_filters_read_the_keywords_a_call_passes_and_whether_a_val
     assert found(tmp_path, {"one-claim": SKIP_LOCKED, "drawers-guard": GUARDED}, files) == [
         ("app/store/x.py", 1, "app/store/x.py claims rows at line 1"),
         ("app/ui/x.py", 5, "app.ui.drawer.EditDrawer at line 5 guards no form")]
+
+
+LIMITS = {
+    "read": ["call", "method-call"], "keep": [{"passes-positional": "0=50"}], "may_not": "exist",
+    "message": "{file} pages by a literal 50 at line {line}", "fix": "take the page size from the settings",
+    "examples": {"flagged": {"store/x.py": "q.limit(50)\n"}, "clean": {"store/x.py": "q.limit(size)\n"}}}
+ANY_LITERAL = {**LIMITS, "keep": [{"passes-positional": "1"}], "message": "{file} passes a literal second at line {line}",
+               "examples": {"flagged": {"store/x.py": "q.limit(size, 2)\n"}, "clean": {"store/x.py": "q.limit(2)\n"}}}
+
+
+def test_passes_positional_reads_the_literals_a_call_passes_by_their_place_from_0_and_their_text(tmp_path):
+    files = {"store/x.py": ("from app.ui.pages import page\n\nq.limit(50)\nq.limit(size)\npage(50)\n"
+                            "q.limit(*sizes, 50)\nq.limit(10, 50)\n"),
+             "ui/pages.py": "def page(size): ...\n"}
+    assert found(tmp_path, {"no-literal-limit": LIMITS, "second-literal": ANY_LITERAL}, files) == [
+        ("app/store/x.py", 3, "app/store/x.py pages by a literal 50 at line 3"),
+        ("app/store/x.py", 5, "app/store/x.py pages by a literal 50 at line 5"),
+        ("app/store/x.py", 7, "app/store/x.py passes a literal second at line 7")]
 
 
 GETTERS = {

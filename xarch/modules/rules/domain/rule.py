@@ -25,6 +25,7 @@ from xarch.modules.rules.domain.vocabulary import (
     COUNTED,
     FILE,
     FILTERS,
+    FIRST_SITE,
     FOLDER,
     HIT,
     KEY,
@@ -48,6 +49,8 @@ from xarch.profile_values.checks import (
     COUNT_SLOTS,
     FAIL,
     LIST,
+    PER,
+    PER_FILE,
     QUANTIFIER_SLOTS,
     TESTS,
     Condition,
@@ -56,17 +59,20 @@ from xarch.profile_values.checks import (
 )
 from xarch.profile_values.placement import Target
 
-MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED, AT_MOST, AT_LEAST, MUST_NOT_REACH = QUANTIFIER_SLOTS
+MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED, AT_MOST, AT_LEAST, MUST_NOT_REACH, UNIQUE = QUANTIFIER_SLOTS
 """What a kept fact does with the targets: matches none of them, or matches one of them; what a file or a
 declaration does through links: a file of the scope reaches a target, by one of its own facts or through the files its
 links lead to, however far; a declaration of the scope is reached from a root, by the link of a root, or of a
 declaration reached already when the rule spreads through it; and how many facts a file of the scope keeps: at most,
 or at least, the rule's count; and a file of the scope that reaches a target, as under must_reach, is a finding
-(MUST_NOT_REACH). Each is the slot of the format that writes it."""
+(MUST_NOT_REACH); and a kept fact whose field (the rule's field) a kept fact before it in the files compared
+together has (UNIQUE). Each is the slot of the format that writes it."""
 FILE_REACH = (MUST_REACH, MUST_NOT_REACH)
 """The quantifiers under which a file reaches a target, by a fact of its own or through the files its links lead to."""
 COUNTS = COUNT_SLOTS
 """The quantifiers that count the facts a file keeps: AT_MOST and AT_LEAST."""
+UNIQUE_FIELDS = ("name", "path", "text")
+"""The fields of a fact UNIQUE compares: a name, a dotted path, a text."""
 
 EXIST = "exist"
 """The kind of target every fact matches."""
@@ -113,7 +119,8 @@ class Rule:
     through which a declaration reached already reaches further (spread), and whether a declaration is reached only
     from a root other than its own file (elsewhere). A link reaches the declarations it names (the names it mentions,
     for a fact that has them) or the file it leads to (what it reaches). A rule that counts (AT_MOST, AT_LEAST) says how
-    many facts a file keeps at most or at least (count).
+    many facts a file keeps at most or at least (count), and which files it counts together (per, one of PER); a rule
+    under UNIQUE says the field it compares (field) and which files it compares together (per).
 
     A rule that names a word of no slot, or one that does not apply to what the slot reads, is refused (RuleRefused),
     with every problem at once."""
@@ -133,6 +140,8 @@ class Rule:
     spread: tuple[str, ...] = ()
     elsewhere: bool = False
     count: int = 0
+    per: str = PER_FILE
+    field: str = ""
 
     def __post_init__(self) -> None:
         found = self.problems()
@@ -334,11 +343,29 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
     if quantifier not in _QUANTIFIERS:
         return [f"quantifier: no quantifier is named {quantifier!r}: write one of {', '.join(sorted(_QUANTIFIERS))}"]
     slot = f"{quantifier}.targets" if quantifier in FILE_REACH else quantifier
-    if quantifier in COUNTS:
+    if quantifier not in (*COUNTS, UNIQUE) and rule.per != PER_FILE:
+        problems.append(f"{quantifier}: counts no files together: drop per, which only {AT_MOST}, {AT_LEAST} and "
+                        f"{UNIQUE} take")
+    if quantifier != UNIQUE and rule.field:
+        problems.append(f"{quantifier}: compares no field: drop field, which only {UNIQUE} takes")
+    if quantifier == UNIQUE:
+        if rule.targets != EXISTING:
+            problems.append(f"{quantifier}: takes no targets: what it compares is the field of what the check keeps")
+        if rule.per not in PER:
+            problems.append(f"{quantifier}.per: no files are compared per {rule.per!r}: write one of {', '.join(PER)}")
+        if rule.field not in UNIQUE_FIELDS:
+            problems.append(f"{quantifier}.field: compares no field {rule.field!r}: write one of "
+                            f"{', '.join(UNIQUE_FIELDS)}")
+        else:
+            problems += [f"{quantifier}.field: {rule.field} is not carried by {kind.name}: read a kind that carries it"
+                         for kind in kinds if not kind.carries(rule.field)]
+    elif quantifier in COUNTS:
         if rule.targets != EXISTING:
             problems.append(f"{quantifier}: takes no targets: what it counts is what the check keeps")
         if rule.count < 0:
             problems.append(f"{quantifier}: is {rule.count}: write a whole number, 0 or more")
+        if rule.per not in PER:
+            problems.append(f"{quantifier}.per: no files are counted per {rule.per!r}: write one of {', '.join(PER)}")
     elif quantifier == MUST_BE_REACHED:
         if rule.targets != EXISTING:
             problems.append(f"{quantifier}: takes no targets: what must be reached is what the check keeps")
@@ -494,6 +521,9 @@ def _variable(slot: str, variable, rule: Rule, kinds: list[Kind], side: str, gua
     if variable.needs == CHAINED and rule.quantifier != MUST_NOT_REACH:
         problems.append(f"{slot}: {{{name}}} is the chain of links a file reaches a target by, which only a check under "
                         f"{MUST_NOT_REACH} follows")
+    if variable.needs == FIRST_SITE and rule.quantifier != UNIQUE:
+        problems.append(f"{slot}: {{{name}}} is where the first fact of the same value is, which only a check under "
+                        f"{UNIQUE} finds")
     if variable.needs == COUNTED and rule.quantifier not in COUNTS:
         problems.append(f"{slot}: {{{name}}} is how many facts a file keeps, which only a check under {AT_MOST} or "
                         f"{AT_LEAST} counts")
@@ -512,7 +542,8 @@ class Fact(NamedTuple):
     path, how many lines a file holds, and for a file that reaches a target under must_not_reach, the chain of what
     it reaches, each step as it is said, and for a function its parameters (name, annotation as written, whether it
     has a default) and its return annotation as written, and for a call the keyword arguments it passes, each with its
-    value as written when that is a literal. A run holds a fact for every import, name read and call of every file,
+    value as written when that is a literal, and the positional arguments it passes that are literals, each by its
+    place from 0 with its value as written. A run holds a fact for every import, name read and call of every file,
     so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
@@ -530,6 +561,7 @@ class Fact(NamedTuple):
     parameters: tuple[tuple[str, str, bool], ...] = ()
     returns: str = ""
     arguments: tuple[tuple[str, str], ...] = ()
+    literals: tuple[tuple[int, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -598,3 +630,4 @@ class Found(NamedTuple):
     read: Read
     fact: Fact
     hit: tuple[str, ...] | None = None
+    first: str = ""

@@ -35,7 +35,8 @@
 # type_argument, by a type argument, Python does not write. worked, how the code of the checks written for the
 # explanation is written: subclass, a class that derives from a base, {name} and {base} standing for the two names;
 # function, defaulted, annotated and returning, a function of one parameter, with a default {value}, an {annotation},
-# or of none with a return annotation {returns}; keyword_call, a call passing one keyword argument.
+# or of none with a return annotation {returns}; keyword_call, a call passing one keyword argument; positional_call,
+# a call passing one positional argument.
 # supplies: the facts its reader turns the source into, each exact or {partial: what it misses}; a key whose check
 # needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate. file.package,
 # that a file stands for its folder, is never listed here: it follows package_files.
@@ -78,6 +79,7 @@ worked:
   annotated: "def {name}({parameter}: {annotation}): ..."
   returning: "def {name}() -> {returns}: ..."
   keyword_call: "{callee}({keyword}={value})"
+  positional_call: "{callee}({value})"
 supplies:
   file: exact
   file.lines: exact
@@ -94,6 +96,7 @@ supplies:
   use: exact
   call: exact
   call.keywords: exact
+  call.positional: exact
   method_call: exact
   parameter_call: exact
   callback: exact

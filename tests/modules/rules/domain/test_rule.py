@@ -163,7 +163,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "may_not: no target applies to comment, so a fact of it would never be a finding: add a target that "
                   "compares what it carries, or drop it from `read`"], id="a target that applies to no kind read"),
     pytest.param({"quantifier": "maybe"}, ["quantifier: no quantifier is named 'maybe': write one of at_least, at_most, "
-                                           "may_not, may_only, must_be_reached, must_not_reach, must_reach"],
+                                           "may_not, may_only, must_be_reached, must_not_reach, must_reach, unique"],
                  id="a quantifier no table holds"),
     pytest.param(REACHED | {"targets": YAML},
                  ["must_be_reached: takes no targets: what must be reached is what the check keeps"],
@@ -197,7 +197,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "listed-by-another-part, app-package, own-code, takes-a-name, on-own-object, public, special, named, "
                   "fake-named, top-level, "
                   "forwards, has-parameter, parameter-has-default, parameter-annotated, returns-annotated, "
-                  "returns-an-attribute, exception, extends, record, interface, immutable, passes, passes-literal, receiver, "
+                  "returns-an-attribute, exception, extends, record, interface, immutable, passes, passes-literal, passes-positional, "
+                  "receiver, "
                   "annotated-callable, unreadable, "
                   "directive, doc, no-statements, exceptions-only, longer-than, reported-at-import, names-restricted, of-kind, "
                   "target-placed, "

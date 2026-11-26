@@ -7,6 +7,28 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The kinds `call`, `method-call` and `construction` carry the new field `positional`, from the new fact
+  `call.positional` (Python's reader: exact): each positional argument a call passes that is a literal, by its place
+  from 0, with its value as written, up to the first argument it unpacks; the new filter
+  `passes-positional: <pattern>[=<text>]` reads it (`{passes-positional: "0=50"}` finds `q.limit(50)`). The language's
+  `worked` templates gain `positional_call`, and `xarch profile explain filters.passes-positional` shows a worked
+  example. The bundled profiles read nothing new.
+- The quantifier `unique: <field> | {field: name | path | text, per: file | part | instance | all}`: a kept fact whose
+  field a kept fact before it has, in the files compared together (grouped as `at_most`'s `per` groups them, `all`
+  the default), in the order of the files and then of the facts, is a finding at its own line, and the new variable
+  `{first}` says where the first is (`<file>:<line>`), so a check can say that class names are unique across the
+  instances of a repeating folder or the app. Its findings are accepted by `checks.<id>.accepted` as any other. An
+  unknown field, a field a kind read does not carry, an unknown key, a map with no `field`, and `{first}` in a check
+  under another quantifier are refused at their address. `xarch profile explain quantifiers.unique` shows it with a
+  worked example. The lists of slots and of quantifiers a refusal names now end with `unique`.
+- `at_most` and `at_least` take a map `{count: <n>, per: file | part | instance | all}` besides a number, which counts
+  the files of the scope together: each alone (`file`, the default, as a number counts), the files of each part (a test
+  those of the parts its folder mirrors), of each instance of a repeating folder (a file in no instance with the files
+  of its part in none), or every file of the scope (`all`). Under `at_most` each kept fact of a group after the count,
+  in the order of the files and then of the facts, is a finding at its own line; under `at_least` a group that keeps
+  fewer is one finding at line 0 of its first file; `{count}` says how many the group keeps. An unknown `per`, an
+  unknown key or a map with no `count` is refused at its address, and `per` on a quantifier that does not count is
+  refused. A count written as a number reads as before.
 - `counterparts: {<id>: {for, has, when, accepted, message, fix}}` says what lies with what, path by path: each match
   of `for` (a folder ending in `/`, else a file, below the app or `tests/<path>` below the tests), where every path of
   `when` matches too, with no match of `has` is a new `counterpart` finding at it. `<word>` binds the text of a step or
@@ -146,6 +168,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- An entry of `checks.<id>.accepted` is held against every fact a finding said once for several stands for
+  (`once_per`, `per_line`), not only the first said: `name: dump` accepts the finding of a line that `per_line: [name]`
+  says as `takes load, dump`, and the whole finding is accepted. An entry that named the first fact accepts what it
+  accepted before.
 - `xarch review` asks the other orders of placement's question of a file near its line together in one second
   request, each a named question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it
   always had, so nothing cached is lost: a file near its line costs two requests instead of three, a file far from it

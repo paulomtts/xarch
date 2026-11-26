@@ -99,6 +99,7 @@ RULED_OUT = {
         "modules/rules/application/logic/facts.py",
         "modules/rules/application/logic/filters.py",
         "modules/rules/application/logic/governed.py",
+        "modules/rules/application/logic/groups.py",
         "modules/rules/application/logic/imports.py",
         "modules/rules/application/logic/known.py",
         "modules/rules/application/logic/ordered.py",

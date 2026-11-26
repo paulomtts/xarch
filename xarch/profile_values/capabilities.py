@@ -31,6 +31,8 @@ FACTS: dict[str, str] = {
     "call.type_arguments": "the type arguments a call is given",
     "call.keywords": "the keyword arguments a call or a method call passes, each with its value as written when it is "
                      "a literal",
+    "call.positional": "the positional arguments a call or a method call passes that are literals, each by its place "
+                       "from 0 with its value as written",
     "method_call": "each call of an attribute no import binds, and whether it is on the object a method is called on",
     "parameter_call": "each call of a method of a function's parameter",
     "callback": "each call of a function's own parameter, whether it is the receiver and whether it is annotated "

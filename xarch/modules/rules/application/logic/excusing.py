@@ -1,6 +1,7 @@
 """The findings the profile accepts one by one, held against what the checks find: a check of the profile's own
 accepts findings by `checks.<id>.accepted`, each entry naming a file and, if need be, the values some variables of
-the check print for the finding. A finding an entry accepts is not reported, and the enforcement section names it
+the check print for the finding; a finding said once for several facts is accepted when the entry names any one
+of them. A finding an entry accepts is not reported, and the enforcement section names it
 instead; an entry that accepts nothing is itself a finding of the check, at its file, so a list of accepted findings,
 a ratchet, can only shrink. A tier accepts tiers findings the same way by `tiers.<tier>.accepted`, each entry naming
 a test file and, if need be, what it imports. A file is named as the profile writes it: by its path below the app, tests/<path> for a
@@ -14,7 +15,7 @@ from collections.abc import Iterable
 from xarch.kernel.logic.accepted_paths import stale_fix
 from xarch.kernel.logic.placement import module_steps
 from xarch.kernel.violations import RULES, Violation
-from xarch.modules.rules.application.logic.engine import said_of
+from xarch.modules.rules.application.logic.engine import said_of, standing
 from xarch.modules.rules.application.logic.sentences import value
 from xarch.modules.rules.domain.outcomes import Sifted
 from xarch.modules.rules.domain.profile import Profile
@@ -55,10 +56,11 @@ def checks(rules: Iterable[Rule], facts: Facts, profile: Profile) -> Sifted:
     used: set[tuple[str, int]] = set()
     kept: list[Violation | Weak] = []
     excused: list[Excused] = []
-    for item, found in said_of(rules, facts, profile):
-        rule, path = found.rule.id, _written_path(found.read, profile)
+    for item, founds in standing(rules, facts, profile):
+        rule, path = founds[0].rule.id, _written_path(founds[0].read, profile)
         index = next((index for index, entry in enumerate(entries.get(rule, ())) if entry.file == path
-                      and all(value(name, found, facts, profile) == said for name, said in entry.by)), None)
+                      and any(all(value(name, found, facts, profile) == said for name, said in entry.by)
+                              for found in founds)), None)
         if index is None:
             kept.append(item)
             continue

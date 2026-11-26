@@ -76,9 +76,17 @@ def test_a_call_keeps_its_arguments_as_paths_or_none(tmp_path):
             "Mock(Notifier, 3, spec=ports.Repo, name='n')\nMock(*specs)\nMock(**options)\n")
     assert parsed(tmp_path, text).calls == (
         Call(4, ("unittest", "mock", "Mock"), (("app", "ports", "Notifier"), None),
-             (("spec", ("app", "ports", "Repo")), ("name", None)), passed=(("spec", ""), ("name", "'n'"))),
+             (("spec", ("app", "ports", "Repo")), ("name", None)), passed=(("spec", ""), ("name", "'n'")),
+             literals=((1, "3"),)),
         Call(5, ("unittest", "mock", "Mock"), unpacked=True),
         Call(6, ("unittest", "mock", "Mock"), unpacked=True))
+
+
+def test_a_call_keeps_each_literal_it_passes_by_its_place_from_0_up_to_the_first_unpacked_argument(tmp_path):
+    text = "from app.ports import make\n\nmake(1, name, 'x', -2, *rest, 3)\nobj.run(True, k=1)\n"
+    found = parsed(tmp_path, text)
+    assert [c.literals for c in found.calls] == [((0, "1"), (2, "'x'"), (3, "-2"))]
+    assert [m.literals for m in found.method_calls] == [((0, "True"),)]
 
 
 def test_a_name_bound_otherwise_in_its_scope_is_not_read_through_the_import(tmp_path):
@@ -1062,7 +1070,7 @@ def test_a_file_lists_the_names_its_imports_take_that_nothing_else_in_it_mention
                  [MethodCall(3, "resolve", True), MethodCall(3, "resolve", True)],
                  id="a method of what the object holds, or of the object itself, is marked held"),
     pytest.param("class S:\n    def a(self, other):\n        return other.resolve(), self.x(1).resolve()\n",
-                 [MethodCall(3, "resolve"), MethodCall(3, "x", True), MethodCall(3, "resolve")],
+                 [MethodCall(3, "resolve"), MethodCall(3, "x", True, literals=((0, "1"),)), MethodCall(3, "resolve")],
                  id="another parameter, or a result of a held call, is not held"),
     pytest.param("class S:\n    def a(self):\n        def inner():\n            return self.p.resolve()\n",
                  [MethodCall(4, "resolve", True)], id="the object is held in a nested function too"),
@@ -1543,7 +1551,7 @@ def test_a_name_the_file_binds_keeps_its_own_binding_over_a_global(tmp_path):
 
 def test_a_global_named_as_a_builtin_is_read_as_the_global(tmp_path):
     found = declared_in(tmp_path, "def test_a():\n    print(1)\n", bound=(("print",),))
-    assert found.calls == (Call(2, ("print",), (None,)),)
+    assert found.calls == (Call(2, ("print",), (None,), literals=((0, "1"),)),)
     assert [use.name for use in found.uses] == [("print",)]
 
 

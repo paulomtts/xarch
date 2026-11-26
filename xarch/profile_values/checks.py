@@ -26,10 +26,14 @@ APP, TESTS, ALL = "app", "tests", "all"
 FAIL, LIST = "fail", "list"
 """What a finding is: a violation, or a weak finding listed in the enforcement section."""
 
-QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached", "at_most", "at_least", "must_not_reach")
+QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached", "at_most", "at_least", "must_not_reach",
+                    "unique")
 """The slots of which a check writes one, its quantifier."""
 COUNT_SLOTS = QUANTIFIER_SLOTS[4:6]
 """The quantifiers that count the facts a file keeps, each written with a whole number."""
+PER_FILE, PER_PART, PER_INSTANCE, PER_ALL = PER = ("file", "part", "instance", "all")
+"""The files a check counts together (`per`): each file alone, the files of each part, of each instance of a
+repeating folder, or all the files of its scope."""
 
 
 @dataclass(frozen=True)
@@ -86,7 +90,8 @@ class Quantified:
     filters a link passes (through_only), and for `must_be_reached` the files the reach starts from (start), the kinds
     of fact through which a declaration reached already reaches further (then_through), and whether a declaration is
     reached only from a file other than its own (by_another_file); for a quantifier that counts (COUNT_SLOTS), the
-    number of kept facts a file may hold at most, or must hold at least (count)."""
+    number of kept facts a file may hold at most, or must hold at least (count), and the files counted together (per,
+    one of PER); for `unique`, the field it compares and the files compared together (per)."""
     slot: str
     targets: tuple[WrittenTarget, ...] = ()
     through: tuple[str, ...] = ()
@@ -95,6 +100,8 @@ class Quantified:
     then_through: tuple[str, ...] = ()
     by_another_file: bool = False
     count: int = 0
+    per: str = PER_FILE
+    field: str = ""
 
 
 @dataclass(frozen=True)
