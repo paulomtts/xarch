@@ -98,6 +98,7 @@ SHAPE = (
     Shown('excluded', 0, 'folders below the app that are not its source', False, True),
     Shown('structure', 0, 'what the layout accepts one by one', False, True),
     Shown('structure.accepted', 1, 'the findings of the layout the profile accepts', False, True),
+    Shown('counterparts', 0, 'what lies with what, path by path', False, True),
     Shown('hints', 0, 'your own advice for a rule', False, False),
     Shown('checks', 0, 'checks of your own, beside the keys', False, True),
     Shown('files', 0, 'the files `init` writes besides the docs', False, True),

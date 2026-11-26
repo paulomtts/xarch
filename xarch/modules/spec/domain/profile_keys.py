@@ -34,6 +34,8 @@ MOCK_SPECS = "testing.mocks.specs"
 FIXTURE = "testing.fixture"
 FAKES = "fakes"
 STRUCTURE = "structure"
+COUNTERPARTS = "counterparts"
+COUNTERPART = "counterparts.<id>"
 GUARD = "guard"
 SCENARIO_COVERAGE = "guard.scenario-coverage"
 NO_DUPLICATES = "guard.no-duplicates"
@@ -74,6 +76,7 @@ SCOPES = {
     FIXTURE: "testing.mocks.fixtures.<parameter>",
     FAKES: "fakes",
     STRUCTURE: "structure",
+    COUNTERPARTS: "counterparts",
     GUARD: "guards",
     SCENARIO_COVERAGE: "guards.scenario-coverage",
     NO_DUPLICATES: "guards.no-duplicates",
@@ -90,7 +93,7 @@ SCOPES = {
     PLACEMENT: "evals.placement",
 }
 """Each scope's address in the file."""
-HELD = {EVAL: EVALS}
+HELD = {EVAL: EVALS, COUNTERPART: COUNTERPARTS}
 """The scopes of an entry of a map the profile names by ids of its own, which no key opens (its address is the
 scope's own), each with the scope of the map that holds it: its slots are listed with the keys of that map."""
 RULE_ID = "rule-id"

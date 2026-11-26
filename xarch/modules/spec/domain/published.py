@@ -22,6 +22,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
                  of
     Held         one kind of definition a part's `holds` lists, with its settings, which the checking module holds a
                  part's files to; KINDS the kinds, in the order they are read and said
+    Counterpart  what the profile says lies with what (`counterparts`), its paths each a PathPattern, which the
+                 module that checks the layout holds the disk to
 """
 from __future__ import annotations
 
@@ -238,3 +240,31 @@ class AcceptedPath:
     below the app (tests/<path> for one below the tests root), as written; and why it is accepted."""
     path: tuple[str, ...]
     why: str
+
+
+@dataclass(frozen=True)
+class PathPattern:
+    """A path a counterpart names, as the profile writes it: its steps below the app (tests/<path> for one below the
+    tests root), each a name in which `<word>` is a placeholder and `*` any text within the step; and whether it is a
+    folder, written ending in `/`."""
+    steps: tuple[str, ...]
+    folder: bool
+
+    @property
+    def written(self) -> str:
+        return "/".join(self.steps) + ("/" if self.folder else "")
+
+
+@dataclass(frozen=True)
+class Counterpart:
+    """What the profile says lies with what (`counterparts.<id>`): its id; source, the path whose every match must
+    have a counterpart; has, the path the counterpart is at, its placeholders bound by source; when, the paths
+    that must also match, so bound, for a match of source to need one; the sources it accepts with none (`accepted`),
+    each with why; and the message and fix of a source with none, "" for xarch's own."""
+    id: str
+    source: PathPattern
+    has: PathPattern
+    when: tuple[PathPattern, ...] = ()
+    accepted: tuple[AcceptedPath, ...] = ()
+    message: str = ""
+    fix: str = ""

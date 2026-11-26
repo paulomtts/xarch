@@ -862,9 +862,16 @@ def structure_accepted(value: Any, problems: list[str]) -> tuple[AcceptedPath, .
         problems.append("structure.accepted: must be a list of {path, why}, such as [{path: <folder or file below the "
                         "app, or tests/<path>>, why: <the reason>}]")
         return ()
+    return accepted_paths(listed, "structure.accepted", "why the layout accepts it", problems)
+
+
+def accepted_paths(listed: list[Any], where: str, why: str, problems: list[str]) -> tuple[AcceptedPath, ...]:
+    """The entries of a list of accepted paths at where, each `{path, why}`, in the order written: a path below the app
+    (tests/<path> below the tests root), and why, one line, which why says the meaning of. An entry refused adds its
+    problem, addressed by its index, and is not read."""
     found: list[AcceptedPath] = []
     for index, entry in enumerate(listed):
-        at = f"structure.accepted.{index}"
+        at = f"{where}.{index}"
         if not isinstance(entry, Mapping):
             problems.append(f"{at}: must be a map {{path, why}}")
             continue
@@ -873,7 +880,7 @@ def structure_accepted(value: Any, problems: list[str]) -> tuple[AcceptedPath, .
         problems += [f"{at}: missing `{key}`" for key in ("path", "why") if key not in entry]
         steps = below_app(entry["path"], f"{at}.path", problems) if "path" in entry else None
         if "why" in entry and not line(entry["why"]):
-            problems.append(f"{at}.why: must be one line of text: why the layout accepts it")
+            problems.append(f"{at}.why: must be one line of text: {why}")
         if len(problems) == count and steps is not None:
             found.append(AcceptedPath(steps, entry["why"]))
     return tuple(found)

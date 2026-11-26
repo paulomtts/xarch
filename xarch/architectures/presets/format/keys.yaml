@@ -96,6 +96,11 @@ fragments:
         message: "{file} may decide a rule of the document itself ({value})"
         fix: "read it against the litmus of documents/: if the rule is the document's own, move it onto the document"
     <<eval-examples>>
+  counterpart: |
+    counterparts:
+      document-has-check:
+        for: documents/<name>%extension%
+        has: tests/documents/check_<name>%extension%
   eval-examples: |2
         examples:
           flagged:
@@ -285,6 +290,19 @@ keys:
       structure:
         accepted:
           - {path: documents/legacy/, why: the legacy documents are retired with the old reader}
+  counterparts:
+    meaning: what lies with what, path by path
+    accepts: >-
+      a map {<id>: {for, has, when, accepted, message, fix}}: an id of your own (lowercase words joined by `-`), and
+      what must have a counterpart (`for`), where that counterpart is (`has`), and the paths that must also be there for
+      it to need one (`when`), each a path below the app or `tests/<path>` below the tests, a folder when it ends in
+      `/`; `<word>` binds the text of a step, or of part of one, of what `for` matches and stands for it in `has` and
+      `when`, `*` any text within a step. Each match of `for` with no match of `has` is a `counterpart` finding at it.
+      `xarch profile explain counterparts.<id>.for` says how a path matches. A counterpart whose `for` matches nothing
+      in the project is listed under `enforcement`, and fails `check --strict`
+    example: |
+      <<part>>
+      <<counterpart>>
   excluded:
     meaning: folders below the app that are not its source
     accepts: >-
@@ -1748,3 +1766,60 @@ slots:
     example: |
       <<part>>
       <<eval>>
+  counterparts.<id>.for:
+    meaning: what must have a counterpart
+    accepts: >-
+      a path below the app, or `tests/<path>` below the tests: a folder when it ends in `/`, which is there when a file
+      lies below it, else a file. `*` is any text within a step; `<word>` binds the text of a step, or of part of one
+      (`<port>_repo%extension%`), to a name that is no private one, the same text wherever it is written twice. A
+      `<word>` that is the word of a repeating folder, at that folder's place, binds only its instances, never a
+      folder the layout names beside them. Two placeholders, or one and `*`, side by side in a step are refused
+    example: |
+      <<part>>
+      <<counterpart>>
+  counterparts.<id>.has:
+    meaning: where the counterpart is
+    accepts: >-
+      a path written as `for`, its placeholders those `for` binds, put back as bound; `*` stays any text. A match of
+      `for` with no match of it is a `counterpart` finding at that match; several matches satisfy it
+    example: |
+      <<part>>
+      <<counterpart>>
+  counterparts.<id>.when:
+    meaning: the paths that must also be there for a match of `for` to need a counterpart
+    accepts: >-
+      a list of paths written as `has`: a match of `for` needs a counterpart only when each of them matches something
+    example: |
+      <<part>>
+      <<counterpart>>
+          when: [tests/fakes/<name>/]
+  counterparts.<id>.accepted:
+    meaning: the matches of `for` that need no counterpart
+    accepts: >-
+      a list of {path, why}: `path` a match of `for` that has no counterpart, as `for` writes it with its placeholders
+      bound; `why` one line, the reason. It is then no finding: every `xarch check` names it in its enforcement section,
+      with its reason, instead. An entry whose path is no such match any more (it is gone, or now has its counterpart)
+      is itself a finding, so the list can only shrink. `profile check` lists each entry the profile compared with does
+      not hold as looser
+    example: |
+      <<part>>
+      <<counterpart>>
+          accepted:
+            - {path: documents/legacy%extension%, why: the legacy documents are retired with the old reader}
+  counterparts.<id>.message:
+    meaning: what is said of a match of `for` with no counterpart
+    accepts: >-
+      a sentence, with {source} the match, {expected} the counterpart looked for, {when} the paths of `when`, {key}
+      the counterpart's address and each placeholder of `for` as bound; left out, xarch says the first three
+    example: |
+      <<part>>
+      <<counterpart>>
+          message: "{source} has no check ({expected})"
+  counterparts.<id>.fix:
+    meaning: what to do about a match of `for` with no counterpart
+    accepts: >-
+      a sentence, with the variables of the message; left out, xarch says to create the counterpart or accept the match
+    example: |
+      <<part>>
+      <<counterpart>>
+          fix: "write {expected}, checking the document {name}"

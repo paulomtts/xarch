@@ -20,7 +20,10 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
     CHOICE_LANGUAGES,
     CHOICE_PRESETS,
+    COUNTERPART,
+    EVAL,
     GUARD,
+    HELD,
     MOCK_SPECS,
     PART,
     PART_IMPORTS_MAY,
@@ -144,7 +147,7 @@ def test_every_rule_a_key_feeds_is_a_rule_id_of_check():
 
 def test_a_key_that_holds_keys_opens_a_scope_and_every_scope_but_the_file_is_opened_by_one_key():
     opened = [key.opens for key in KEYS if key.opens]
-    assert all(scope in SCOPES and keys_of(scope) for scope in opened)
+    assert all(scope in SCOPES and (keys_of(scope) or scope in HELD.values()) for scope in opened)
     assert sorted(opened) == sorted(scope for scope in SCOPES if scope != PROFILE)
 
 
@@ -163,12 +166,23 @@ def test_the_example_of_a_key_uses_the_key_and_loads_in_the_smallest_profile_it_
     load(document)
 
 
-@pytest.mark.parametrize("slot", SLOTS, ids=lambda slot: plain(slot.address))
-def test_the_example_of_a_slot_of_an_eval_uses_the_slot_and_loads_in_the_smallest_profile(slot):
+def slot_example(slot: Key) -> dict:
+    """The example of the slot laid over the smallest profile, once it is seen to write the slot."""
     document = merged(BASE, yaml.safe_load(filled(CATALOGUE.slots[slot.address].example)))
     written = {"yes": True, "no": False}.get(slot.name, slot.name)
     assert any(written in held for held in containers(document, slot.where.split("."))), slot.address
-    assert load(document).evals
+    return document
+
+
+@pytest.mark.parametrize("slot", [slot for slot in SLOTS if slot.scope == EVAL], ids=lambda slot: plain(slot.address))
+def test_the_example_of_a_slot_of_an_eval_uses_the_slot_and_loads_in_the_smallest_profile(slot):
+    assert load(slot_example(slot)).evals
+
+
+@pytest.mark.parametrize("slot", [slot for slot in SLOTS if slot.scope == COUNTERPART],
+                         ids=lambda slot: plain(slot.address))
+def test_the_example_of_a_slot_of_a_counterpart_uses_the_slot_and_loads_in_the_smallest_profile(slot):
+    assert load(slot_example(slot)).counterparts
 
 
 @pytest.mark.parametrize("slot", [slot for slot in SLOTS if slot.required], ids=lambda slot: plain(slot.address))
@@ -193,7 +207,8 @@ def test_the_smallest_profile_loads_and_every_symbol_is_explained():
     assert CATALOGUE.symbols and all(symbol and meaning for symbol, meaning in CATALOGUE.symbols)
 
 
-@pytest.mark.parametrize("scope", sorted(set(SCOPES) - {PART_IMPORTS_MAY, MOCK_SPECS}))
+@pytest.mark.parametrize("scope", sorted(set(SCOPES) - {PART_IMPORTS_MAY, MOCK_SPECS}
+                                          - {held for held in HELD.values() if not keys_of(held)}))
 def test_the_keys_the_loader_names_in_its_unknown_key_message_are_the_keys_of_the_table(scope):
     document = document_of(keys_of(scope)[0])
     holders(keys_of(scope)[0], document)[0]["zz_unknown"] = 1

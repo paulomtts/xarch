@@ -33,11 +33,11 @@ def test_a_violation_of_an_unknown_rule_cannot_be_made():
 
 
 def test_the_rule_ids_are_the_stable_ids_of_every_check():
-    assert sorted(RULES) == ["built-by", "closed-tree", "cycles", "dead-code", "holds", "immutable", "libraries",
-                             "may-import", "must-import", "names", "never-use", "no-callbacks", "no-comments",
-                             "no-duplicates", "no-twins", "package-only", "pass-through", "private-imports",
-                             "scenario-coverage", "shared", "stand-ins", "structure", "syntax", "test-tree", "tiers",
-                             "types-only"]
+    assert sorted(RULES) == ["built-by", "closed-tree", "counterpart", "cycles", "dead-code", "holds", "immutable",
+                             "libraries", "may-import", "must-import", "names", "never-use", "no-callbacks",
+                             "no-comments", "no-duplicates", "no-twins", "package-only", "pass-through",
+                             "private-imports", "scenario-coverage", "shared", "stand-ins", "structure", "syntax",
+                             "test-tree", "tiers", "types-only"]
 
 
 def test_the_import_rule_is_may_import_first_and_a_built_in_violation_of_rule_rules_cannot_be_made():

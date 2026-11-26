@@ -491,6 +491,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier, but what a tier's `accepted` names; an entry of it that names no finding | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `tiers.accepted`, `parts.tests`, `testing.shared`, `fakes.tiers` |
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app, but one `structure.accepted` names; an entry `tests/<path>` of it that names no finding | `tiers`, `testing`, `structure.accepted` |
+| `counterpart` | a match of a counterpart's `for`, where its `when` matches too, with no match of its `has`, but one its `accepted` names; an entry of `accepted` that accepts nothing (its source gone, or now with its counterpart) | `counterparts` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too, and through a folder the layout names beside the instances, such as `adapters/web/` beside `adapters/<adapter>/`, which takes part in the graph though it is no instance); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
@@ -625,14 +626,14 @@ check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcem
   no tier), `types-only`, `cycles`, `package-only`, `scenario-coverage`, `no-comments`, `stand-ins`, `closed-tree`,
   `must-import`, `no-duplicates`, `no-twins`, `dead-code`, `pass-through`, `holds`, `immutable` (these three never a
   violation, only a weak item), `no-callbacks`, `names`, `built-by`, `private-imports`, `shared`, `structure`,
-  `test-tree`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
+  `test-tree`, `counterpart`, and `syntax` (a file that does not parse, or cannot be read as UTF-8 text), or the id of a check the
   profile writes itself. An import line that takes several names a part may not import is one `may-import`
   violation, its `message` listing them (or the places it may not import), so the violations count lines, not
   names.
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
   `uses.never`, `untested`, `optional`, `imports.accepted`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
-  `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `checks.accepted`, `structure.accepted`, `tiers.accepted`, `translated` (the `sentence` names the full address, such as
+  `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `checks.accepted`, `structure.accepted`, `tiers.accepted`, `counterparts.accepted`, `translated` (the `sentence` names the full address, such as
   `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes

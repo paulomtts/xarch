@@ -205,6 +205,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (accepting(ENTRY), parsed(layered())),
         (checking(AcceptedFinding(("src", "x.py"), (), "w")), parsed(layered())),
         (replace(parsed(layered()), structure_accepted=(AcceptedPath(("src", "x"), "w"),)), parsed(layered())),
+        (pairing("x", "src/old/store/"), parsed(layered())),
         (accepting_tests({"file": "tests/x/test_y.py", "why": "w"}), parsed(covered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
@@ -869,6 +870,25 @@ def test_each_finding_of_the_layout_accepted_that_the_compared_profile_does_not_
         Loosened("structure.accepted", "", "src/docs/api",
                  "the layout accepts the finding of src/docs/api (structure.accepted)"),)
     assert loosened(accepting_paths("tests/old"), accepting_paths("tests/old", "src/docs/api")) == ()
+
+
+def pairing(name: str, *paths: str) -> Architecture:
+    """layered(), with one counterpart of the id given accepting the paths given."""
+    accepted = [{"path": path, "why": "w"} for path in paths]
+    entry = {"for": "src/<module>/store/", "has": "tests/conformance/<module>/", **({"accepted": accepted} if paths
+                                                                                     else {})}
+    return parsed(layered(counterparts={name: entry}))
+
+
+def test_each_source_a_counterpart_accepts_that_the_compared_profile_s_counterpart_does_not_is_looser():
+    assert loosened(pairing("x", "src/old/store/", "src/new/store/"), pairing("x", "src/new/store/")) == (
+        Loosened("counterparts.accepted", "", "x: src/old/store/",
+                 "the counterpart x accepts src/old/store/ with none (counterparts.x.accepted)"),)
+    assert loosened(pairing("x", "src/old/store/"), pairing("y", "src/old/store/")) == (
+        Loosened("counterparts.accepted", "", "x: src/old/store/",
+                 "the counterpart x accepts src/old/store/ with none (counterparts.x.accepted)"),)
+    assert loosened(pairing("x", "src/old/store/"), pairing("x", "src/old/store/", "src/new/store/")) == ()
+    assert loosened(pairing("x"), parsed(layered())) == ()
 
 
 def accepting_tests(*entries: dict) -> Architecture:
