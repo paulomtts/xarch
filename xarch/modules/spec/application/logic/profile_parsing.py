@@ -241,6 +241,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     fakes = (_fakes(document["fakes"], parts, declared, problems, language, words, written_tiers) if "fakes" in document
              else None)
     problems += ck.folder_clashes(tiers, fakes)
+    problems += ck.nested_examples(tiers)
     shared = _tests_shared(document, tiers, fakes, problems, language)
     guards = _guards(document.get("guards", {}), specs, parts, declared, tiers, fakes, testing, problems, language,
                      words, written_tiers)

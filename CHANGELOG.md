@@ -243,6 +243,10 @@ All notable changes to this project are written here. The format follows
   list passed. It is now held to keep it the way the comparison with the file holds it, and such a part is listed
   under `litmus` (`keeps no entry of the litmus cli, which --strict rests on, gives the part it pairs with`) and
   fails `--strict`.
+- A tier's `docs.example` lying in the folder of a tier nested in its own (an example of `unit` in `unit/meta`) was
+  accepted because it lies in the outer tier's folder, though `check` places a test there in the nested tier. It is
+  now refused when the profile loads (`tiers.unit.docs.example: '...' lies in the folder 'unit/meta' of tier 'meta',
+  nested in the tier's folder 'unit'`), as real tests are placed by the deepest tier folder holding them.
 - An entry of `imports.accepted` whose file lies in no part because it writes the app folder's name first is refused
   with what to write: `'app/core/ports.py' lies in no part: write it below the app (core/ports.py, not
   app/core/ports.py)`, instead of being told to list it under the part it lies in. The loader does not know the app

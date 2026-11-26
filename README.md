@@ -345,7 +345,8 @@ A tier's `folder` holds the tests below it that mirror no part (`tiers: {unit: {
 [...]}}}`): they import of the app what its `imports.may` allows, and test code from their own folder, the top folder
 below the tests root. A tier's `folder` may lie inside another tier's (`unit` and `unit/meta`), never be the same one:
 a test has the tier of the deepest folder holding it, that folder is its own folder, and the outer tier's own folder
-leaves it out.
+leaves it out. A tier's `docs.example` is placed the same way: one of `unit` lying in `unit/meta` is refused, since
+`check` would place a test there in `meta`.
 A part's `untested: <reason>` says that no tier covers the part through tests that mirror its folder, the only link
 `check` draws between a part and its tests; it does not say that the part has no tests. A suite laid out tier first
 (`tests/<tier>/...`, each tier placed by its `folder`, helpers shared through `testing.shared` and the fakes opened

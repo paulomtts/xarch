@@ -347,6 +347,25 @@ def tier_folder(value: Any, parts: dict[str, Part], where: str, problems: list[s
     return steps
 
 
+def nested_examples(tiers: tuple[Tier, ...]) -> list[str]:
+    """The example of each tier with a folder that lies in the folder of another tier nested in its own: `check`
+    places a test by the deepest tier folder holding it, so the docs would show it in the wrong tier."""
+    problems: list[str] = []
+    for tier in tiers:
+        if tier.folder is None or tier.example is None:
+            continue
+        where = tier.example.path[1:-1]
+        deeper = [other for other in tiers if other.folder is not None and len(other.folder) > len(tier.folder)
+                  and other.folder[:len(tier.folder)] == tier.folder and where[:len(other.folder)] == other.folder]
+        if deeper:
+            other = max(deeper, key=lambda nested: len(nested.folder or ()))
+            problems.append(f"tiers.{tier.name}.docs.example: '{'/'.join(tier.example.path)}' lies in the folder "
+                            f"'{'/'.join(other.folder or ())}' of tier '{other.name}', nested in the tier's folder "
+                            f"'{'/'.join(tier.folder)}': `check` places a test there in {other.name}, so the docs "
+                            "would show it in the wrong tier")
+    return problems
+
+
 def folder_clashes(tiers: tuple[Tier, ...], fakes: Fakes | None) -> list[str]:
     """The folders of tiers that lie inside, or hold, the fakes' folder, or that are another tier's; a tier's folder
     may lie inside another tier's, and a test then has the tier of the deepest folder holding it."""
