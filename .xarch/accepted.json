@@ -8,13 +8,13 @@
   "xarch/modules/review/domain/published.py": {
     "part": "domain",
     "reads_as": "contract",
-    "hash": "c097c3648fc6fcb4b9ac2cce16355a3775cb5a74a3ca314fb41083410a6ac6f3",
+    "hash": "733293456c04df504fa310178cfc475946ac6fc19ad1e36c4921ac17acb644ea",
     "why": "Domain values of the review module that its contract re-exports: the contract only publishes them, and they are defined and used inside the module."
   },
   "xarch/modules/rules/application/logic/sentences.py": {
     "part": "logic",
     "reads_as": "reports",
-    "hash": "0b622226cd2fc8182a444174e3391360c14af20e565d19f09f50c0c18f254150",
+    "hash": "d823b4ca6d0023a41d9e2fe7aadc930c85edbec18bee276915b01b73217ade54",
     "why": "Pure logic that decides what a finding says from the rules; it produces text, but the cli reports only print it."
   },
   "xarch/modules/rules/domain/published.py": {
