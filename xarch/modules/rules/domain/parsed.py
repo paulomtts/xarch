@@ -198,6 +198,15 @@ class Signature:
 
 
 @dataclass(frozen=True)
+class Parameter:
+    """A parameter of a function, as its signature declares it: its name, its annotation as written ("" when it has
+    none, as in a language that writes none), and whether it has a default."""
+    name: str
+    annotation: str = ""
+    default: bool = False
+
+
+@dataclass(frozen=True)
 class SoleCall:
     """The one call a function's whole body returns or makes, a docstring aside, perhaps awaited: its callee as the
     chain of names it is (("self", "repo", "get")), empty when it is no such chain; each positional argument as the
@@ -227,7 +236,8 @@ class Function:
     mentions, by its last step: its decorators, its parameters' annotations and defaults, its return annotation and its
     body (a string annotation read as the expression it holds, no other text). expressions holds each expression of its
     body that chooses between values, as (line, the keyword the reader records it by). public: it is for other files to
-    use, as the language's reader says."""
+    use, as the language's reader says. parameters: each of its parameters in the order its signature declares them
+    (see Parameter); returns: its return annotation as written, "" when it has none."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
@@ -246,6 +256,8 @@ class Function:
     named: frozenset[str] = frozenset()
     expressions: tuple[tuple[int, str], ...] = ()
     public: bool = True
+    parameters: tuple[Parameter, ...] = ()
+    returns: str = ""
 
     @property
     def real_statements(self) -> int:

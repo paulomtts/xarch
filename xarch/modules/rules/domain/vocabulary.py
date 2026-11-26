@@ -189,6 +189,9 @@ FIELDS: dict[str, str] = {
     "doc": "whether a comment is a doc comment",
     "public": "whether the name is for other files to use, as the language decides it",
     "lines": "how many lines a file holds",
+    "parameters": "the parameters of a function in the order it declares them, each with its name, its annotation as "
+                  "written (empty where it has none, or the language writes none) and whether it has a default",
+    "returns": "the return annotation of a function as written, empty where it has none or the language writes none",
     "bases": "the classes a class derives from, however far: each base it names, read through the import that binds "
              "it or as a class of its own file, then the bases of each the project defines, each a dotted name",
 }
@@ -244,10 +247,11 @@ KINDS: tuple[Kind, ...] = (
                                         "interface": ("class.interface",), "immutable": ("class.immutable",),
                                         "public": ("public",), "bases": ("class.bases",)}),
     Kind("function", "each function defined at the top level, or as a method of a class of the top level",
-         ("line", "name", "top-level", "forwards", "public"),
+         ("line", "name", "top-level", "forwards", "public", "parameters", "returns"),
          {"forwarded": "forwards", "returned": "returns-an-attribute"}, needs=("function",),
          field_needs={"top-level": ("function.top_level",), "forwards": ("function.forwards",),
-                      "forwarded": ("function.forwards",), "returned": ("function.forwards",), "public": ("public",)}),
+                      "forwarded": ("function.forwards",), "returned": ("function.forwards",), "public": ("public",),
+                      "parameters": ("function.parameters",), "returns": ("function.return_annotation",)}),
     Kind("callback", "each call of a function's own parameter by its bare name",
          ("line", "function", "name", "receiver", "annotated-callable"), needs=("callback",), verb="call"),
 )
@@ -295,6 +299,14 @@ FILTERS: tuple[Filter, ...] = (
     Filter("top-level", "the function is defined at the top level of its file, in no class", FACT, ("top-level",)),
     Filter("forwards", "the method only passes its arguments on to one call on what its object holds", FACT,
            ("forwards",)),
+    Filter("has-parameter", "the function has a parameter whose name matches the pattern, `*` standing for any text",
+           FACT, ("parameters",), value=PATTERN),
+    Filter("parameter-has-default", "the function has a parameter whose name matches the pattern and that has a "
+                                    "default", FACT, ("parameters",), value=PATTERN),
+    Filter("parameter-annotated", "the function has a parameter whose annotation, as written, matches the pattern; a "
+                                  "parameter with no annotation matches none", FACT, ("parameters",), value=PATTERN),
+    Filter("returns-annotated", "the function's return annotation, as written, matches the pattern; one with none "
+                                "matches none", FACT, ("returns",), value=PATTERN),
     Filter("returns-an-attribute", "the method that forwards returns an attribute of what the call answers", FACT,
            ("returned",)),
     Filter("exception", "the class is an exception: it derives from one of the language's exceptions, or from a class "
@@ -445,6 +457,8 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
     Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least)", needs=COUNTED),
     Variable("lines", "how many lines the file holds", ("lines",)),
+    Variable("parameters", "the names of a function's parameters, in order, joined by `, `", ("parameters",)),
+    Variable("returns", "a function's return annotation as written", ("returns",)),
     Variable("chain", "the way a file reaches a target under must_not_reach: each file its links lead through, as a "
                       "dotted name, then what the fact that matched names, joined by ` -> `", needs=CHAINED),
 )

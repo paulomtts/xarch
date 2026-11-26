@@ -25,6 +25,12 @@ All notable changes to this project are written here. The format follows
   files its links lead to however far, is a finding at the line of its first step, and the new variable `{chain}`
   says the way (`app.store -> app.store.sql -> sqlalchemy`); a name taken from a package file leads through that
   package file to every file it imports. The bundled profiles read nothing new.
+- The kind `function` carries the new fields `parameters` (each parameter in order: its name, its annotation as
+  written, empty for none, and whether it has a default) and `returns` (its return annotation as written), from the
+  new facts `function.parameters` and `function.return_annotation` (Python's reader: exact); the filters
+  `has-parameter`, `parameter-has-default`, `parameter-annotated` and `returns-annotated` match them by a pattern, and
+  the variables `{parameters}` and `{returns}` say them. The language's `worked` templates gain `function`,
+  `defaulted`, `annotated`, `returning` and `keyword_call`. The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

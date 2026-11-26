@@ -495,7 +495,8 @@ class Fact(NamedTuple):
     the app or the tests, the file or package it reaches below that root and where that sits, a text it says, the
     names it mentions (a class's or a file's), the classes a class derives from, however far, each as a dotted
     path, how many lines a file holds, and for a file that reaches a target under must_not_reach, the chain of what
-    it reaches, each step as it is said. A run holds a fact for every import, name read and call of every file,
+    it reaches, each step as it is said, and for a function its parameters (name, annotation as written, whether it
+    has a default) and its return annotation as written. A run holds a fact for every import, name read and call of every file,
     so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
@@ -510,6 +511,8 @@ class Fact(NamedTuple):
     bases: tuple[tuple[str, ...], ...] = ()
     lines: int = 0
     chain: tuple[str, ...] = ()
+    parameters: tuple[tuple[str, str, bool], ...] = ()
+    returns: str = ""
 
 
 @dataclass(frozen=True)

@@ -112,8 +112,17 @@ class Writing:
 class Worked:
     """How the language writes the code of the checks written for the explanation, as its data file's `worked` says
     it, each template one line (empty: the file does not write it, and the token is left as written): subclass, a
-    class that derives from a base, {name} and {base} standing for the class's name and its base's."""
+    class that derives from a base, {name} and {base} standing for the class's name and its base's; function, a function
+    of one parameter, {name} and {parameter}; defaulted, the same whose parameter has a default, {value}; annotated,
+    the same whose parameter has an annotation, {annotation}; returning, a function of no parameter with a return
+    annotation, {name} and {returns}; and keyword_call, a call passing one keyword argument, {callee}, {keyword} and
+    {value}."""
     subclass: str = ""
+    function: str = ""
+    defaulted: str = ""
+    annotated: str = ""
+    returning: str = ""
+    keyword_call: str = ""
 
 
 @dataclass(frozen=True)

@@ -384,7 +384,15 @@ lead to however far, is a finding at the line of its first step, and `{chain}` s
 to as a dotted name, then what matched (`app.store -> app.store.sql -> sqlalchemy`), the shortest found. An import of
 a name from a package file reaches that package file (`import-into-app` follows a name to its own file only when the
 name is a file), and the way then goes on through every file the package file imports, so a name the package only
-re-exports is followed, and so is anything else the package file imports. A check carries `examples`: code it
+re-exports is followed, and so is anything else the package file imports. The kind `function` (a method too) carries
+its `parameters`, in the order its signature declares them, each with its name, its annotation as written and whether
+it has a default, and its `returns`, the return annotation as written (the facts `function.parameters` and
+`function.return_annotation`; an annotation is empty where the code writes none, or in a language that writes none,
+and then matches no pattern): the filters `has-parameter: <pattern>` (a parameter of that name),
+`parameter-has-default: <pattern>` (such a parameter, with a default), `parameter-annotated: <pattern>` (a parameter
+whose annotation matches) and `returns-annotated: <pattern>` read them, and `{parameters}` and `{returns}` say them:
+`keep: [{parameter-has-default: actor}]` finds each function that gives `actor` a default, `keep:
+[{returns-annotated: "*Row*"}]` each that returns a row. A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

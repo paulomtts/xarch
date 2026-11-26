@@ -27,7 +27,18 @@ from dataclasses import replace
 from tests.modules.rules.builders import PROFILE, RULES, imp, in_tests, source
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.domain.parsed import Call, Callback, Class, Comment, Function, Method, MethodCall, SoleCall, Use
+from xarch.modules.rules.domain.parsed import (
+    Call,
+    Callback,
+    Class,
+    Comment,
+    Function,
+    Method,
+    MethodCall,
+    Parameter,
+    SoleCall,
+    Use,
+)
 from xarch.modules.rules.domain.rule import Fact, Found, Match, Read, Rule
 from xarch.profile_values.checks import Saying, Scope
 from xarch.profile_values.placement import Target
@@ -55,7 +66,9 @@ APP = [
                     Class(8, "Shown", methods=(Method(8, "__repr__", "str"),)),
                     Class(9, "Frozen", immutable=True), Class(9, "Loose"),
                     Class(9, "Pair", bases=(("typing", "NamedTuple"),), immutable=True)),
-           functions=(Function(10, "make", returns_named=frozenset({"Shown"}), statements=1),
+           functions=(Function(10, "make", returns_named=frozenset({"Shown"}), statements=1,
+                               parameters=(Parameter("title", "str"), Parameter("actor", "Actor | None", True)),
+                               returns="Shown"),
                       Function(11, "get", owner="Doc", forwards="self.repo.get",
                                sole_call=SoleCall(("self", "repo", "get"), then=("name",))),
                       Function(12, "put", owner="Doc", forwards="self.repo.put", sole_call=SoleCall(("self", "repo", "put")))),

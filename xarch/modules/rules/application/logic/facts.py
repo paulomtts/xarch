@@ -292,12 +292,14 @@ def _built(func: tuple[str, ...], defined: Defined) -> frozenset[str]:
 def _function(function: Function) -> Fact:
     path = (function.owner, function.name) if function.owner else (function.name,)
     public = _PUBLIC if function.public else frozenset()
+    signature = {"parameters": tuple((p.name, p.annotation, p.default) for p in function.parameters),
+                 "returns": function.returns}
     if not function.owner:
-        return Fact("function", function.line, path, function.name, _TOP | public)
+        return Fact("function", function.line, path, function.name, _TOP | public, **signature)
     if not function.forwards or function.sole_call is None:
-        return Fact("function", function.line, path, function.name, public)
+        return Fact("function", function.line, path, function.name, public, **signature)
     return Fact("function", function.line, path, function.name, _FORWARDS | public, target=function.sole_call.then,
-                text=function.forwards)
+                text=function.forwards, **signature)
 
 
 def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:

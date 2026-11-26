@@ -2,7 +2,9 @@
 check xarch has is written with. Their code names the language only by the tokens its data file gives (`%comment%`,
 the marker of a line comment, `%extension%`, the ending of a source file, and `%import <dotted> <name>%`, a line that
 imports a name from a file of the app, as its `importing` says, and `%subclass <name> <base>%`, a class that derives
-from a base, as its `worked` says), so that they hold for any language;
+from a base, `%function <name> <parameter>%`, `%defaulted <name> <parameter> <value>%`, `%annotated <name>
+<parameter> <annotation>%`, `%returning <name> <returns>%` and `%keyword_call <callee> <keyword> <value>%`, as its
+`worked` says), so that they hold for any language;
 their parts and tiers are those of the smallest profile with a test tier: a part `documents`, a tier `unit` testing
 it, and test files named check_* (the one beside the code, in a profile that says testing.beside)."""
 from __future__ import annotations
@@ -97,5 +99,26 @@ WORKED: tuple[OwnCheck, ...] = (
               ("documents/rules%extension%", "%import app.documents.store Store%\n")),
              (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),
               ("documents/rules%extension%", "%import app.documents.store Store%\n"))),
+    OwnCheck(Rule("loads-take-no-actor", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} takes an actor at line {line}: {parameters}", "read the actor where it is decided"),),
+                  keep=(Condition("named", "load*"), Condition("has-parameter", "actor")),
+                  key="checks.loads-take-no-actor"),
+             (("documents/rules%extension%", "%function load_title actor%\n"),),
+             (("documents/rules%extension%", "%function load_title path%\n"),)),
+    OwnCheck(Rule("actor-has-no-default", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} gives actor a default at line {line}", "make every caller pass the actor"),),
+                  keep=(Condition("parameter-has-default", "actor"),), key="checks.actor-has-no-default"),
+             (("documents/rules%extension%", "%defaulted publish actor 1%\n"),),
+             (("documents/rules%extension%", "%function publish actor%\n"),)),
+    OwnCheck(Rule("rules-take-no-store", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} takes a store at line {line}", "take only what the rule reads"),),
+                  keep=(Condition("parameter-annotated", "*Store"),), key="checks.rules-take-no-store"),
+             (("documents/rules%extension%", "%annotated trim titles TitleStore%\n"),),
+             (("documents/rules%extension%", "%annotated trim titles Titles%\n"),)),
+    OwnCheck(Rule("rules-return-no-rows", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} returns {returns} at line {line}", "return a value of documents"),),
+                  keep=(Condition("returns-annotated", "*Row"),), key="checks.rules-return-no-rows"),
+             (("documents/rules%extension%", "%returning title TitleRow%\n"),),
+             (("documents/rules%extension%", "%returning title Title%\n"),)),
 )
 """The worked checks, the first the example of how a check is written."""

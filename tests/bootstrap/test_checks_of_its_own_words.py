@@ -137,6 +137,36 @@ def test_count_is_said_only_by_a_check_that_counts(tmp_path):
             "counts") in checked.output
 
 
+ACTOR = {
+    "read": "function", "in": {"part": "store"}, "keep": [{"parameter-has-default": "actor"}], "may_not": "exist",
+    "message": "{name} gives actor a default at line {line}, of {parameters}", "fix": "make every caller pass actor",
+    "examples": {"flagged": {"store/x.py": "def load(actor=None): ...\n"},
+                 "clean": {"store/x.py": "def load(actor): ...\n"}}}
+NO_ROWS = {
+    "read": "function", "in": {"part": "store"}, "keep": ["public", {"returns-annotated": "*Row*"}],
+    "may_not": "exist", "message": "{name} returns {returns} at line {line}", "fix": "return a value of the domain",
+    "examples": {"flagged": {"store/x.py": "def load() -> UserRow: ...\n"},
+                 "clean": {"store/x.py": "def load() -> User: ...\n"}}}
+NO_RUNTIME = {
+    "read": "function", "in": {"part": "store"}, "keep": [{"has-parameter": "runtime"}, {"named": "__init__"}],
+    "except": [{"not parameter-annotated": "*RuntimePort"}], "may_not": "exist",
+    "message": "{name} takes the runtime at line {line}", "fix": "take a narrower port",
+    "examples": {"flagged": {"store/x.py": "class A:\n    def __init__(self, runtime: RuntimePort): ...\n"},
+                 "clean": {"store/x.py": "class A:\n    def __init__(self, runtime: Clock): ...\n"}}}
+
+
+def test_signature_filters_read_a_function_s_parameters_defaults_annotations_and_return_annotation(tmp_path):
+    files = {"store/x.py": ("def load(title: str, actor: 'Actor | None' = None): ...\n"
+                            "def save(actor, *, row=1) -> list[UserRow]: ...\n"
+                            "def _raw() -> UserRow: ...\n"
+                            "class A:\n    def __init__(self, runtime: 'FlowRuntimePort'): ...\n"
+                            "class B:\n    def __init__(self, runtime): ...\n")}
+    assert found(tmp_path, {"actor-has-no-default": ACTOR, "no-rows": NO_ROWS, "no-runtime": NO_RUNTIME}, files) == [
+        ("app/store/x.py", 1, "load gives actor a default at line 1, of title, actor"),
+        ("app/store/x.py", 2, "save returns list[UserRow] at line 2"),
+        ("app/store/x.py", 5, "__init__ takes the runtime at line 5")]
+
+
 NEVER_SQL = {
     "read": "import", "in": {"part": "ui"}, "must_not_reach": {
         "targets": [{"package": ["sqlalchemy"]}], "through": "import-into-app"},

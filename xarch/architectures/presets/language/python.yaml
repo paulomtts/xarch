@@ -33,7 +33,9 @@
 # its spec: keyword, by a keyword argument, {keyword} and {value} standing for the keyword and the spec; position, by
 # the positional argument at a place, {before} standing for the places before it and {value} for the spec;
 # type_argument, by a type argument, Python does not write. worked, how the code of the checks written for the
-# explanation is written: subclass, a class that derives from a base, {name} and {base} standing for the two names.
+# explanation is written: subclass, a class that derives from a base, {name} and {base} standing for the two names;
+# function, defaulted, annotated and returning, a function of one parameter, with a default {value}, an {annotation},
+# or of none with a return annotation {returns}; keyword_call, a call passing one keyword argument.
 # supplies: the facts its reader turns the source into, each exact or {partial: what it misses}; a key whose check
 # needs a fact not listed here is refused, and one that reads a partial fact is listed as approximate. file.package,
 # that a file stands for its folder, is never listed here: it follows package_files.
@@ -71,6 +73,11 @@ writing:
     position: "{callee}({before}{value})"
 worked:
   subclass: "class {name}({base}): ..."
+  function: "def {name}({parameter}): ..."
+  defaulted: "def {name}({parameter}={value}): ..."
+  annotated: "def {name}({parameter}: {annotation}): ..."
+  returning: "def {name}() -> {returns}: ..."
+  keyword_call: "{callee}({keyword}={value})"
 supplies:
   file: exact
   file.lines: exact
@@ -105,6 +112,8 @@ supplies:
   function.statements: exact
   function.shape: exact
   function.signature: exact
+  function.parameters: exact
+  function.return_annotation: exact
   function.sole_call: exact
   function.decorated: exact
   function.forwards: exact

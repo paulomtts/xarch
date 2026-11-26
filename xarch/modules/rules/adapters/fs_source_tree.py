@@ -72,6 +72,10 @@ what it calls, reads (attributes, globals), its constants, its keyword names, as
 of each kind it has, do show. Its annotations, defaults and decorators are no part of it; a body of inert statements
 alone has no shape.
 
+A function lists its parameters in the order its signature declares them (positional ones, `*args`, keyword-only
+ones, `**kwargs`), each with its annotation as written (`ast.unparse`, a string annotation by its text, "" for none)
+and whether it has a default, and its return annotation as written ("" for none).
+
 A function records whether it is decorated, its parameters by kind, and, when its whole body, a docstring left out, is
 one `return` or bare statement of one call, perhaps awaited, that call: its callee as a chain of names, and each of its
 arguments as the bare name it passes (a starred one marked), or as nothing for any other expression. A body that is one
@@ -178,6 +182,7 @@ from xarch.modules.rules.domain.parsed import (
     Function,
     Method,
     MethodCall,
+    Parameter,
     ParameterCall,
     Ref,
     Row,
@@ -522,7 +527,21 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
                     bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node),
-                    choices, public=not is_private_name(node.name, private))
+                    choices, public=not is_private_name(node.name, private), parameters=_parameters(node),
+                    returns=_annotation(node.returns) or "")
+
+
+def _parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[Parameter, ...]:
+    """Each parameter of the function in the order its signature declares them, its annotation as written (a string
+    annotation by its text) and whether it has a default; `*args` and `**kwargs` by their names, with none."""
+    a = node.args
+    positional = [*a.posonlyargs, *a.args]
+    defaulted = len(positional) - len(a.defaults)
+    found = [Parameter(x.arg, _annotation(x.annotation) or "", index >= defaulted) for index, x in enumerate(positional)]
+    found += [Parameter(a.vararg.arg, _annotation(a.vararg.annotation) or "")] if a.vararg else []
+    found += [Parameter(x.arg, _annotation(x.annotation) or "", d is not None) for x, d in zip(a.kwonlyargs, a.kw_defaults)]
+    found += [Parameter(a.kwarg.arg, _annotation(a.kwarg.annotation) or "")] if a.kwarg else []
+    return tuple(found)
 
 
 def _mentioned(node: ast.AST) -> frozenset[str]:

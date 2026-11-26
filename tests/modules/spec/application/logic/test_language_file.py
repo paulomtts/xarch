@@ -626,13 +626,16 @@ def test_the_spec_templates_a_data_file_writes_are_read_each_under_its_form():
         specs=SpecWriting(**specs))
 
 
-WORKED_MAPPING = ("worked: must be a mapping {subclass}: how the code of the checks written for the explanation is "
-                  "written")
+WORKED_MAPPING = ("worked: must be a mapping {subclass, function, defaulted, annotated, returning, keyword_call}: how "
+                  "the code of the checks written for the explanation is written")
 SUBCLASS = "worked.subclass: must be a line holding {name} and {base}"
 
 
 def test_python_writes_how_the_checks_written_for_the_explanation_declare_a_class_with_a_base():
-    assert PYTHON_LANGUAGE.checked.worked == Worked(subclass="class {name}({base}): ...")
+    assert PYTHON_LANGUAGE.checked.worked == Worked(
+        subclass="class {name}({base}): ...", function="def {name}({parameter}): ...",
+        defaulted="def {name}({parameter}={value}): ...", annotated="def {name}({parameter}: {annotation}): ...",
+        returning="def {name}() -> {returns}: ...", keyword_call="{callee}({keyword}={value})")
 
 
 def test_a_language_whose_file_writes_no_worked_templates_loads_with_empty_ones():
@@ -641,9 +644,14 @@ def test_a_language_whose_file_writes_no_worked_templates_loads_with_empty_ones(
 
 @pytest.mark.parametrize("worked, expected", [
     pytest.param("class {name}({base})", [WORKED_MAPPING], id="a text is no mapping"),
-    pytest.param({"klass": "x"}, ["worked: unknown key 'klass': use subclass"], id="an unknown key"),
+    pytest.param({"klass": "x"},
+                 ["worked: unknown key 'klass': use subclass, function, defaulted, annotated, returning, keyword_call"],
+                 id="an unknown key"),
     pytest.param({"subclass": "class {name}"}, [SUBCLASS], id="a subclass template without its base"),
     pytest.param({"subclass": "class {name}(\n{base})"}, [SUBCLASS], id="a subclass template over two lines"),
+    pytest.param({"defaulted": "def {name}({parameter})"},
+                 ["worked.defaulted: must be a line holding {name}, {parameter} and {value}"],
+                 id="a defaulted template without its value"),
 ])
 def test_a_bad_worked_is_refused(worked, expected):
     assert refused(DOCUMENT | {"worked": worked}) == expected

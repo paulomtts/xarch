@@ -54,6 +54,9 @@ FACTS: dict[str, str] = {
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",
     "function.signature": "a function's parameters by kind",
+    "function.parameters": "each parameter of a function in the order it declares them: its name, its annotation as "
+                           "written (empty for none) and whether it has a default",
+    "function.return_annotation": "a function's return annotation as written, empty for none",
     "function.sole_call": "the one call a function's whole body makes, with its arguments",
     "function.decorated": "whether a function has a decorator",
     "function.forwards": "whether a method only passes its arguments on to one call on what its object holds, and "

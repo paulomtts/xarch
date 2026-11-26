@@ -64,8 +64,11 @@ and, all optional, the tokens of its code the checks and the docs need (empty: t
                    {callee}, {before} and {value}. Left out, the language writes no template, and a profile whose
                    table forms or mock specs need one is refused
     worked         how the code of the checks written for the explanation is written, a map of one-line templates,
-                   each optional: subclass, a class that derives from a base, {name} and {base}. Left out, the
-                   token of that code is left as written
+                   each optional: subclass, a class that derives from a base, {name} and {base}; function, a
+                   function of one parameter, {name} and {parameter}; defaulted, its parameter with a default,
+                   {value} too; annotated, its parameter annotated, {annotation} too; returning, a function with a
+                   return annotation, {name} and {returns}; keyword_call, a call passing one keyword argument,
+                   {callee}, {keyword} and {value}. Left out, the token of that code is left as written
 
 and the facts its reader supplies (see capabilities), each graded:
 
@@ -152,11 +155,17 @@ _SPEC_TEMPLATES = {"keyword": ("{callee}", "{keyword}", "{value}"), "position": 
 _SPEC_HOLDING = {"keyword": "{callee}, {keyword} and {value}", "position": "{callee}, {before} and {value}",
                  "type_argument": "{callee}, {before} and {value}"}
 """What a problem says each template of `writing.specs` must hold."""
-WORKED = "worked: must be a mapping {subclass}: how the code of the checks written for the explanation is written"
+WORKED = ("worked: must be a mapping {subclass, function, defaulted, annotated, returning, keyword_call}: how the code "
+          "of the checks written for the explanation is written")
 """What the loader says of a value of `worked` that is not a mapping, once for the key."""
-_WORKED_TEMPLATES = {"subclass": ("{name}", "{base}")}
+_WORKED_TEMPLATES = {"subclass": ("{name}", "{base}"), "function": ("{name}", "{parameter}"),
+                     "defaulted": ("{name}", "{parameter}", "{value}"),
+                     "annotated": ("{name}", "{parameter}", "{annotation}"), "returning": ("{name}", "{returns}"),
+                     "keyword_call": ("{callee}", "{keyword}", "{value}")}
 """The templates of `worked`, in the order a problem lists them, each with the placeholders it must hold."""
-_WORKED_HOLDING = {"subclass": "{name} and {base}"}
+_WORKED_HOLDING = {"subclass": "{name} and {base}", "function": "{name} and {parameter}",
+                   "defaulted": "{name}, {parameter} and {value}", "annotated": "{name}, {parameter} and {annotation}",
+                   "returning": "{name} and {returns}", "keyword_call": "{callee}, {keyword} and {value}"}
 """What a problem says each template of `worked` must hold."""
 
 

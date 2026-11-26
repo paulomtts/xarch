@@ -73,7 +73,7 @@ def test_words(given, when, then):
 def test_a_category_is_its_words_each_in_a_line():
     found = explain(FakeProfiles({}))(ExplainWords("filters"))
     assert type(found) is WordsShown
-    assert (found.category.name, found.category.words[0].name, len(found.category.words)) == ("filters", "test", 48)
+    assert (found.category.name, found.category.words[0].name, len(found.category.words)) == ("filters", "test", 52)
 
 
 def test_a_word_s_example_is_the_first_rule_of_the_first_profile_written_with_it():

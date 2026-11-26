@@ -18,6 +18,7 @@ from xarch.modules.rules.domain.parsed import (
     Constant,
     Method,
     MethodCall,
+    Parameter,
     ParameterCall,
     Row,
     Signature,
@@ -242,6 +243,17 @@ def test_a_class_lists_its_bases_as_paths_and_its_methods_with_their_return_anno
               (Method(5, "get", "str | None"), Method(6, "save", "None"), Method(7, "raw", None),
                Method(8, "later", "None")), ("size",), fields=("size",), types=("int",), base_names=("Protocol",)),
         Class(10, "Typed", (("typing", "Protocol"), None), (), base_names=("Protocol", "Base")))
+
+
+def test_a_function_lists_its_parameters_in_order_with_their_annotations_and_defaults_and_its_return_annotation(
+        tmp_path):
+    text = ('def f(a, /, b: int = 1, *rest: str, c: "Port", d=None, **more) -> list[Row]: ...\n'
+            "class A:\n    def m(self, x=2): ...\n")
+    found = parsed(tmp_path, text).functions
+    assert [(f.name, f.parameters, f.returns) for f in found] == [
+        ("f", (Parameter("a"), Parameter("b", "int", True), Parameter("rest", "str"), Parameter("c", "Port"),
+               Parameter("d", "", True), Parameter("more")), "list[Row]"),
+        ("m", (Parameter("self"), Parameter("x", "", True)), "")]
 
 
 def test_a_class_names_each_base_by_its_last_name_as_written_and_by_nothing_when_it_is_no_name(tmp_path):

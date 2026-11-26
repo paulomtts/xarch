@@ -18,7 +18,9 @@ from xarch.profile_values.language import CheckedLanguage
 _IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
 """The token of a line that imports a name from a file of the app, in the code of a check written for the
 explanation."""
-_WORKED = {"subclass": ("name", "base")}
+_WORKED = {"subclass": ("name", "base"), "function": ("name", "parameter"),
+           "defaulted": ("name", "parameter", "value"), "annotated": ("name", "parameter", "annotation"),
+           "returning": ("name", "returns"), "keyword_call": ("callee", "keyword", "value")}
 """The tokens of the code of a check written for the explanation that the language's `worked` templates fill in, each
 `%<template> <value> ...%`, with the placeholders its values stand for, in order."""
 _VALUED = frozenset(kind.name for kind in TARGETS if kind.values)

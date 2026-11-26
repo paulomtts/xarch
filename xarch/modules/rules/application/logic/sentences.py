@@ -131,6 +131,8 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "count": lambda found, facts, profile: str(_count(found, facts, profile)),
     "lines": lambda found, facts, profile: str(found.fact.lines),
     "chain": lambda found, facts, profile: " -> ".join(found.fact.chain),
+    "parameters": lambda found, facts, profile: ", ".join(name for name, _, _ in found.fact.parameters),
+    "returns": lambda found, facts, profile: found.fact.returns,
 }
 """What each variable prints of a finding, by its name."""
 

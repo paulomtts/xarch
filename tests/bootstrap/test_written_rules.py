@@ -36,7 +36,9 @@ KEY = re.compile(r"\b(?:parts|tiers|guards|checks)\.[\w.<>-]+")
 EXAMPLES = {"flagged": {"x.py": ""}, "clean": {"y.py": ""}}
 NEW_WORDS = {"filters.extends": "pages-never-reactive", "quantifiers.at_most": "one-note-per-file",
              "quantifiers.at_least": "notes-say-why", "filters.longer-than": "short-files",
-             "quantifiers.must_not_reach": "types-never-reach-the-store"}
+             "quantifiers.must_not_reach": "types-never-reach-the-store", "filters.has-parameter": "loads-take-no-actor",
+             "filters.parameter-has-default": "actor-has-no-default",
+             "filters.parameter-annotated": "rules-take-no-store", "filters.returns-annotated": "rules-return-no-rows"}
 """The words no bundled profile uses, each by its address, with the id of the check written for the explanation that
 shows it."""
 

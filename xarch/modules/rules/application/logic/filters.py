@@ -149,6 +149,22 @@ def _longer_than(found: Found, facts: Facts, profile: Profile, value: str) -> bo
     return value.isdigit() and found.fact.lines > int(value)
 
 
+def _has_parameter(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return any(name_matches(value, name) for name, _, _ in found.fact.parameters)
+
+
+def _parameter_has_default(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return any(default and name_matches(value, name) for name, _, default in found.fact.parameters)
+
+
+def _parameter_annotated(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return any(annotation and name_matches(value, annotation) for _, annotation, _ in found.fact.parameters)
+
+
+def _returns_annotated(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    return bool(found.fact.returns) and name_matches(value, found.fact.returns)
+
+
 def _trait(name: str) -> Asked:
     return lambda found, facts, profile, value: name in found.fact.traits
 
@@ -225,6 +241,8 @@ _FACT: dict[str, Asked] = {
     "listed-by-another-part": _listed_by_another_part, "app-package": _app_package, "own-code": _own_code,
     "takes-a-name": _takes_a_name, "on-own-object": _on_own_object, "special": _special, "named": _named,
     "fake-named": _fake_named, "extends": _extends, "longer-than": _longer_than,
+    "has-parameter": _has_parameter, "parameter-has-default": _parameter_has_default,
+    "parameter-annotated": _parameter_annotated, "returns-annotated": _returns_annotated,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
                                        "unreadable", "doc", "public", "type-only")},
