@@ -59,7 +59,9 @@ class SourceCheckService:
             tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
             state.known, state.translated,
             unresolved=tuple(UnresolvedView(item, enforcement.detail(item)) for item in state.unresolved),
-            accepted=state.accepted, excused=state.excused)
+            accepted=state.accepted, excused=state.excused,
+            counterparts=tuple(OwnCheckView(name, read, enforcement.pairing(name, read))
+                               for name, read in state.counterparts))
 
     def check(self, root: Path, package: str, profile: str, tests: Path | None = None) -> Checked:
         """The violations below root and below tests, each given in full with its links followed, and the state of the

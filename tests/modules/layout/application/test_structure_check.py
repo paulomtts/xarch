@@ -6,10 +6,10 @@ import pytest
 
 from tests.fakes.filesystem import FakeDisk
 from tests.fakes.layout_skeleton import FakeSkeleton
-from tests.modules.layout.builders import BESIDE, PYTHON_NAMING
+from tests.modules.layout.builders import BESIDE, CONFORMANCE, PYTHON_NAMING, STORE
 from xarch.modules.layout.application.controller import LayoutController
 from xarch.modules.layout.application.services.structure_check import StructureCheckService
-from xarch.modules.layout.contract import CheckStructure
+from xarch.modules.layout.contract import CheckStructure, StructureChecked
 
 ROOT = Path("/src/pkg")
 TOP = {ROOT / n for n in ["bootstrap", "kernel", "kernel/logic", "modules", "platform", "cli", "cli/commands"]}
@@ -211,3 +211,38 @@ DOCS = {ROOT / "modules", ROOT / "modules/docs", ROOT / "modules/docs/domain"}
 def test_what_an_optional_part_holds_is_required_only_where_the_part_is_there(given, then):
     found = LayoutController(StructureCheckService(given, SPARSE)).check(CheckStructure(ROOT, "app", "cli"))
     assert [str(v) for v in found.violations] == then
+
+
+PAIRED = FakeSkeleton([], counterparts=[CONFORMANCE], words=[STORE], naming=PYTHON_NAMING)
+
+
+def paired(disk: FakeDisk, tests: Path | None = TESTS) -> StructureChecked:
+    return LayoutController(StructureCheckService(disk, PAIRED)).check(CheckStructure(ROOT, "app", "cli", tests))
+
+
+def test_a_counterpart_is_held_against_the_files_of_the_app_and_of_the_tests():
+    app = {ROOT / f"adapters/sql/{store}/repo.py" for store in ("cart", "shop", "old", "models")}
+    tests = {TESTS / path for path in ("fakes/cart/f.py", "fakes/shop/f.py", "fakes/old/f.py", "fakes/models/f.py",
+                                       "conformance/shop/test_x.py")}
+    checked = paired(FakeDisk(set(), app | tests))
+    assert [str(v) for v in checked.violations] == [
+        "app/adapters/sql/cart: adapters/sql/cart/ has no tests/conformance/cart/, though it has tests/fakes/cart/ "
+        "(counterparts.fakes-have-conformance)"]
+    assert [(item.file, item.key) for item in checked.waived] == [
+        ("app/adapters/sql/old", "counterparts.fakes-have-conformance.accepted")]
+    assert checked.counterparts == (("fakes-have-conformance", 3),)
+
+
+def test_with_no_tests_a_counterpart_whose_when_lies_below_them_needs_nothing():
+    checked = paired(FakeDisk(set(), {ROOT / "adapters/sql/cart/repo.py"}), None)
+    assert [str(v) for v in checked.violations] == [
+        "app/adapters/sql/old: counterparts.fakes-have-conformance.accepted names adapters/sql/old/, which is no match "
+        "of adapters/sql/<store>/ that needs a counterpart (counterparts.fakes-have-conformance)"]
+    assert checked.counterparts == (("fakes-have-conformance", 1),)
+
+
+def test_a_profile_with_no_counterparts_reads_no_counterpart():
+    assert run_with_tests(FakeDisk(TOP | MODULE, {CONTROLLER})) == []
+    checked = LayoutController(StructureCheckService(FakeDisk(TOP | MODULE, {CONTROLLER}), SKELETON)).check(
+        CheckStructure(ROOT, "app", "cli", TESTS))
+    assert checked.counterparts == ()

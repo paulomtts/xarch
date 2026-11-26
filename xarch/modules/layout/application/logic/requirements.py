@@ -7,15 +7,9 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Mapping
 
-from xarch.kernel.logic.names import is_name, is_private_name
 from xarch.kernel.violations import Violation
+from xarch.modules.layout.application.logic.instances import is_instance_name
 from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
-
-
-def _is_instance_name(name: str, naming: Naming) -> bool:
-    """Whether a folder found in a repeating folder's parent is an instance of it, not a cache or private folder: its
-    name is a name of the language, and no private one."""
-    return is_name(name, naming.names) and not is_private_name(name, naming.private)
 
 
 def requirements(root: str, top_level: Iterable[tuple[str, ...]], repeated: Iterable[Repeated],
@@ -30,7 +24,7 @@ def requirements(root: str, top_level: Iterable[tuple[str, ...]], repeated: Iter
     required += [Requirement(root, path, False, "/".join(path), when.get(path, ())) for path in top_files]
     for each in repeated:
         parts = list(each.parts)
-        for name in sorted(n for n in each.instances if _is_instance_name(n, naming)):
+        for name in sorted(n for n in each.instances if is_instance_name(n, naming)):
             owner = "/".join((root, *each.root, name))
             for path, is_dir in parts:
                 shown = "/".join(path) + ("/" if is_dir else "")

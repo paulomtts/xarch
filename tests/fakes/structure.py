@@ -8,10 +8,11 @@ from xarch.modules.rules.domain.outcomes import StructureFound
 
 
 class FakeStructure:
-    """Satisfies rules' Structure: the same violations for any app folder (none unless given)."""
+    """Satisfies rules' Structure: the same violations, and the same counterparts each with how many sources it read,
+    for any app folder (none unless given)."""
 
-    def __init__(self, violations: list[Violation] | None = None):
-        self._violations = list(violations or [])
+    def __init__(self, violations: list[Violation] | None = None, counterparts: tuple[tuple[str, int], ...] = ()):
+        self._violations, self._counterparts = list(violations or []), counterparts
 
     def checked(self, root: Path, package: str, profile: str, tests: Path | None) -> StructureFound:
-        return StructureFound(tuple(self._violations))
+        return StructureFound(tuple(self._violations), (), self._counterparts)

@@ -25,6 +25,7 @@ from xarch.modules.rules.contract import (
     KnownName,
     Loosened,
     NotADirectory,
+    OwnCheckView,
     Partial,
     Weak,
 )
@@ -114,6 +115,25 @@ def test_against_without_strict_checks_as_without_it():
     files = {**BAD, "stray.py": []}
     assert check(files, CheckApp(ROOT, "cli", ROOT.parent, against="web"), [MISSING]) == check(
         files, CheckApp(ROOT, "cli", ROOT.parent), [MISSING])
+
+
+def paired(strict: bool) -> AppChecked | CheckRefused:
+    profiles = FakeProfiles({"cli": PROFILE})
+    structure = FakeStructure(counterparts=(("sql-has-contract", 0), ("fakes-name-a-module", 2)))
+    return controller(FakeSourceTree(ROOT, GOOD), profiles, structure).check_app(CheckApp(ROOT, "cli", ROOT.parent,
+                                                                                        strict=strict))
+
+
+VACUOUS = ("counterparts.sql-has-contract matches nothing in the project, so it passes for want of anything to check: "
+           "widen its for, or drop it")
+
+
+def test_each_counterpart_is_listed_with_what_it_read_and_one_that_read_nothing_fails_strict():
+    assert paired(True) == AppChecked((), EnforcementView(strict=(FindingView("vacuous", VACUOUS),), counterparts=(
+        OwnCheckView("sql-has-contract", 0, VACUOUS),
+        OwnCheckView("fakes-name-a-module", 2, "counterparts.fakes-name-a-module read 2 sources"))),
+        {"may-import": "ask first"}, False)
+    assert paired(False).ok
 
 
 def entered(entry: str) -> Profile:

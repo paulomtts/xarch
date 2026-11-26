@@ -133,7 +133,7 @@ def test_a_version_line_is_refused_as_an_unknown_key(tmp_path):
     with pytest.raises(InvalidArchitecture) as caught:
         load_architecture(profile_in(tmp_path, "xarch: 2\n" + PROFILE))
     assert caught.value.problems == (
-        f"{tmp_path / 'small.yaml'}: unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, "
+        f"{tmp_path / 'small.yaml'}: unknown key 'xarch': use based_on, checks, counterparts, docs, evals, excluded, fakes, files, "
         "guards, hints, language, layers, name, never, parts, reserved, review, structure, testing, tiers",)
 
 

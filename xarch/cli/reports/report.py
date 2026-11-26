@@ -7,7 +7,8 @@ the fix what to do about it and the hint the profile's own advice for the rule (
 violations in the order the check gives them: of file, then line, then rule. A refusal is {"ok": false, "error"}.
 
 The text section leaves out a line with nothing to report; the JSON object always holds every key, but `checks` (each
-check the profile writes itself, {"id", "read", "said"}), which a profile that writes none does not have.
+check the profile writes itself, {"id", "read", "said"}) and `counterparts` (each counterpart, the same), which a
+profile that writes none does not have.
 """
 from __future__ import annotations
 
@@ -130,6 +131,7 @@ def _enforcement_lines(origin: Origin, state: EnforcementView, strict: bool, cwd
                 lines.append(f"{INDENT}{' ' * 2}hint: {(hints or {})[weak.rule]}")
     lines += [_line(LABELS[APPROXIMATE], item.sentence, 2) for item in state.approximate]
     lines += [_line("own check" if check.read else LABELS[VACUOUS], check.said, 2) for check in state.checks]
+    lines += [_line("counterpart" if item.read else LABELS[VACUOUS], item.said, 2) for item in state.counterparts]
     if strict and state.strict:
         lines.append(_line("strict", f"{_count(len(state.strict), 'finding')} fail the check", 0)
                      if len(state.strict) > 1 else _line("strict", "1 finding fails the check", 0))
@@ -187,6 +189,8 @@ def _enforcement_document(origin: Origin, state: EnforcementView) -> dict[str, A
         "strict_failures": [_finding(f) for f in state.strict],
         **({"checks": [{"id": check.id, "read": check.read, "said": check.said} for check in state.checks]}
            if state.checks else {}),
+        **({"counterparts": [{"id": item.id, "read": item.read, "said": item.said} for item in state.counterparts]}
+           if state.counterparts else {}),
         **({"accepted": [{"file": item.file, "line": item.line, "part": item.part, "import": item.written,
                           "why": item.why} for item in state.accepted]} if state.accepted else {}),
         **({"baseline": {"file": state.baseline.file, "recorded": state.baseline.recorded,

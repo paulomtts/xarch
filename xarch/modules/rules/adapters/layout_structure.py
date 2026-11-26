@@ -10,9 +10,6 @@ from xarch.modules.rules.domain.errors import ProfileUnusable
 from xarch.modules.rules.domain.outcomes import StructureFound
 from xarch.modules.rules.domain.published import Excused
 
-ACCEPTED = "structure.accepted"
-"""The key of the entries that accept findings of the layout."""
-
 
 class _Layout(Protocol):
     """The little rules uses of layout's controller."""
@@ -29,8 +26,8 @@ class LayoutStructure:
     def checked(self, root: Path, package: str, profile: str, tests: Path | None) -> StructureFound:
         """Raises ProfileUnusable, with layout's reason, when layout cannot check the structure."""
         match self._layout.check(CheckStructure(root, package, profile, tests)):
-            case StructureChecked(violations, waived):
-                return StructureFound(tuple(violations), tuple(Excused(item.rule, item.file, 0, ACCEPTED, item.message,
-                                                                       item.why) for item in waived))
+            case StructureChecked(violations, waived, counterparts):
+                return StructureFound(tuple(violations), tuple(Excused(item.rule, item.file, 0, item.key, item.message,
+                                                                       item.why) for item in waived), counterparts)
             case StructureRefused(reason):
                 raise ProfileUnusable(reason)

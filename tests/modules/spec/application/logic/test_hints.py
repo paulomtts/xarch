@@ -19,7 +19,7 @@ def test_every_rule_id_may_carry_a_hint(rule):
     assert parsed(layered(hints={rule: "x"})).hints == {rule: "x"}
 
 
-KNOWN = ("built-by, closed-tree, cycles, dead-code, holds, immutable, libraries, may-import, must-import, names, "
+KNOWN = ("built-by, closed-tree, counterpart, cycles, dead-code, holds, immutable, libraries, may-import, must-import, names, "
          "never-use, no-callbacks, no-comments, no-duplicates, no-twins, package-only, pass-through, private-imports, "
          "scenario-coverage, shared, stand-ins, structure, syntax, test-tree, tiers, types-only")
 

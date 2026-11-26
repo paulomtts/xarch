@@ -96,6 +96,7 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic import profile_examples as ex
 from xarch.modules.spec.application.logic import profile_needs as needs
 from xarch.modules.spec.application.logic import written_checks as own_checks
+from xarch.modules.spec.application.logic.counterparts import counterparts
 from xarch.modules.spec.application.logic.evals import evals, unlike, unplaced
 from xarch.modules.spec.application.logic.holds_written import holds as held_kinds
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
@@ -245,6 +246,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages", language)
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
     accepted = ck.structure_accepted(document["structure"], problems) if "structure" in document else ()
+    paired = counterparts(document["counterparts"], problems) if "counterparts" in document else ()
     own = (own_checks.checks(document["checks"], declared, tiers, language, problems, words=words)
            if "checks" in document else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
@@ -262,7 +264,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, framework, uses_never, excluded, hints, based_on, language,
                         reserved, needs.approximate(shortfalls), own, never, mask, placement, own_evals, placed, alike,
-                        structure_accepted=accepted)
+                        structure_accepted=accepted, counterparts=paired)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

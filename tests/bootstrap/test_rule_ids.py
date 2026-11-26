@@ -126,7 +126,8 @@ def test_a_closed_tree_names_its_rule_and_its_fix(tmp_path):
 
 def test_every_rule_id_has_a_case_here_that_produces_a_violation_with_a_fix():
     cases = {case.values[2] for case in (*CASES, *OWNED)}
-    assert cases | {"structure", "test-tree", "closed-tree", "pass-through", "holds", "immutable", "shared"} == set(RULES)
+    assert cases | {"structure", "test-tree", "counterpart", "closed-tree", "pass-through", "holds", "immutable",
+                    "shared"} == set(RULES)
 
 
 def test_a_pass_through_is_listed_as_weak_with_its_fix_and_is_no_violation(tmp_path):

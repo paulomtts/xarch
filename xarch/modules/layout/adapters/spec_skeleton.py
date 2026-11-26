@@ -4,8 +4,9 @@ from __future__ import annotations
 from typing import Protocol
 
 from xarch.modules.layout.domain.errors import ProfileUnusable
-from xarch.modules.layout.domain.structure import Allowed, Beside, Naming
-from xarch.modules.spec.contract import DEFAULT_TESTS, ProfileRefused, Skeleton, SkeletonResult
+from xarch.modules.layout.domain.structure import Allowed, Beside, Counterpart, Naming, Pattern, Word
+from xarch.modules.spec.contract import DEFAULT_TESTS, AcceptedPath, PathPattern, ProfileRefused, Skeleton, SkeletonResult
+from xarch.modules.spec.contract import Counterpart as Written
 
 
 class _Spec(Protocol):
@@ -49,6 +50,22 @@ class SpecSkeleton:
                 else Allowed(entry.path, False, "/".join(entry.path), entry.why)
                 for entry in self._skeleton(profile).accepted]
 
+    def counterparts(self, profile: str) -> list[Counterpart]:
+        """A path written tests/<path> is <path> below the tests root."""
+        return [Counterpart(item.id, _pattern(item.source), _pattern(item.has),
+                            tuple(_pattern(when) for when in item.when),
+                            tuple(_allowed(entry, item) for entry in item.accepted), item.message, item.fix)
+                for item in self._skeleton(profile).counterparts]
+
+    def words(self, profile: str) -> list[Word]:
+        """The names beside the instances are the next step of every folder or file the layout writes below the
+        repeating folder's own folder outside it, and of every other repeating folder there."""
+        skeleton = self._skeleton(profile)
+        paths = [*(entry.path for entry in skeleton.top_level), *(other.root for other in skeleton.repeating)]
+        return [Word(each.word, each.root, frozenset(path[len(each.root)] for path in paths
+                                                     if len(path) > len(each.root) and path[:len(each.root)] == each.root))
+                for each in skeleton.repeating]
+
     def beside(self, profile: str) -> Beside | None:
         skeleton = self._skeleton(profile)
         return Beside(skeleton.test_files, skeleton.kept) if skeleton.beside else None
@@ -60,3 +77,15 @@ class SpecSkeleton:
                 raise ProfileUnusable(reason)
             case Skeleton() as skeleton:
                 return skeleton
+
+
+def _pattern(written: PathPattern) -> Pattern:
+    tests = written.steps[0] == DEFAULT_TESTS
+    return Pattern(written.steps[1:] if tests else written.steps, tests, written.folder)
+
+
+def _allowed(entry: AcceptedPath, item: Written) -> Allowed:
+    """An entry of a counterpart's accepted, a match of its source: a folder when the source is one."""
+    tests = entry.path[0] == DEFAULT_TESTS
+    written = "/".join(entry.path) + ("/" if item.source.folder else "")
+    return Allowed(entry.path[1:] if tests else entry.path, tests, written, entry.why)

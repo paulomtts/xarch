@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from xarch.modules.layout.domain.structure import Allowed, Beside, Naming
+from xarch.modules.layout.domain.structure import Allowed, Beside, Counterpart, Naming, Word
 
 
 class Skeleton(Protocol):
@@ -37,6 +37,14 @@ class Skeleton(Protocol):
 
     def accepted(self, profile: str) -> list[Allowed]:
         """The findings of the layout the profile accepts (structure.accepted), in the order written."""
+        ...
+
+    def counterparts(self, profile: str) -> list[Counterpart]:
+        """What the profile says lies with what (counterparts), in the order written."""
+        ...
+
+    def words(self, profile: str) -> list[Word]:
+        """Each repeating folder of the layout as a counterpart's placeholder reads it, in the order of the profile."""
         ...
 
     def beside(self, profile: str) -> Beside | None:

@@ -7,6 +7,18 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- `counterparts: {<id>: {for, has, when, accepted, message, fix}}` says what lies with what, path by path: each match
+  of `for` (a folder ending in `/`, else a file, below the app or `tests/<path>` below the tests), where every path of
+  `when` matches too, with no match of `has` is a new `counterpart` finding at it. `<word>` binds the text of a step or
+  part of one and stands for it in `has` and `when`; the word of a repeating folder at that folder's place binds only
+  its instances, never a folder the layout names beside them; `*` is any text within a step, and several matches of
+  `has` satisfy it. `accepted: [{path, why}, ...]` lists sources that need none, named in the enforcement section
+  instead (JSON `enforcement.accepted_findings`), an entry that accepts nothing being a finding, and each entry the
+  compared profile does not hold listed as looser (`counterparts.accepted`). Each counterpart is listed with how many
+  sources it read (JSON `enforcement.counterparts`); one whose `for` matches nothing reads nothing and fails `--strict`
+  (`strict_failures` key `vacuous`). A placeholder of `has` or `when` that `for` does not bind, two placeholders side
+  by side in a step, or a `has` equal to `for` is refused when the profile loads. A profile without the key checks as
+  before.
 - `xarch baseline write [--reset]` records the violations a whole check finds now in `.xarch/baseline.json`, each
   keyed by rule, file and message (digits read alike) with a count; `check` then holds them back and reports only
   what the record does not hold, so a swap (one fixed, one added) is caught. A record above the code passes and says

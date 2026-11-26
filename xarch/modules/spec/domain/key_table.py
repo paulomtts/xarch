@@ -9,6 +9,8 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_BUNDLED,
     CHOICE_LANGUAGES,
     CHOICE_PRESETS,
+    COUNTERPART,
+    COUNTERPARTS,
     DEAD_CODE,
     DECLARED,
     DOCS,
@@ -73,6 +75,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "guards", opens=GUARD),
     Key(PROFILE, "excluded"),
     Key(PROFILE, "structure", rules=("structure", "test-tree"), opens=STRUCTURE),
+    Key(PROFILE, "counterparts", rules=("counterpart",), opens=COUNTERPARTS),
     Key(PROFILE, "hints", False, False),
     Key(PROFILE, "checks"),
     Key(PROFILE, "files", opens=FILE),
@@ -315,7 +318,10 @@ NEEDS: dict[str, tuple[str, ...]] = {
 KEYS: tuple[Key, ...] = tuple(replace(key, needs=NEEDS.get(key.address, ())) for key in _KEYS)
 """Every key of every scope, in the order a file writes them."""
 
-SLOTS: tuple[Key, ...] = tuple(
+SLOTS: tuple[Key, ...] = (*(
     Key(EVAL, slot, slot in ("ask", "answer", "reads", "message", "fix", "examples"), False, read_by=READ_BY_REVIEW)
-    for slot in ("ask", "answer", "yes", "no", "reads", "in", "keep", "line", "message", "fix", "examples"))
-"""The slots of an eval of the profile's own, under an id of its own (see HELD), in the order a file writes them."""
+    for slot in ("ask", "answer", "yes", "no", "reads", "in", "keep", "line", "message", "fix", "examples")), *(
+    Key(COUNTERPART, slot, slot in ("for", "has"), rules=("counterpart",))
+    for slot in ("for", "has", "when", "accepted", "message", "fix")))
+"""The slots of an eval of the profile's own, then of a counterpart, each under an id of its own (see HELD), in the
+order a file writes them."""
