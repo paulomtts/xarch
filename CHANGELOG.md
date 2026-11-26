@@ -5,6 +5,8 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-26
+
 ### Added
 
 - The kinds `call`, `method-call` and `construction` carry the new field `positional`, from the new fact
@@ -927,6 +929,7 @@ The first release.
 - Languages other than Python.
 - A stable check vocabulary: the words a profile's checks are written in may change.
 
+[0.4.0]: https://github.com/paulomtts/xarch/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/paulomtts/xarch/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/paulomtts/xarch/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/paulomtts/xarch/compare/v0.1.0...v0.1.1
