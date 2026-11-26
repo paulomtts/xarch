@@ -14,6 +14,12 @@ All notable changes to this project are written here. The format follows
   as written, so that a class of the same file is followed too). A language's data file may give `worked`, the
   templates the code of the checks `profile explain` shows is written with (`subclass`, a class deriving from a base),
   so that the example of `filters.extends` is written in the language. The bundled profiles read nothing new.
+- The quantifiers `at_most: <n>` and `at_least: <n>` of a check of your own count the facts it keeps in each file of
+  its scope, alone: under `at_most` each kept fact after the n-th is a finding at its line, under `at_least` a file
+  that keeps fewer is a finding at line 0; the variable `{count}` says how many the file keeps, and is refused in a
+  check that does not count. The kind `file` carries the new field `lines`, from the new fact `file.lines` (Python's
+  reader: exact), which the filter `longer-than: <n>` and the variable `{lines}` read. A filter's value may be written
+  as a number. The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

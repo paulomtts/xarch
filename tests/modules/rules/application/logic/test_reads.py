@@ -21,9 +21,9 @@ TRAITS = ("relative", "standard", "on-own-object", "top-level", "forwards", "exc
 """The fields a fact carries as a trait, by its name."""
 STORED = {"line": "line", "path": "path", "method": "name", "name": "name", "written": "text", "text": "text",
           "marker": "name", "forwarded": "text", "mentions": "names", "reaches": "target", "returned": "target",
-          "place": "at", "bound": "bound", "function": "path", "bases": "bases", **{trait: trait for trait in TRAITS}}
+          "place": "at", "bound": "bound", "function": "path", "bases": "bases", "lines": "lines", **{trait: trait for trait in TRAITS}}
 """Where a fact keeps each field of the vocabulary: an attribute of the fact, or a trait by its name."""
-VALUES = {"named": "Doc*", "extends": "z*", "below": "fakes", "of-kind": "import", "target-below": "fakes",
+VALUES = {"named": "Doc*", "extends": "z*", "longer-than": "5", "below": "fakes", "of-kind": "import", "target-below": "fakes",
           "target-allows-under": "built_by"}
 MATCHES = {"exist": Match("exist"), "path": Match("path", names=(("yaml",), ("", "absolute()"))),
            "package": Match("package", words=("json",)), "name": Match("name", words=("Doc*",)),
@@ -41,7 +41,8 @@ def changed(fact: Fact, stored: str) -> Fact:
     flipped = {"line": fact.line + 1, "path": () if fact.path else ("zz",), "name": None if fact.name else "zz",
                "text": "" if fact.text else "zz", "names": frozenset() if fact.names else frozenset({"zz"}),
                "target": () if fact.target else ("zz",), "at": None if fact.at else Place("kernel"),
-               "bound": 0 if fact.bound else 9, "bases": () if fact.bases else (("zz",),)}
+               "bound": 0 if fact.bound else 9, "bases": () if fact.bases else (("zz",),),
+               "lines": 0 if fact.lines else 99}
     return fact._replace(**{stored: flipped[stored]})
 
 

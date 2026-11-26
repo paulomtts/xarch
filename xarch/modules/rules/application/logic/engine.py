@@ -18,6 +18,10 @@ lead to; a declaration or file reached already reaches further through its facts
 each kept fact of the scope that nothing reached is a finding: by its name, a declaration (and, for a rule that is
 reached only from elsewhere, by a root other than its own file), and by its steps, a file.
 
+A rule that counts reads the kept facts of each file of its scope alone, in the order the file says them: under AT_MOST
+each one after its count is a finding, under AT_LEAST a file that keeps fewer than its count is one, its file fact the
+fact said; an exemption excuses a finding as any other.
+
 How many facts a rule reads at all is counted apart (read): a rule that reads none passes for want of anything to
 check.
 """
@@ -35,6 +39,9 @@ from xarch.modules.rules.application.logic.targets import finding, matched
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import (
+    AT_LEAST,
+    AT_MOST,
+    COUNTS,
     FAIL,
     MAY_NOT,
     MUST_BE_REACHED,
@@ -60,6 +67,7 @@ def run(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Violation
         for index, rule in enumerate(rules):
             if in_scope(rule.scope, read, facts, profile):
                 found += (_unreached(rule, read, position, reached[index], facts, profile) if index in reached
+                          else _counted(rule, read, facts, profile) if rule.quantifier in COUNTS
                           else _file(rule, read, facts, profile))
     return found
 
@@ -72,7 +80,7 @@ def read(rule: Rule, facts: Facts, profile: Profile) -> int:
     for file in facts.files:
         if not in_scope(rule.scope, file, facts, profile):
             continue
-        if rule.quantifier == MUST_REACH:
+        if rule.quantifier in (MUST_REACH, AT_LEAST):
             count += 1
             continue
         count += sum(1 for kind in rule.facts for fact in file.facts.get(kind, ())
@@ -172,6 +180,25 @@ def _unreached(rule: Rule, read: Read, position: int, reached: Reached, facts: F
         by = reached.get(_key(read, fact))
         if not _all(keep, candidate, facts, profile) or (by is not None and (not rule.elsewhere or by - {position})):
             continue
+        if exempt and _any(exempt, candidate, facts, profile):
+            continue
+        found.append(_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile))
+    return found
+
+
+def _counted(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Violation | Weak]:
+    """The findings of a rule that counts in one file: under AT_MOST its kept facts after the count, under AT_LEAST its
+    file fact when it keeps fewer than the count; those an exemption excuses dropped."""
+    keep, exempt = _questions(rule.keep), _questions(rule.exempt)
+    held = [fact for kind in rule.facts for fact in read.facts.get(kind, ())
+            if _all(keep, Found(rule, read, fact), facts, profile)]
+    if rule.quantifier == AT_MOST:
+        subjects = held[rule.count:]
+    else:
+        subjects = list(read.facts.get("file", ())) if len(held) < rule.count else []
+    found: list[Violation | Weak] = []
+    for fact in subjects:
+        candidate = Found(rule, read, fact)
         if exempt and _any(exempt, candidate, facts, profile):
             continue
         found.append(_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile))

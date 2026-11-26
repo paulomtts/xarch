@@ -20,7 +20,16 @@ from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.errors import ChecksRefused, RuleRefused
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
-from xarch.modules.rules.domain.rule import EXISTING, MUST_BE_REACHED, MUST_REACH, MadeChecks, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import (
+    COUNTS,
+    EXISTING,
+    MUST_BE_REACHED,
+    MUST_REACH,
+    MadeChecks,
+    Match,
+    OwnCheck,
+    Rule,
+)
 from xarch.modules.rules.domain.vocabulary import NAMES, PARTS, PLACES, TARGETS
 from xarch.profile_values.capabilities import FACTS, Shortfall
 from xarch.profile_values.checks import WrittenCheck, WrittenTarget
@@ -69,10 +78,10 @@ def _rule_of(name: str, check: WrittenCheck, targets: tuple[Match, ...]) -> Rule
     """The rule a check means, its targets resolved; raises RuleRefused when a word does not exist or apply."""
     quantified = check.quantified
     return Rule(name, check.within, check.read, quantified.slot,
-                EXISTING if quantified.slot == MUST_BE_REACHED else targets, check.sayings, keep=check.keep,
+                EXISTING if quantified.slot in (MUST_BE_REACHED, *COUNTS) else targets, check.sayings, keep=check.keep,
                 exempt=check.exempt, mode=check.mode, key=f"checks.{name}", links=quantified.through,
                 via=quantified.through_only, roots=quantified.start, spread=quantified.then_through,
-                elsewhere=quantified.by_another_file)
+                elsewhere=quantified.by_another_file, count=quantified.count)
 
 
 def unsupplied(address: str, rule: Rule, language: CheckedLanguage, what: str) -> list[str]:

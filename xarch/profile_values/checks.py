@@ -26,8 +26,10 @@ APP, TESTS, ALL = "app", "tests", "all"
 FAIL, LIST = "fail", "list"
 """What a finding is: a violation, or a weak finding listed in the enforcement section."""
 
-QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached")
+QUANTIFIER_SLOTS = ("may_not", "may_only", "must_reach", "must_be_reached", "at_most", "at_least")
 """The slots of which a check writes one, its quantifier."""
+COUNT_SLOTS = QUANTIFIER_SLOTS[4:]
+"""The quantifiers that count the facts a file keeps, each written with a whole number."""
 
 
 @dataclass(frozen=True)
@@ -82,7 +84,8 @@ class Quantified:
     targets (for `must_be_reached`, none); and for a quantifier of reach, the kinds of fact it reaches through, the
     filters a link passes (through_only), and for `must_be_reached` the files the reach starts from (start), the kinds
     of fact through which a declaration reached already reaches further (then_through), and whether a declaration is
-    reached only from a file other than its own (by_another_file)."""
+    reached only from a file other than its own (by_another_file); for a quantifier that counts (COUNT_SLOTS), the
+    number of kept facts a file may hold at most, or must hold at least (count)."""
     slot: str
     targets: tuple[WrittenTarget, ...] = ()
     through: tuple[str, ...] = ()
@@ -90,6 +93,7 @@ class Quantified:
     start: Scope | None = None
     then_through: tuple[str, ...] = ()
     by_another_file: bool = False
+    count: int = 0
 
 
 @dataclass(frozen=True)

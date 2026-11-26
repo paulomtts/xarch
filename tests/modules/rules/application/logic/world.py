@@ -63,7 +63,7 @@ APP = [
            callbacks=(Callback(15, "make", "check", annotated=True), Callback(16, "get", "self", receiver=True)),
            uses=(Use(17, ("datetime", "datetime", "now"), 2), Use(18, ("yaml", "load"), 1)),
            method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute")),
-           module_functions=("make",), named=frozenset({"Doc", "make", "Repo"})),
+           module_functions=("make",), named=frozenset({"Doc", "make", "Repo"}), lines=12),
     source("modules/docs/application/ports/repo.py", imp(1, "typing", "Protocol"),
            replace(imp(3, "app.modules.docs.domain.doc", "Doc"), type_only=True),
            classes=(Class(2, "Repo", bases=(("typing", "Protocol"),), interface=True),)),

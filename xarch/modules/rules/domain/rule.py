@@ -21,6 +21,7 @@ from xarch.modules.rules.domain.errors import RuleRefused
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.vocabulary import (
     APP_SIDE,
+    COUNTED,
     FILE,
     FILTERS,
     FOLDER,
@@ -29,6 +30,7 @@ from xarch.modules.rules.domain.vocabulary import (
     KEY_OF_RULE,
     KIND,
     KINDS,
+    NUMBER,
     PART_KEYS,
     QUANTIFIERS,
     RENAMED_VARIABLES,
@@ -39,14 +41,28 @@ from xarch.modules.rules.domain.vocabulary import (
     VARIABLES,
     Kind,
 )
-from xarch.profile_values.checks import ALL, APP, FAIL, LIST, QUANTIFIER_SLOTS, TESTS, Condition, Saying, Scope
+from xarch.profile_values.checks import (
+    ALL,
+    APP,
+    COUNT_SLOTS,
+    FAIL,
+    LIST,
+    QUANTIFIER_SLOTS,
+    TESTS,
+    Condition,
+    Saying,
+    Scope,
+)
 from xarch.profile_values.placement import Target
 
-MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED = QUANTIFIER_SLOTS
-"""What a kept fact does with the targets: matches none of them, or matches one of them; and what a file or a
+MAY_NOT, MAY_ONLY, MUST_REACH, MUST_BE_REACHED, AT_MOST, AT_LEAST = QUANTIFIER_SLOTS
+"""What a kept fact does with the targets: matches none of them, or matches one of them; what a file or a
 declaration does through links: a file of the scope reaches a target, by one of its own facts or through the files its
 links lead to, however far; a declaration of the scope is reached from a root, by the link of a root, or of a
-declaration reached already when the rule spreads through it. Each is the slot of the format that writes it."""
+declaration reached already when the rule spreads through it; and how many facts a file of the scope keeps: at most,
+or at least, the rule's count. Each is the slot of the format that writes it."""
+COUNTS = COUNT_SLOTS
+"""The quantifiers that count the facts a file keeps: AT_MOST and AT_LEAST."""
 
 EXIST = "exist"
 """The kind of target every fact matches."""
@@ -92,7 +108,8 @@ class Rule:
     conditions a link passes (via); for MUST_BE_REACHED, the files the reach starts from (roots), the kinds of fact
     through which a declaration reached already reaches further (spread), and whether a declaration is reached only
     from a root other than its own file (elsewhere). A link reaches the declarations it names (the names it mentions,
-    for a fact that has them) or the file it leads to (what it reaches).
+    for a fact that has them) or the file it leads to (what it reaches). A rule that counts (AT_MOST, AT_LEAST) says how
+    many facts a file keeps at most or at least (count).
 
     A rule that names a word of no slot, or one that does not apply to what the slot reads, is refused (RuleRefused),
     with every problem at once."""
@@ -111,6 +128,7 @@ class Rule:
     roots: Scope | None = None
     spread: tuple[str, ...] = ()
     elsewhere: bool = False
+    count: int = 0
 
     def __post_init__(self) -> None:
         found = self.problems()
@@ -119,8 +137,9 @@ class Rule:
 
     @property
     def said_kinds(self) -> tuple[str, ...]:
-        """The kinds of fact a finding of the rule is: a file's, for a rule a file must reach by; else those it reads."""
-        return ("file",) if self.quantifier == MUST_REACH else self.facts
+        """The kinds of fact a finding of the rule is: a file's, for a rule a file must reach by or keep at least so many
+        facts; else those it reads."""
+        return ("file",) if self.quantifier in (MUST_REACH, AT_LEAST) else self.facts
 
     @property
     def needs(self) -> tuple[str, ...]:
@@ -242,6 +261,8 @@ def _value(slot: str, condition: Condition, wanted: str) -> list[str]:
         return [f"{slot}: {name} {value!r}: write a folder below the root, such as fakes or units/docs"]
     if wanted == KIND and value not in _KINDS:
         return [f"{slot}: {name} {value!r}: no kind of fact is named so{_nearest(value, _KINDS)}"]
+    if wanted == NUMBER and not value.isdigit():
+        return [f"{slot}: {name} {value!r}: write a whole number, such as 700"]
     if wanted == KEY and value not in PART_KEYS:
         return [f"{slot}: {name} {value!r}: write one of {', '.join(PART_KEYS)}"]
     return []
@@ -294,7 +315,12 @@ def _quantified(rule: Rule, kinds: list[Kind]) -> list[str]:
     if quantifier not in _QUANTIFIERS:
         return [f"quantifier: no quantifier is named {quantifier!r}: write one of {', '.join(sorted(_QUANTIFIERS))}"]
     slot = f"{quantifier}.targets" if quantifier == MUST_REACH else quantifier
-    if quantifier == MUST_BE_REACHED:
+    if quantifier in COUNTS:
+        if rule.targets != EXISTING:
+            problems.append(f"{quantifier}: takes no targets: what it counts is what the check keeps")
+        if rule.count < 0:
+            problems.append(f"{quantifier}: is {rule.count}: write a whole number, 0 or more")
+    elif quantifier == MUST_BE_REACHED:
         if rule.targets != EXISTING:
             problems.append(f"{quantifier}: takes no targets: what must be reached is what the check keeps")
     else:
@@ -446,6 +472,9 @@ def _variable(slot: str, variable, rule: Rule, kinds: list[Kind], side: str, gua
     if variable.needs == SCOPE_PART and not rule.scope.named_part:
         problems.append(f"{slot}: {{{name}}} is the part the scope names, and this scope names none: write "
                         "`in: {part: <part>}`")
+    if variable.needs == COUNTED and rule.quantifier not in COUNTS:
+        problems.append(f"{slot}: {{{name}}} is how many facts a file keeps, which only a check under {AT_MOST} or "
+                        f"{AT_LEAST} counts")
     if variable.needs == VALUES and not any(match.values for match in rule.targets):
         problems.append(f"{slot}: {{{name}}} prints the values of the targets, and no target of this check lists any")
     return problems
@@ -457,8 +486,8 @@ class Fact(NamedTuple):
     import takes, a method called, a parameter), the traits the reader recorded of it by name (relative, standard,
     held, receiver, annotated-callable), how many steps of its path the import binding it bound, for an import into
     the app or the tests, the file or package it reaches below that root and where that sits, a text it says, the
-    names it mentions (a class's or a file's), and the classes a class derives from, however far, each as a dotted
-    path. A run holds a fact for every import, name read and call of every file,
+    names it mentions (a class's or a file's), the classes a class derives from, however far, each as a dotted
+    path, and how many lines a file holds. A run holds a fact for every import, name read and call of every file,
     so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
@@ -471,6 +500,7 @@ class Fact(NamedTuple):
     text: str = ""
     names: frozenset[str] = frozenset()
     bases: tuple[tuple[str, ...], ...] = ()
+    lines: int = 0
 
 
 @dataclass(frozen=True)

@@ -76,3 +76,62 @@ def test_extends_is_refused_on_a_kind_that_carries_no_bases(tmp_path):
     assert checked.exit_code == 1
     assert ("checks.x.except: extends does not apply to function: it reads bases, which it does not carry; it applies "
             "to class") in checked.output
+
+
+PORTS = ("from typing import Protocol\n\nclass StorePort(Protocol): ...\nclass CachePort(Protocol): ...\n"
+         "class LockPort(Protocol): ...\n")
+ONE_PORT = {
+    "read": "class", "in": {"part": "store"}, "keep": [{"named": "*Port"}], "at_most": 1,
+    "message": "{file} declares {count} interfaces, and {name} at line {line} is one too many",
+    "fix": "move {name} to a file of its own",
+    "examples": {"flagged": {"store/ports.py": PORTS}, "clean": {"store/ports.py": "class Store: ...\n"}}}
+
+
+def test_at_most_finds_each_kept_fact_of_a_file_beyond_the_number_at_its_own_line(tmp_path):
+    files = {"store/ports.py": PORTS, "store/one.py": "from typing import Protocol\n\nclass OnePort(Protocol): ...\n"}
+    assert found(tmp_path, {"one-port-per-file": ONE_PORT}, files) == [
+        ("app/store/ports.py", 4, "app/store/ports.py declares 3 interfaces, and CachePort at line 4 is one too many"),
+        ("app/store/ports.py", 5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
+
+
+SOME_PORT = {
+    "read": "class", "in": {"part": "store"}, "keep": [{"named": "*Port"}], "at_least": 1,
+    "message": "{file} declares {count} interfaces, and needs one", "fix": "declare its port, or move the file",
+    "examples": {"flagged": {"store/ports.py": "class Store: ...\n"}, "clean": {"store/ports.py": PORTS}}}
+
+
+def test_at_least_finds_each_file_of_the_scope_that_keeps_fewer_facts_than_the_number(tmp_path):
+    assert found(tmp_path, {"a-port-per-file": SOME_PORT}, {"store/ports.py": PORTS, "store/none.py": "x = 1\n"}) == [
+        ("app/store/none.py", None, "app/store/none.py declares 0 interfaces, and needs one")]
+
+
+LONG = {
+    "read": "file", "in": {"part": "store"}, "keep": [{"longer-than": 3}], "may_not": "exist",
+    "message": "{file} holds {lines} lines", "fix": "split it",
+    "examples": {"flagged": {"store/long.py": "a = 1\nb = 2\nc = 3\nd = 4\n"}, "clean": {"store/short.py": "a = 1\n"}}}
+
+
+def test_longer_than_holds_of_a_file_of_more_lines_than_the_number(tmp_path):
+    files = {"store/long.py": "a = 1\nb = 2\nc = 3\nd = 4\n", "store/three.py": "a = 1\nb = 2\nc = 3\n"}
+    assert found(tmp_path, {"short-files": LONG}, files) == [("app/store/long.py", None, "app/store/long.py holds 4 lines")]
+
+
+@pytest.mark.parametrize("changes, said", [
+    pytest.param({"at_most": -1}, "checks.x.at_most: must be a whole number, 0 or more", id="a negative number"),
+    pytest.param({"at_most": "one"}, "checks.x.at_most: must be a whole number, 0 or more", id="a word"),
+    pytest.param({"keep": [{"longer-than": "many"}]},
+                 "checks.x.keep: longer-than 'many': write a whole number, such as 700", id="a length that is no number"),
+])
+def test_a_count_or_a_length_that_is_no_whole_number_is_refused(tmp_path, changes, said):
+    body = {**ONE_PORT, **changes} if "at_most" in changes else {**LONG, **changes}
+    project(tmp_path, {"x": body}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1 and said in checked.output, checked.output
+
+
+def test_count_is_said_only_by_a_check_that_counts(tmp_path):
+    project(tmp_path, {"x": {**LONG, "message": "{file} holds {count}"}}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1
+    assert ("checks.x.message: {count} is how many facts a file keeps, which only a check under at_most or at_least "
+            "counts") in checked.output

@@ -280,9 +280,9 @@ class SourceFile:
     name it only passes on (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
     top level and the methods of those classes, in the order of their first line (see Piece). tests are the tests it
     declares, as its reader reads them by the framework's forms (see Test): a function form's are also among its
-    functions, a call form's are not; a file read with no form holds none. beside: the file is a test that sits beside
-    the code it tests, below the app root (testing.beside); its path is below the app root, and it is no file of the
-    app's code. error is how it fails to parse, and then it holds nothing else."""
+    functions, a call form's are not; a file read with no form holds none. lines is how many lines it holds. beside:
+    the file is a test that sits beside the code it tests, below the app root (testing.beside); its path is below the
+    app root, and it is no file of the app's code. error is how it fails to parse, and then it holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -303,3 +303,4 @@ class SourceFile:
     pieces: tuple[Piece, ...] = ()
     tests: tuple[Test, ...] = ()
     beside: bool = False
+    lines: int = 0

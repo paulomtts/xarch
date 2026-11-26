@@ -7,7 +7,7 @@ their parts and tiers are those of the smallest profile with a test tier: a part
 it, and test files named check_* (the one beside the code, in a profile that says testing.beside)."""
 from __future__ import annotations
 
-from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, AT_MOST, EXISTING, MAY_NOT, Match, OwnCheck, Rule
 from xarch.profile_values.checks import APP, TESTS, Condition, Saying, Scope
 
 TODO = (Match("text", words=("*TODO*",)),)
@@ -71,5 +71,22 @@ WORKED: tuple[OwnCheck, ...] = (
                   key="checks.pages-never-reactive"),
              (SCREENS, ("documents/pages%extension%", "%import app.documents.screens Screen%\n%subclass HomePage Screen%\n")),
              (SCREENS, ("documents/pages%extension%", "%subclass HomePage Plain%\n"))),
+    OwnCheck(Rule("one-note-per-file", Scope(APP, where=(Condition("placed"),)), ("comment",), AT_MOST, EXISTING,
+                  (Saying("{file} leaves {count} notes, and one more at line {line}: {text}",
+                          "keep one note, and move the others where the team tracks its work"),),
+                  key="checks.one-note-per-file", count=1),
+             (("documents/notes%extension%", "%comment% split this file\n%comment% and rename it\n"),),
+             (("documents/notes%extension%", "%comment% split by kind\n"),)),
+    OwnCheck(Rule("notes-say-why", Scope(APP, where=(Condition("placed"),)), ("comment",), AT_LEAST, EXISTING,
+                  (Saying("{file} holds {count} comments, and says nowhere why it is there",
+                          "say in a comment what the file is for"),),
+                  key="checks.notes-say-why", count=1),
+             (("documents/rules%extension%", "%import app.documents.types.title Title%\n"),),
+             (("documents/rules%extension%", "%comment% the rules a title keeps\n"),)),
+    OwnCheck(Rule("short-files", Scope(APP, where=(Condition("placed"),)), ("file",), MAY_NOT, EXISTING,
+                  (Saying("{file} holds {lines} lines", "split it by what each part of it is about"),),
+                  keep=(Condition("longer-than", "2"),), key="checks.short-files"),
+             (("documents/notes%extension%", "%comment% one\n%comment% two\n%comment% three\n"),),
+             (("documents/notes%extension%", "%comment% one\n"),)),
 )
 """The worked checks, the first the example of how a check is written."""

@@ -10,6 +10,7 @@ is the rules module's, which reads what this gives back.
       may_not | may_only: <target> | [<target>, ...]
       must_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
       must_be_reached: {from: <scope as in>, through: ..., through_only: [...], then_through: <kind> | [...], by_another_file: true}
+      at_most | at_least: <whole number>
       except: [<filter>, ...]
       mode: fail | list
       message: <sentence>         with {<variable>}s
@@ -46,6 +47,7 @@ from xarch.modules.spec.domain.values import (
 from xarch.profile_values.checks import (
     ANY,
     APP,
+    COUNT_SLOTS,
     QUANTIFIER_SLOTS,
     STRUCTURE,
     Condition,
@@ -154,6 +156,8 @@ def filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ...
             found.append(item.strip())
         elif isinstance(item, Mapping) and len(item) == 1:
             ((name, given),) = item.items()
+            if isinstance(given, int) and not isinstance(given, bool):
+                given = str(given)
             if isinstance(name, str) and isinstance(given, str) and given.strip() and " " not in given.strip():
                 found.append(f"{name.strip()} {given.strip()}")
             else:
@@ -216,6 +220,11 @@ def _targets(value: Any, where: str, problems: list[str]) -> tuple[WrittenTarget
 
 def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: set[str],
                 problems: list[str], words: Collection[str]) -> Quantified:
+    if slot in COUNT_SLOTS:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            problems.append(f"{where}: must be a whole number, 0 or more")
+            return Quantified(slot)
+        return Quantified(slot, count=value)
     if slot not in REACH_SLOTS:
         return Quantified(slot, _targets(value, where, problems))
     if not isinstance(value, Mapping):

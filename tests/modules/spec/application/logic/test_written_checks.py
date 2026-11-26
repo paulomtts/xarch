@@ -74,19 +74,21 @@ def test_a_reach_from_roots_reads_its_roots_as_a_scope():
     pytest.param({"names": SMALL}, ["checks.names: names is the id of a check xarch has: give your check an id of its "
                                     "own, such as my-names"], id="the id of a check xarch has"),
     pytest.param({"x": "call"}, ["checks.x: must be a map of slots: read, in, keep, may_not, may_only, must_reach, "
-                                 "must_be_reached, except, mode, message, fix, once_per, per_line, cases, examples"],
+                                 "must_be_reached, at_most, at_least, except, mode, message, fix, once_per, per_line, "
+                                 "cases, examples"],
                  id="a check that is no map"),
     pytest.param({"x": {**SMALL, "colour": "red"}}, ["checks.x: unknown key `colour`: use read, in, keep, may_not, "
-                                                     "may_only, must_reach, must_be_reached, except, mode, message, fix, "
-                                                     "once_per, per_line, cases, examples"], id="a slot of no check"),
+                                                     "may_only, must_reach, must_be_reached, at_most, at_least, "
+                                                     "except, mode, message, fix, once_per, per_line, cases, examples"],
+                 id="a slot of no check"),
     pytest.param({"x": {"may_not": "exist"}}, ["checks.x: missing `read`", "checks.x: missing `message`",
                                                "checks.x: missing `fix`", "checks.x: missing `examples`"],
                  id="the slots every check needs"),
     pytest.param({"x": {k: v for k, v in SMALL.items() if k != "may_not"}},
-                 ["checks.x: names no quantifier: write one of may_not, may_only, must_reach, must_be_reached"],
+                 ["checks.x: names no quantifier: write one of may_not, may_only, must_reach, must_be_reached, at_most, at_least"],
                  id="no quantifier"),
     pytest.param({"x": {**SMALL, "may_only": "exist"}},
-                 ["checks.x: names may_not and may_only: write one of may_not, may_only, must_reach, must_be_reached"],
+                 ["checks.x: names may_not and may_only: write one of may_not, may_only, must_reach, must_be_reached, at_most, at_least"],
                  id="two quantifiers"),
     pytest.param({"x": {**SMALL, "in": {"part": "web", "tier": "unit"}}},
                  ["checks.x.in.part: no part named 'web': write one of api, service, shared, store, or structure",

@@ -34,7 +34,8 @@ HAND_WRITTEN = {"cycles", "stand-ins", "scenario-coverage", "no-duplicates", "no
 """The rule ids of the checks that are no rule of the engine: hand-written, or with no key (syntax)."""
 KEY = re.compile(r"\b(?:parts|tiers|guards|checks)\.[\w.<>-]+")
 EXAMPLES = {"flagged": {"x.py": ""}, "clean": {"y.py": ""}}
-NEW_WORDS = {"filters.extends": "pages-never-reactive"}
+NEW_WORDS = {"filters.extends": "pages-never-reactive", "quantifiers.at_most": "one-note-per-file",
+             "quantifiers.at_least": "notes-say-why", "filters.longer-than": "short-files"}
 """The words no bundled profile uses, each by its address, with the id of the check written for the explanation that
 shows it."""
 

@@ -26,17 +26,17 @@ APP_SIDE, TESTS_SIDE = "app", "tests"
 FILE, FACT, TARGET = "file", "fact", "target"
 """What a filter asks about: the file a fact is in, the fact, or what the fact reaches."""
 
-FOLDER, PATTERN, KIND, KEY = "folder", "pattern", "kind", "key"
+FOLDER, PATTERN, KIND, KEY, NUMBER = "folder", "pattern", "kind", "key", "whole number"
 """What a filter's value is, for a filter that takes one: a folder below the root of the file (a/b), a name pattern
-with `*` for any text, the name of a kind of fact, or a key of a part."""
+with `*` for any text, the name of a kind of fact, a key of a part, or a whole number."""
 
 NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "patterns", "parts", "places"
 """What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns with
 `*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
 
-HIT, KEY_OF_RULE, SCOPE_PART, VALUES = "hit", "key", "scope part", "values"
+HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED = "hit", "key", "scope part", "values", "counted"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
-its scope names, or targets that list values."""
+its scope names, targets that list values, or a quantifier that counts (at_most, at_least)."""
 
 RENAMED_VARIABLES = {"part": "where"}
 """The variables that were called otherwise: a check that writes the old name is told the new one."""
@@ -188,6 +188,7 @@ FIELDS: dict[str, str] = {
     "unreadable": "whether a file could not be read as text at all",
     "doc": "whether a comment is a doc comment",
     "public": "whether the name is for other files to use, as the language decides it",
+    "lines": "how many lines a file holds",
     "bases": "the classes a class derives from, however far: each base it names, read through the import that binds "
              "it or as a class of its own file, then the bases of each the project defines, each a dotted name",
 }
@@ -199,8 +200,9 @@ _CLASS_EXCEPTION = ("class", "class.exception")
 KINDS: tuple[Kind, ...] = (
     Kind("syntax-error", "a file that does not parse, at the line of its error, or that cannot be read as text at all: "
                          "no other check reads it", ("line", "text", "unreadable"), needs=("syntax",)),
-    Kind("file", "the file as a whole, at line 0", ("line", "no-statements", "exceptions-only"), needs=("file",),
-         field_needs={"no-statements": ("function.statements",), "exceptions-only": (*_CLASS_EXCEPTION, "function")}),
+    Kind("file", "the file as a whole, at line 0", ("line", "no-statements", "exceptions-only", "lines"),
+         needs=("file",), field_needs={"no-statements": ("function.statements",),
+                                       "exceptions-only": (*_CLASS_EXCEPTION, "function"), "lines": ("file.lines",)}),
     Kind("names-mentioned", "every name the file mentions, annotations included, as one fact at line 0", ("line", "mentions"),
          needs=("named",)),
     Kind("import", "each import as written", ("line", "path", "written", "relative", "standard", "type-only"),
@@ -315,6 +317,7 @@ FILTERS: tuple[Filter, ...] = (
                             "stubs", FACT, ("no-statements",)),
     Filter("exceptions-only", "the file defines classes, every one an exception, and no top-level function", FACT,
            ("exceptions-only",)),
+    Filter("longer-than", "the file holds more lines than the number", FACT, ("lines",), value=NUMBER),
     Filter("reported-at-import", "the use is excused because its import line already carries the finding: the import "
                                  "names in full the target the use matched", FACT, ("bound",), needs=HIT),
     Filter("names-restricted", "the file's part may import what the import reaches only for certain names, those a "
@@ -369,6 +372,10 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
                                   "(by a name it mentions, for a declaration; by an import, for a file), or a link "
                                   "of the kinds `then_through` names leads to it from something already reached, "
                                   "however far", True),
+    Quantifier("at_most", "a file of the scope may keep at most the number of facts: each kept fact after that many, "
+                          "in the order the file says them, is a finding, counted in that file alone"),
+    Quantifier("at_least", "a file of the scope that keeps fewer facts than the number is a finding, its file fact the "
+                           "fact said, counted in that file alone"),
 )
 """What a check does with what it keeps."""
 
@@ -433,6 +440,8 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("returned", "the attributes a forwarding method returns of the call's result, dotted", ("returned",)),
     Variable("verb", "what the file does with what the fact names: import, use, call, build or reference"),
     Variable("function", "the function a parameter called is a parameter of", ("function",)),
+    Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least)", needs=COUNTED),
+    Variable("lines", "how many lines the file holds", ("lines",)),
 )
 """Every variable of a message or a fix."""
 
@@ -464,6 +473,8 @@ SLOTS: tuple[Slot, ...] = (
                             "test names, directly or by way of a class a test names",
          "{from: <files, as `in` writes them>, through: <kind> or [...], through_only: [<filter>, ...], then_through: <kind> "
          "or [...], by_another_file: true}", "kinds"),
+    Slot("at_most", "each kept fact of a file after this many is a finding", "<number>"),
+    Slot("at_least", "a file that keeps fewer kept facts is a finding", "<number>"),
     Slot("except", "the filters of which any one excuses a finding", "[<filter>, ...]", "filters"),
     Slot("mode", "what a finding is", "fail (it fails the check), or list (it is listed as weak in the enforcement "
                                       "section and fails only `check --strict`); fail when left out"),
@@ -477,8 +488,8 @@ SLOTS: tuple[Slot, ...] = (
     Slot("cases", "a message and a fix for the findings of which the filters hold, the first that holds said in place "
                   "of the check's own", "[{when: [<filter>, ...], message, fix, once_per, per_line}, ...]",
          "filters"),
-    Slot("examples", "code the check must find something in (flagged), and code it must find nothing in (clean), each "
-                     "a small project; `xarch profile check` runs them, and fails when either does not behave so",
+    Slot("examples", "code the check must find something in (flagged) and nothing in (clean), each a small project "
+                     "`xarch profile check` runs, failing when one does not behave so",
          "{flagged: {<path>: <code>, ...}, clean: {<path>: <code>, ...}}, a path below the app, or tests/<path> for a "
          "test; required for a check of your own"),
 )

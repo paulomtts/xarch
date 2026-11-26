@@ -75,6 +75,7 @@ FACTS: dict[str, str] = {
     "named": "every name a file mentions, annotations included",
     "piece": "the functions and classes at the top level of a file and the methods of those classes, each with the "
              "lines it spans",
+    "file.lines": "how many lines a file holds",
 }
 """Each fact a check, or a review of the code, may read, and what it is."""
 

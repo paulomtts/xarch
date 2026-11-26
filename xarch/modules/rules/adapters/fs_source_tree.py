@@ -49,6 +49,8 @@ marked as its receiver, unless the function is decorated `staticmethod`, and a p
 `Callable` (of typing or collections.abc, read through the import that binds it; alone, subscripted, in a `|` union,
 inside `Optional[...]`, or as the text of a string annotation) is marked as annotated callable.
 
+A file holds as many lines as its text splits into, a last line with no line break counted too.
+
 A class also names each of its bases by the name it is written with, its last step (a subscripted base by what it
 subscripts, "" for any other expression), so that a base no import binds, a class of its own file, is still named.
 
@@ -360,7 +362,8 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree, private)),
-                      unmentioned=_unmentioned(tree), pieces=_pieces(tree), tests=_tests(functions, declared))
+                      unmentioned=_unmentioned(tree), pieces=_pieces(tree), tests=_tests(functions, declared),
+                      lines=len(text.splitlines()))
 
 
 def _tests(functions: tuple[Function, ...], declared: tuple[TestForm, ...]) -> tuple[Test, ...]:

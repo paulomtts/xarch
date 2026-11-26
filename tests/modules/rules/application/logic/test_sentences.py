@@ -123,6 +123,8 @@ ALSO = replace(PROFILE, tiers=tuple(replace(tier, imports_also=(Target("web"),))
     pytest.param("verb", SERVICE, "construction", RULE, PROFILE, None, ["build"], id="verb"),
     pytest.param("verb", SERVICE, "function-reference", RULE, PROFILE, None, ["reference"], id="verb: a reference"),
     pytest.param("function", DOMAIN, "callback", RULE, PROFILE, None, ["make", "get"], id="function"),
+    pytest.param("count", DOMAIN, "file", RULE, PROFILE, None, ["5"], id="count: the facts its rule keeps in the file"),
+    pytest.param("lines", DOMAIN, "file", RULE, PROFILE, None, ["12"], id="lines"),
 ])
 def test_a_variable_prints_what_it_says_of_each_finding(name, file, kind, rule, profile, hit, printed):
     assert [value(name, f, FACTS, profile) for f in found(file, kind, rule, hit)] == printed

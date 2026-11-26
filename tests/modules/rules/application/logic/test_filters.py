@@ -87,6 +87,8 @@ def accepting(name: str) -> object:
     pytest.param("extends *Protocol", FAKE, "class", [1], PROFILE, None,
                  id="extends: a class of the tests deriving, through the port it imports, from what that derives from"),
     pytest.param("extends Repo", PORTS, "class", [], PROFILE, None, id="extends: never the class itself"),
+    pytest.param("longer-than 11", DOMAIN, "file", [0], PROFILE, None, id="longer-than: a file of more lines"),
+    pytest.param("longer-than 12", DOMAIN, "file", [], PROFILE, None, id="longer-than: never one of as many"),
     pytest.param("record", DOMAIN, "class", [8], PROFILE, None, id="record"),
     pytest.param("interface", PORTS, "class", [2], PROFILE, None, id="interface"),
     pytest.param("type-only", PORTS, "import", [3], PROFILE, None, id="type-only"),

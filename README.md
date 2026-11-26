@@ -372,7 +372,13 @@ was imported as) or as a class of its own file, then the bases of each class the
 the tests, however far; the filter `extends: <pattern>` holds of a class one of those matches by its name, so
 `keep: [{named: "*Page"}, {extends: Reactive}]` finds a page that derives from `Reactive` through any number of classes
 between, and `except: [{extends: "*Port"}]` excuses a fake that derives from a port. A base taken from a package file
-that only re-exports it is followed no further than its name. A check carries `examples`: code it
+that only re-exports it is followed no further than its name. Two quantifiers count instead of matching targets,
+in each file of the scope alone (never across a part or the instances of a repeating folder): `at_most: <n>` makes
+each kept fact of a file after the n-th a finding, at its own line (`read: class`, `keep: [{named: "*Port"}]`,
+`at_most: 1`: one port per file), and `at_least: <n>` makes a file that keeps fewer a finding, at line 0; `{count}`
+says how many the file keeps. The kind `file` carries `lines` (the fact `file.lines`), which the filter
+`longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
+each file over 700 lines. A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

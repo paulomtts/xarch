@@ -73,6 +73,7 @@ worked:
   subclass: "class {name}({base}): ..."
 supplies:
   file: exact
+  file.lines: exact
   syntax: exact
   import: exact
   import.relative: exact

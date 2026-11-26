@@ -10,7 +10,7 @@ turns its language's imports and names into such paths, and a fact into the app 
                         could not be read as text at all, text then saying why
     file                the file as a whole, at line 0; traits no-statements when no function or method of it holds
                         a real statement, exceptions-only when it defines classes, every one an exception (below), and no
-                        top-level function
+                        top-level function; lines how many lines it holds
     names-mentioned     every name the file mentions, annotations included, by its last step alone
     import              each import as written: the module it names (path), relative, standard, type-only
     imported-name       each name an import takes, path the module and the name (the module alone for an import of
@@ -73,7 +73,7 @@ from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Read, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, MUST_REACH, Defined, Fact, Facts, Read, Rule
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
 from xarch.profile_values.checks import Scope
 
@@ -152,7 +152,8 @@ def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -
     kinds: list[str] = []
     for rule in rules:
         if in_scope(rule.scope, read, facts, profile):
-            kinds += [*rule.facts, *rule.spread, *rule.links, *(("file",) if rule.quantifier == MUST_REACH else ())]
+            kinds += [*rule.facts, *rule.spread, *rule.links,
+                      *(("file",) if rule.quantifier in (MUST_REACH, AT_LEAST) else ())]
         side, roots = reach_scopes(rule)
         if side is not None and in_scope(side, read, facts, profile):
             kinds += [*rule.facts, *rule.links]
@@ -179,7 +180,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "syntax-error":
             return ()
         case "file":
-            return (Fact("file", 0, traits=_file(file, read, defined)),)
+            return (Fact("file", 0, traits=_file(file, read, defined), lines=file.lines),)
         case "names-mentioned":
             return (Fact("names-mentioned", 0, names=file.named),)
         case "comment":

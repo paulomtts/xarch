@@ -119,7 +119,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="a variable to say once by that was called otherwise"),
     pytest.param({"sayings": say("{weather}")}, ["message: {weather} is no variable: did you mean where or tier or path?"],
                  id="a variable no table holds"),
-    pytest.param({"sayings": say("{line:>4}")}, ["message: {line:>4} is no variable: did you mean line or tier or name?"],
+    pytest.param({"sayings": say("{line:>4}")}, ["message: {line:>4} is no variable: did you mean line or lines or tier?"],
                  id="a format of a variable"),
     pytest.param({"sayings": say("{line")}, ["message: expected '}' before end of string: write each variable as {<name>}, "
                                              "and a brace of the text as {{ or }}"], id="a brace left open"),
@@ -162,8 +162,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "use, call, construction and function-reference",
                   "may_not: no target applies to comment, so a fact of it would never be a finding: add a target that "
                   "compares what it carries, or drop it from `read`"], id="a target that applies to no kind read"),
-    pytest.param({"quantifier": "maybe"}, ["quantifier: no quantifier is named 'maybe': write one of may_not, may_only, "
-                                           "must_be_reached, must_reach"], id="a quantifier no table holds"),
+    pytest.param({"quantifier": "maybe"}, ["quantifier: no quantifier is named 'maybe': write one of at_least, at_most, "
+                                           "may_not, may_only, must_be_reached, must_reach"], id="a quantifier no table holds"),
     pytest.param(REACHED | {"targets": YAML},
                  ["must_be_reached: takes no targets: what must be reached is what the check keeps"],
                  id="targets of a reach from roots"),
@@ -197,7 +197,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "fake-named, top-level, "
                   "forwards, returns-an-attribute, exception, extends, record, interface, immutable, receiver, "
                   "annotated-callable, unreadable, "
-                  "directive, doc, no-statements, exceptions-only, reported-at-import, names-restricted, of-kind, "
+                  "directive, doc, no-statements, exceptions-only, longer-than, reported-at-import, names-restricted, of-kind, "
                   "target-placed, "
                   "target-inside-part, target-in-own-part, target-in-own-tier, target-test, target-below, "
                   "target-allows-under, target-accepted",
