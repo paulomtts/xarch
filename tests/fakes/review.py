@@ -1,6 +1,7 @@
 """In-memory implementations of the review module's ports. Not adapters: test doubles only."""
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from xarch.kernel.source import CommentSpan
@@ -70,19 +71,22 @@ class FakeProfile:
 
 
 class FakeDecisionModel:
-    """Satisfies review's DecisionModel: the answer to each text by the text and the name of the question's first
-    option, else by the text alone, every question asked recorded; a question with no answer (or None by its order)
-    raises Unanswered with reason, one about a text in refused NotAccepted with the words given for it; asking with
-    keyed False raises NoKey, and with a key that cannot be used (unusable, why, is not "") Refused, the question
-    recorded as tried."""
+    """Satisfies review's DecisionModel: the answer to each text by the text and what the question asks, else by the
+    text and the name of the question's first option, else by the text alone, every request recorded by its text (asked)
+    and by its text with the names of the questions it carries (requests); a request one of whose questions has no
+    answer (or None) raises Unanswered with reason, one about a text in refused NotAccepted with the words given for
+    it; asking with keyed False raises NoKey, and with a key that cannot be used (unusable, why, is not "") Refused, the
+    request recorded as tried. The tokens of a request are those of its first answer, as a service says them once for
+    the request."""
 
     def __init__(self, answers: dict[str, Answer], keyed: bool = True, reason: str = "the decision model failed",
                  by_order: dict[tuple[str, str], Answer | None] | None = None, refused: dict[str, str] | None = None,
-                 unusable: str = ""):
+                 unusable: str = "", by_ask: dict[tuple[str, str], Answer | None] | None = None):
         self._answers, self._keyed, self._reason, self._by_order = answers, keyed, reason, dict(by_order or {})
-        self._refused, self._unusable = dict(refused or {}), unusable
+        self._refused, self._unusable, self._by_ask = dict(refused or {}), unusable, dict(by_ask or {})
         self.asked: list[str] = []
         self.tried: list[str] = []
+        self.requests: list[tuple[str, tuple[str, ...]]] = []
 
     def sends(self) -> Sender:
         return Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", self._keyed, self._unusable)
@@ -91,18 +95,35 @@ class FakeDecisionModel:
         return f"{question.ask} {len(question.options)} {text}"
 
     def ask(self, text: str, question: Choice) -> Answer:
+        return self.ask_all(text, (("placement", question),))[0]
+
+    def body_all(self, text: str, questions: tuple[tuple[str, Choice], ...]) -> str:
+        """The body of one question, as body says it; of several, their names before the first's."""
+        first = self.body(text, questions[0][1])
+        return first if len(questions) == 1 else f"{','.join(name for name, _ in questions)} {first}"
+
+    def ask_all(self, text: str, questions: tuple[tuple[str, Choice], ...]) -> tuple[Answer, ...]:
         if not self._keyed:
             raise NoKey("MODEL_KEY")
         if self._unusable:
             self.tried.append(text)
             raise Refused(f"MODEL_KEY cannot be used: {self._unusable}")
         self.asked.append(text)
+        self.requests.append((text, tuple(name for name, _ in questions)))
         if text in self._refused:
             raise NotAccepted(self._refused[text])
-        answer = self._by_order.get((text, question.options[0].name), self._answers.get(text))
-        if answer is None:
+        found = tuple(self._of(text, question) for _, question in questions)
+        if any(answer is None for answer in found):
             raise Unanswered(self._reason)
-        return answer
+        return tuple(answer if i == 0 else replace(answer, input_tokens=0, output_tokens=0)
+                     for i, answer in enumerate(found) if answer is not None)
+
+    def _of(self, text: str, question: Choice) -> Answer | None:
+        if (text, question.ask) in self._by_ask:
+            return self._by_ask[(text, question.ask)]
+        if (text, question.options[0].name) in self._by_order:
+            return self._by_order[(text, question.options[0].name)]
+        return self._answers.get(text)
 
 
 class FakeAnswers:

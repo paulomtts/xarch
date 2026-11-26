@@ -133,7 +133,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
                 if item.asked and item.piece else f"eval {item.asked}: the file whole (" if item.asked
                 else f"piece {item.piece} ({item.kind}, lines {item.lines[0]}-{item.lines[1]}, " if item.piece else "(")
         lines += ["", f"request {number} of {asked}: {item.file} {what}{item.part}, {item.chars:,} characters{kept})",
-                  *_quoted(item)]
+                  *([f"  questions: {', '.join(item.questions)}"] if len(item.questions) > 1 else []), *_quoted(item)]
     lines += eval_plan_lines(planned.evals)
     if planned.left_out:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in planned.left_out)]
@@ -144,8 +144,9 @@ def _reasked(reorders: int) -> list[str]:
     """What a dry run cannot count: the questions asked again of a file whose answer is near its line."""
     if not reorders:
         return []
-    return [f"A file whose answer falls within {BAND:.2f} of its part's line is asked again in {reorders} other "
-            f"order(s) of the options and read on the mean: up to {reorders} more request(s) for each such file."]
+    return [f"The request of a file whose answer is not in the cache carries the question in {reorders} other order(s) "
+            f"of the options too, each a question of its own, read on the mean only when its answer falls within "
+            f"{BAND:.2f} of its part's line."]
 
 
 def plan_document(profile: str, planned: ReviewPlanned) -> str:
@@ -159,7 +160,7 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "cached": r.cached, "text": r.text,
                       "body": r.body, "piece": r.piece or None, "kind": r.kind or None,
                       "first": r.lines[0] if r.piece else None, "last": r.lines[1] if r.piece else None,
-                      "eval": r.asked or None}
+                      "eval": r.asked or None, "questions": list(r.questions) or None}
                      for r in planned.requests],
         "evals": eval_documents(planned.evals),
         "pieces": bool(planned.piece_ask), "piece_question": planned.piece_ask or None, "context": planned.context,
@@ -180,7 +181,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
              f"{model_said(read.sends.model, read.answered_by)}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
              f"{judged} judged, {len(read.left_out)} left out. Asked {read.sent}, from cache {read.cached}."]
     if read.sent:
-        lines.append(f"Sent {read.sent} request(s) to {read.sends.service} ({read.sends.at}): "
+        lines.append(f"Sent {read.calls} request(s) to {read.sends.service} ({read.sends.at}): "
                      f"{read.input_tokens:,} input tokens, {read.output_tokens:,} output tokens.")
     disagreeing = {part.part for part in read.calibration.parts if part.verdict == DISAGREE}
     doubtful = [item for item in read.readings if item.doubtful]
@@ -253,7 +254,7 @@ def reading_document(profile: str, read: ReviewReading) -> str:
         "pieces": [_pieces_read(pieces) for pieces in read.pieces],
         "evals": eval_documents(read.evals),
         "sends": sends_of(read.sends),
-        "sent": {"calls": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
+        "sent": {"calls": read.calls, "answers": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
                  "output_tokens": read.output_tokens},
         "unanswered": [_unasked(item) for item in read.unasked], "failure": read.failure or None}
     return document(content)

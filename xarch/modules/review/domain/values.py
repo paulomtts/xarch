@@ -152,13 +152,15 @@ class Run:
     """The questions of one run so far: the folder the answers are kept in; whether the run may send nothing; the
     answers the decision model gave and those read from the folder, in order; the decision model's words when it
     failed ("" while it has not), after which nothing more is sent; and each question it refused alone, by the key its
-    answer would be kept under, with its words, after which the rest is still sent."""
+    answer would be kept under, with its words, after which the rest is still sent; and how many requests the
+    decision model answered, one of which may carry several questions."""
     folder: Path
     offline: bool
     asked: tuple[Answer, ...] = ()
     reused: tuple[Answer, ...] = ()
     failure: str = ""
     refused: tuple[tuple[str, str], ...] = ()
+    requests: int = 0
 
 
 @dataclass(frozen=True)

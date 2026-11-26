@@ -142,7 +142,8 @@ class Request:
     apart); and, for a piece, its name, its kind and the lines it spans ("" and (0, 0) for a whole file); and, for a
     question of an eval of the profile's own, its id ("" for placement's), the piece being what it reads (a whole file
     named ""), and, for one about an example of the eval, FLAGGED or CLEAN, the kind of example ("" for a file of the
-    app)."""
+    app); and, for a request of placement about a whole file, the names of the questions it carries, in order (the
+    question in its first order, then the others; none for any other request, which carries one)."""
     file: str
     part: str
     chars: int
@@ -154,6 +155,7 @@ class Request:
     lines: tuple[int, int] = (0, 0)
     asked: str = ""
     example: str = ""
+    questions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -125,7 +125,8 @@ class ReviewPlanned:
     were found, the request each file judged would send, the files left out and why, the question each request
     carries, the parts it describes by their role alone, the characters and about how many tokens the requests
     would send in all, the texts the profile says review hides, which no request holds, what a review that sends
-    would send to, in how many other orders of the options a file whose answer is near its line is asked again, and
+    would send to, in how many other orders of the options the request of a file carries the question too (read only
+    when its answer is near its line; each request says the names of the questions it carries), and
     when the pieces of the files are asked of too (each request of a piece says which), what the question of a piece
     asks ("" when they are not) and what is sent before each piece; how each eval of the profile's own stands (the
     requests of each that runs say which); the paths of review.never in force, in the profile's order, and those of
@@ -163,7 +164,9 @@ class ReviewReading:
     those that ran with their readings; how placement stands held to its examples; the model versions that gave
     the answers read, asked or kept, each once, sorted; how many files the record of accepted files names (a doubtful
     file of them whose code is as it was then reads as accepted, and is not doubtful); and the files of the record
-    that are stale, judged only for the files this run found (and, with every file, for every file), by file."""
+    that are stale, judged only for the files this run found (and, with every file, for every file), by file; and how
+    many requests the decision model answered, a request of placement carrying the question in each order it may be
+    read in (None: one per question sent)."""
     by: tuple[str, ...]
     found: int
     readings: tuple[Reading, ...]
@@ -183,6 +186,12 @@ class ReviewReading:
     answered_by: tuple[str, ...] = ()
     accepted: int = 0
     stale: tuple[StaleAcceptance, ...] = ()
+    requests_sent: int | None = None
+
+    @property
+    def calls(self) -> int:
+        """How many requests the decision model answered."""
+        return self.sent if self.requests_sent is None else self.requests_sent
 
     @property
     def complete(self) -> bool:

@@ -12,6 +12,8 @@ PLACEMENT = ("Which part of this architecture does this code belong in? Each opt
              "decides whether code belongs in it.")
 """What placement asks, the wording the trials measured."""
 OF_A_PIECE = "This text is one piece of a larger file."
+FIRST = "placement"
+"""The name placement's question travels under in a request, in its first order."""
 """What placement adds when it asks of a piece of a file, the wording the trials measured."""
 
 
@@ -27,6 +29,18 @@ def reordered(question: Choice) -> tuple[Choice, ...]:
     count = len(question.options)
     shifts = dict.fromkeys(shift % count for shift in ((count + 1) // 3, (2 * count + 1) // 3) if count and shift % count)
     return tuple(Choice(question.ask, question.options[shift:] + question.options[:shift]) for shift in shifts)
+
+
+def named_orders(others: tuple[Choice, ...]) -> tuple[tuple[str, Choice], ...]:
+    """The other orders of placement's question, each under its name in a request: FIRST, `.order-`, and its number
+    counted from 2, the first order being 1."""
+    return tuple((f"{FIRST}.order-{number}", other) for number, other in enumerate(others, 2))
+
+
+def carried(request: Request, questions: tuple[Choice, ...]) -> int:
+    """How many characters a request that carries several questions sends: its text once, and each question."""
+    return len(request.text) + sum(len(q.ask) + sum(len(o.name) + len(o.description) for o in q.options)
+                                   for q in questions)
 
 
 def of_piece(question: Choice) -> Choice:
