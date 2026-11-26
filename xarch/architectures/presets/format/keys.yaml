@@ -101,6 +101,21 @@ fragments:
       document-has-check:
         for: documents/<name>%extension%
         has: tests/documents/check_<name>%extension%
+  cycles: |
+    parts:
+      units/:
+        <unit>/:
+          documents/:
+            role: the documents
+        wiring/:
+          role: builds every unit
+          imports:
+            may: everything
+    cycles:
+      accepted:
+        - {group: [units/billing, units/orders], why: billing and orders merge in the next release}
+      left_out:
+        - {path: units/wiring, why: the composition root may import every unit}
   eval-examples: |2
         examples:
           flagged:
@@ -303,6 +318,32 @@ keys:
     example: |
       <<part>>
       <<counterpart>>
+  cycles:
+    meaning: "what the cycles check accepts one by one: accepted, left_out"
+    accepts: a map {accepted, left_out}
+    example: |
+      <<cycles>>
+  cycles.accepted:
+    meaning: the groups of nodes accepted importing each other
+    accepts: >-
+      a list of {group, why}: `group` the nodes of one group a `cycles` finding names, two or more, each by its path
+      below the app (a node is an instance of a repeating folder, or a folder the layout names beside the instances);
+      `why` one line, the reason. A group whose nodes are exactly an entry's is not reported: every `xarch check`
+      names it in its enforcement section, with its reason, instead; a group with one node more or less is reported.
+      An entry that accepts nothing is itself a finding, so the list can only shrink. `profile check` lists each entry
+      the profile compared with does not hold as looser
+    example: |
+      <<cycles>>
+  cycles.left_out:
+    meaning: the nodes left out of the cycles graph, such as a composition root
+    accepts: >-
+      a list of {path, why}: `path` a node by its path below the app (an instance of a repeating folder, or a folder
+      the layout names beside the instances); `why` one line, the reason. No dependency runs from or to a node left
+      out, so a group is what is left once it is gone; every `xarch check` names each node left out that is in a cycle,
+      with its reason. An entry whose node is in no cycle is itself a finding, so the list can only shrink.
+      `profile check` lists each entry the profile compared with does not hold as looser
+    example: |
+      <<cycles>>
   excluded:
     meaning: folders below the app that are not its source
     accepts: >-

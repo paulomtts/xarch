@@ -10,7 +10,7 @@ from xarch.profile_values.checks import Condition, Scope, WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.litmus import Litmus
-from xarch.profile_values.placement import AcceptedImport, Repeat, Target
+from xarch.profile_values.placement import AcceptedCycle, AcceptedImport, LeftOut, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
@@ -79,7 +79,9 @@ class Profile:
     the app, when no tests folder is given or there: not a value a profile sets, but the convention spec publishes, the
     same for every profile; it is also the first step of the path of an example's test file. asked are the evals the
     profile writes itself, by id, as rules reads them (see Asked), which no check runs. imports_accepted holds, by
-    part, the imports its imports.may does not allow that it accepts, each with why (see accepted).
+    part, the imports its imports.may does not allow that it accepts, each with why (see accepted). cycles_accepted
+    holds the groups of the cycles graph the profile accepts (`cycles.accepted`), cycles_left_out the nodes it leaves
+    out of that graph (`cycles.left_out`), each with why, in the order written (see cycles).
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -125,6 +127,8 @@ class Profile:
     default_tests: str = ""
     asked: dict[str, Asked] = field(default_factory=dict)
     imports_accepted: dict[str, tuple[AcceptedImport, ...]] = field(default_factory=dict)
+    cycles_accepted: tuple[AcceptedCycle, ...] = ()
+    cycles_left_out: tuple[LeftOut, ...] = ()
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

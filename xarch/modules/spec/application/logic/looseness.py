@@ -47,7 +47,9 @@ profile leaves it out; an entry of `testing.shared` the bundled profile does not
 that the bundled profile's does not; an entry of a check's `accepted` (a file, and the variables it names) that the
 bundled profile's check of the same id does not hold; an entry of `structure.accepted` (a path) the bundled profile
 does not hold; an entry of a tier's `accepted` (a file, and what it imports) the bundled tier does not hold; an entry
-of a counterpart's `accepted` (a path) the bundled profile's counterpart of the same id does not hold. Anything
+of a counterpart's `accepted` (a path) the bundled profile's counterpart of the same id does not hold; an entry of
+`cycles.accepted` (a group, its nodes in any order) or of `cycles.left_out` (a node) the bundled profile does not hold.
+Anything
 stricter, and what is compared in no way above (the layout, new parts, the guards' other parameters, `fakes`), is not
 listed.
 
@@ -85,7 +87,7 @@ LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.ne
           "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
           "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted", "counterparts.accepted",
-          "translated", "review.never", "review.mask", "evals.placement.lines")
+          "cycles.accepted", "cycles.left_out", "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 ENTRIES = "entries: "
 """What the `what` of a part that keeps no entry of the litmus list it is compared with starts with, before the labels
@@ -363,6 +365,11 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     paired = {item.id: {entry.path for entry in item.accepted} for item in base.counterparts}
     found += [("counterparts.accepted", "", f"{item.id}: {'/'.join(entry.path)}{'/' if item.source.folder else ''}")
               for item in custom.counterparts for entry in item.accepted if entry.path not in paired.get(item.id, ())]
+    groups = {frozenset(entry.group) for entry in base.cycles_accepted}
+    found += [("cycles.accepted", "", ", ".join("/".join(node) for node in entry.group))
+              for entry in custom.cycles_accepted if frozenset(entry.group) not in groups]
+    left = {entry.node for entry in base.cycles_left_out}
+    found += [("cycles.left_out", "", "/".join(entry.node)) for entry in custom.cycles_left_out if entry.node not in left]
     for name, check in custom.checks.items():
         held = {(entry.file, entry.by) for entry in base.checks[name].accepted} if name in base.checks else set()
         found += [("checks.accepted", "", f"{name}: {_finding(entry)}") for entry in check.accepted
@@ -623,6 +630,10 @@ def _sentence(key: str, part: str, what: str = "") -> str:
         case "counterparts.accepted":
             counterpart, _, source = what.partition(": ")
             return f"the counterpart {counterpart} accepts {source} with none (counterparts.{counterpart}.accepted)"
+        case "cycles.accepted":
+            return f"cycles accepts the cycle of {what} (cycles.accepted)"
+        case "cycles.left_out":
+            return f"cycles leaves {what} out of its graph (cycles.left_out)"
         case "checks.accepted":
             check, _, finding = what.partition(": ")
             return f"the check {check} accepts the findings of {finding} (checks.{check}.accepted)"

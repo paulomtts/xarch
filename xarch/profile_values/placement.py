@@ -38,3 +38,20 @@ class AcceptedImport:
     name: str
     why: str
     written: str
+
+
+@dataclass(frozen=True)
+class AcceptedCycle:
+    """A group of nodes of the cycles graph (instances of the repeating folders, and folders the layout names beside
+    them) that the profile accepts importing each other (`cycles.accepted`): each node by its path below the app, as
+    written, in the order written; and why it is accepted."""
+    group: tuple[tuple[str, ...], ...]
+    why: str
+
+
+@dataclass(frozen=True)
+class LeftOut:
+    """A node of the cycles graph the profile leaves out (`cycles.left_out`), such as a composition root that may
+    import everything: the node, by its path below the app as written; and why it is left out."""
+    node: tuple[str, ...]
+    why: str

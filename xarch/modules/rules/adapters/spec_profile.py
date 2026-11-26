@@ -84,6 +84,7 @@ class SpecProfiles:
                        holds_built_by={p.name: h.built_by for p in parts for h in p.holds if h.built_by},
                        shared={p.name: p.shared for p in parts if p.shared is not None},
                        imports_accepted={p.name: p.imports_accepted for p in parts if p.imports_accepted},
+                       cycles_accepted=view.cycles_accepted, cycles_left_out=view.cycles_left_out,
                        private_imports=guards.private_imports,
                        framework=view.framework,
                        uses_never={p.name: p.uses_never for p in parts if p.uses_never},

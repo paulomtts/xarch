@@ -39,7 +39,7 @@ from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.litmus import Litmus
-from xarch.profile_values.placement import AcceptedImport, Repeat, Target
+from xarch.profile_values.placement import AcceptedCycle, AcceptedImport, LeftOut, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
 
@@ -173,7 +173,9 @@ class ProfileView:
     `evals.placement.lines`, by part (any other part's is LINE); the evals of its own, by id, which review asks
     and rules holds to their examples; and the groups of parts one file cannot tell apart (`evals.placement.alike`),
     each its parts by name, which review reads a file of on the sum of the group's probabilities; and the line at or
-    above which review reads an entry of a litmus list as answering yes (YES_LINE unless written: not measured)."""
+    above which review reads an entry of a litmus list as answering yes (YES_LINE unless written: not measured); and
+    the groups of the cycles graph the profile accepts (`cycles.accepted`) and the nodes it leaves out of it
+    (`cycles.left_out`), each in the order written."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
@@ -194,6 +196,8 @@ class ProfileView:
     evals: dict[str, Eval] = field(default_factory=dict)
     alike: tuple[tuple[str, ...], ...] = ()
     yes_line: float = YES_LINE
+    cycles_accepted: tuple[AcceptedCycle, ...] = ()
+    cycles_left_out: tuple[LeftOut, ...] = ()
 
 
 @dataclass(frozen=True)

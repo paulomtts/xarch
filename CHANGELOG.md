@@ -142,6 +142,16 @@ All notable changes to this project are written here. The format follows
 - `fakes.prefix` takes a list of starts besides one (`prefix: [InMemory, Fake]`): a fake may start with any of them,
   `stand-ins` and `dead-code` read each, a fix writes the first, and the new filter `fake-named` says the same in a
   check of one's own. A single start reads as before.
+- `cycles: {accepted, left_out}` says what the `cycles` check accepts one by one. `accepted: [{group, why}, ...]`
+  names groups by their nodes (each an instance of a repeating folder, or a folder the layout names beside them, by
+  its path below the app): a group whose nodes are exactly an entry's is not reported, and the enforcement section
+  names it instead (JSON `enforcement.accepted_findings`, key `cycles.accepted`). `left_out: [{path, why}, ...]`
+  leaves a node out of the graph, such as a composition root that may import everything: a group is what is left
+  without it, and the enforcement section names the node with the group it was in (key `cycles.left_out`). An entry
+  that accepts nothing (no group is its group, its node in no cycle) is a `cycles` finding; a path that is no node is
+  refused when the profile loads; each entry the compared profile does not hold is listed as looser
+  (`cycles.accepted`, `cycles.left_out`); `xarch profile explain cycles` says each key. A profile without the key
+  checks as before.
 
 ### Changed
 

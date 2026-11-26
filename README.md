@@ -129,6 +129,7 @@ never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain
 tiers:    {<tier>: {proves, litmus: <text> | [...], uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     accepted: [{file*, import, why*}, ...], docs}}
 fakes:    {folder*, for*, prefix | [prefix, ...], tiers}     structure: {accepted: [{path*, why*}, ...]}
+cycles:   {accepted: [{group*, why*}, ...], left_out: [{path*, why*}, ...]}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
@@ -191,6 +192,25 @@ Every `accepted` list (`checks.<id>.accepted`, `structure.accepted`, `tiers.<tie
 `counterparts.<id>.accepted`, `imports.accepted`) writes a path below the app, never from the folder holding it: when
 the app folder is `app`, an entry written `app/core/ports.py` accepts nothing, and its finding says to write
 `core/ports.py` instead (under `imports.accepted`, such a file lies in no part and the profile is refused).
+
+`cycles` says what the `cycles` check accepts one by one. Its nodes are the instances of the repeating folders and the
+folders the layout names beside them, each written by its path below the app (`adapters/demo/`, a trailing `/`
+optional). `accepted: [{group, why}, ...]` lists groups by their nodes: a group whose nodes are exactly an entry's
+(in any order) is not reported, and the enforcement section names it under `accepted:`; a group with a node more or
+less is reported, and the entry is then a finding. `left_out: [{path, why}, ...]` leaves a node out of the graph,
+such as a composition root that may import everything: no dependency runs from or to it, a group is what is left
+without it, and the enforcement section names it, with the group of the whole graph it was in. An entry of either
+list that accepts nothing (no group is its group, or its node is in no cycle) is a `cycles` finding, so both lists
+can only shrink; a path that is no node (its folder holds no repeating folder) is refused when the profile loads, and
+`profile check` lists each entry the compared profile does not hold as looser.
+
+```yaml
+cycles:
+  accepted:
+    - {group: [modules/billing, modules/orders], why: billing and orders merge in the next release}
+  left_out:
+    - {path: adapters/demo/, why: the demo seeds wire every context, as the factories do}
+```
 
 `counterparts` says what lies with what, path by path: each entry, by an id of its own, has `for`, what must have a
 counterpart, `has`, where it is, and optionally `when`, the paths that must be there too for it to need one, each a
@@ -553,7 +573,7 @@ that switches or configures each (`-` for none: the rule is always on):
 | `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app, but one `structure.accepted` names; an entry `tests/<path>` of it that names no finding | `tiers`, `testing`, `structure.accepted` |
 | `counterpart` | a match of a counterpart's `for`, where its `when` matches too, with no match of its `has`, but one its `accepted` names; an entry of `accepted` that accepts nothing (its source gone, or now with its counterpart) | `counterparts` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
-| `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too, and through a folder the layout names beside the instances, such as `adapters/web/` beside `adapters/<adapter>/`, which takes part in the graph though it is no instance); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle | - (needs a repeating folder) |
+| `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too, and through a folder the layout names beside the instances, such as `adapters/web/` beside `adapters/<adapter>/`, which takes part in the graph though it is no instance); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle; but a group `cycles.accepted` names by its nodes, and a node `cycles.left_out` leaves out of the graph; an entry of either that accepts nothing | `cycles.accepted`, `cycles.left_out` (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
 | `must-import` | a file of a part that never reaches any of the targets the part must reach, nor an outside package, or a test that never reaches what its tier must | `parts.imports.must`, `tiers.imports.must` |
 | `scenario-coverage` | a variant of a result union with no row in its use case's test table, or a branch (a statement of `branching`, an expression of `branching_expressions`) in a table test's body; with `plain_tables`, in any table test of that tier; with no table form, a variant named by no test | `guards.scenario-coverage`, `tiers.plain_tables` |
@@ -676,7 +696,8 @@ run in which a part's `imports.accepted` accepts an import also has `"accepted"`
 `{"file", "line", "part", "import", "why"}`, the import as the entry writes it. A run in which an entry of a
 check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcement`: each `{"rule", "file", "line",
 "key", "message", "why"}`, the finding as it would be reported, and `key` the entry's list
-(`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`, `counterparts.<id>.accepted`).
+(`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`, `counterparts.<id>.accepted`,
+`cycles.accepted`, `cycles.left_out`).
 
 - `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
@@ -848,7 +869,7 @@ of one key are counted, and its count is its ceiling. Commit the file.
 - `baseline write` with a record only lowers it: a key no longer found is dropped and a count lowered, never raised,
   and a new finding stays a violation; `--reset` writes every violation found now.
 - An entry that accepts a finding (`imports.accepted`, `checks.<id>.accepted`, `structure.accepted`,
-  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`) is applied first: an accepted finding is no violation, so it
+  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`, `cycles.accepted`, `cycles.left_out`) is applied first: an accepted finding is no violation, so it
   is never recorded, and a stale entry is a violation like any other.
 
 In JSON, `enforcement.baseline` is present only when the record is: `{"file", "recorded", "baselined", "below",

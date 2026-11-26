@@ -11,6 +11,7 @@ from xarch.modules.spec.domain.profile_keys import (
     CHOICE_PRESETS,
     COUNTERPART,
     COUNTERPARTS,
+    CYCLES,
     DEAD_CODE,
     DECLARED,
     DOCS,
@@ -78,6 +79,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "excluded"),
     Key(PROFILE, "structure", rules=("structure", "test-tree"), opens=STRUCTURE),
     Key(PROFILE, "counterparts", rules=("counterpart",), opens=COUNTERPARTS),
+    Key(PROFILE, "cycles", rules=("cycles",), opens=CYCLES),
     Key(PROFILE, "hints", False, False),
     Key(PROFILE, "checks"),
     Key(PROFILE, "files", opens=FILE),
@@ -110,6 +112,9 @@ _KEYS: tuple[Key, ...] = (
     Key(PART_IMPORTS_MAY, "types_only", rules=("types-only",)),
 
     Key(STRUCTURE, "accepted", rules=("structure", "test-tree")),
+
+    Key(CYCLES, "accepted", rules=("cycles",)),
+    Key(CYCLES, "left_out", rules=("cycles",)),
 
     Key(PART_USES, "never", rules=("never-use",)),
 

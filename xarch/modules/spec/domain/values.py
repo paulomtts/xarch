@@ -13,7 +13,7 @@ from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
 from xarch.profile_values.litmus import Litmus
-from xarch.profile_values.placement import AcceptedImport, Repeat, Target
+from xarch.profile_values.placement import AcceptedCycle, AcceptedImport, LeftOut, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 
 
@@ -412,6 +412,8 @@ class Architecture:
         parts by name in the order written: review reads a file of one on the sum of the group's probabilities
     structure_accepted: the findings of the layout the profile accepts (`structure.accepted`), in the order written
     counterparts: what the profile says lies with what (`counterparts`), in the order written
+    cycles_accepted: the groups of the cycles graph the profile accepts (`cycles.accepted`), in the order written
+    cycles_left_out: the nodes the profile leaves out of the cycles graph (`cycles.left_out`), in the order written
     yes_line: the line at or above which review reads an entry of a litmus list as answering yes
         (`evals.placement.yes_line`, else YES_LINE: a placeholder, not measured)
     """
@@ -449,6 +451,8 @@ class Architecture:
     structure_accepted: tuple[AcceptedPath, ...] = ()
     counterparts: tuple[Counterpart, ...] = ()
     yes_line: float = YES_LINE
+    cycles_accepted: tuple[AcceptedCycle, ...] = ()
+    cycles_left_out: tuple[LeftOut, ...] = ()
 
     @property
     def entry(self) -> Part | None:

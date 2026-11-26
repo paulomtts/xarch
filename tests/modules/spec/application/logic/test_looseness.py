@@ -15,6 +15,7 @@ from xarch.modules.spec.domain.guards import ORDER
 from xarch.modules.spec.domain.published import AcceptedPath, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 from xarch.profile_values.checks import AcceptedFinding, Quantified, Saying, Scope, WrittenCheck
+from xarch.profile_values.placement import AcceptedCycle, LeftOut
 
 
 def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
@@ -243,6 +244,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (replace(parsed(layered()), structure_accepted=(AcceptedPath(("src", "x"), "w"),)), parsed(layered())),
         (pairing("x", "src/old/store/"), parsed(layered())),
         (accepting_tests({"file": "tests/x/test_y.py", "why": "w"}), parsed(covered())),
+        (looping(("src/a", "src/b"), left=("src/w",)), parsed(layered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -941,3 +943,19 @@ def test_each_tiers_finding_a_tier_accepts_that_the_compared_tier_does_not_is_lo
         Loosened("tiers.accepted", "unit", "tests/x/test_z.py: src/docs/store/",
                  "the unit tier accepts the tiers findings of tests/x/test_z.py: src/docs/store/ (tiers.unit.accepted)"),)
     assert loosened(accepting_tests(whole), accepting_tests(whole, one)) == ()
+
+
+def looping(*groups: tuple[str, ...], left: tuple[str, ...] = ()) -> Architecture:
+    """layered(), accepting the groups given under cycles.accepted and leaving the nodes given out."""
+    def node(path: str) -> tuple[str, ...]:
+        return tuple(path.split("/"))
+    return replace(parsed(layered()), cycles_accepted=tuple(AcceptedCycle(tuple(map(node, g)), "w") for g in groups),
+                   cycles_left_out=tuple(LeftOut(node(path), "w") for path in left))
+
+
+def test_each_cycle_accepted_and_each_node_left_out_that_the_compared_profile_does_not_hold_is_looser():
+    assert loosened(looping(("src/a", "src/b"), ("src/c", "src/d"), left=("src/w", "src/v")),
+                    looping(("src/d", "src/c"), left=("src/v",))) == (
+        Loosened("cycles.accepted", "", "src/a, src/b", "cycles accepts the cycle of src/a, src/b (cycles.accepted)"),
+        Loosened("cycles.left_out", "", "src/w", "cycles leaves src/w out of its graph (cycles.left_out)"))
+    assert loosened(looping(), looping(("src/a", "src/b"), left=("src/w",))) == ()

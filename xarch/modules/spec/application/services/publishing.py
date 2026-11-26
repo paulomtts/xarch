@@ -82,7 +82,8 @@ class PublishingService:
             reserved=dict(architecture.reserved), approximate=architecture.approximate,
             checks=dict(architecture.checks), never=architecture.never, mask=architecture.mask,
             lines=dict(architecture.lines), evals=dict(architecture.evals), alike=architecture.alike,
-            yes_line=architecture.yes_line)
+            yes_line=architecture.yes_line, cycles_accepted=architecture.cycles_accepted,
+            cycles_left_out=architecture.cycles_left_out)
 
     def examples(self, profile: str) -> ExamplesRead:
         """The files placement is held to, each with its part, imports and comments."""

@@ -16,6 +16,13 @@ left in the group depends on goes first, one that depends on none left goes last
 weigh most over its imports in goes first, the first by name among equals. Cutting them all leaves the group with no
 cycle. The violation is reported at the first import of the first of them by name. A file in no node is not this
 check's business, and an import within one node is no dependency.
+
+The profile may accept a group by its nodes (`cycles.accepted`): a group whose nodes are exactly an entry's is not
+reported, and the enforcement section names it instead. It may leave a node out of the graph (`cycles.left_out`), such
+as a composition root that may import everything: no dependency runs from it or to it, so a group is what is left once
+it is gone, and each node left out that a group of the whole graph holds is named instead. An entry of either list
+that accepts nothing (a group no group is, a node in no group of the whole graph) is itself a cycles violation, at the
+folder of its first node, so both lists can only shrink.
 """
 from __future__ import annotations
 
@@ -24,9 +31,11 @@ from collections.abc import Iterable
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.imports import dotted, targets
 from xarch.modules.rules.application.logic.places import repeat_child
+from xarch.modules.rules.domain.outcomes import Sifted
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.profile_values.placement import Repeat
+from xarch.modules.rules.domain.published import Excused
+from xarch.profile_values.placement import AcceptedCycle, Repeat
 
 Edge = tuple[str, int, str]
 """An import that makes one node depend on another: the file, its line, and what it imports, dotted."""
@@ -35,9 +44,59 @@ Graph = dict[str, dict[str, list[Edge]]]
 """Each node, the nodes it depends on, and the imports that make each dependency, by file then line."""
 
 
+ACCEPTED = "cycles.accepted"
+LEFT_OUT = "cycles.left_out"
+
+
 def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list[Violation]:
+    """Each group not accepted, then each entry of cycles.accepted and cycles.left_out that accepts nothing."""
+    found = checked(files, profile, root)
+    return [*(v for v in found.kept if isinstance(v, Violation)), *found.stale]
+
+
+def checked(files: Iterable[SourceFile], profile: Profile, root: str) -> Sifted:
+    """The groups of the graph once the nodes left out are gone, each one cycles.accepted names taken out and named;
+    each entry of either list that accepts nothing, as a violation; and each node left out that a group held, named."""
+    edges = _edges(files, profile, root)
+    whole = _groups(edges)
+    out = {"/".join(entry.node): entry for entry in profile.cycles_left_out}
+    kept = {a: {b: imports for b, imports in deps.items() if b not in out} for a, deps in edges.items() if a not in out}
+    accepted = [({"/".join(node) for node in entry.group}, entry) for entry in profile.cycles_accepted]
+    found: list[Violation] = []
+    excused: list[Excused] = []
+    used: set[int] = set()
+    for group in _groups(kept):
+        violation = _violation(group, kept)
+        index = next((i for i, (nodes, _) in enumerate(accepted) if nodes == set(group)), None)
+        if index is None:
+            found.append(violation)
+            continue
+        used.add(index)
+        excused.append(Excused("cycles", violation.file, violation.line, ACCEPTED, violation.message,
+                               accepted[index][1].why))
+    stale = [_unaccepted(entry, root) for i, (_, entry) in enumerate(accepted) if i not in used]
+    for node, entry in out.items():
+        group = next((group for group in whole if node in group), None)
+        if group is None:
+            stale.append(Violation(f"{root}/{node}", 0, f"{LEFT_OUT} leaves out {node}, which is in no cycle "
+                                                        f"({LEFT_OUT})", "cycles", f"drop the entry of {node} from {LEFT_OUT}"))
+        else:
+            excused.append(Excused("cycles", f"{root}/{node}", 0, LEFT_OUT,
+                                   f"{node} is left out of cycles, though it is in a cycle of {_and(group)}", entry.why))
+    return Sifted(tuple(found), tuple(stale), tuple(excused))
+
+
+def _unaccepted(entry: AcceptedCycle, root: str) -> Violation:
+    named = _and(["/".join(node) for node in entry.group])
+    return Violation(f"{root}/{'/'.join(entry.group[0])}", 0,
+                     f"{ACCEPTED} accepts a cycle of {named}, and cycles finds none ({ACCEPTED})", "cycles",
+                     f"drop the entry of {named} from {ACCEPTED}, or write its group as a cycles finding names it")
+
+
+def _edges(files: Iterable[SourceFile], profile: Profile, root: str) -> Graph:
+    """Each node, the nodes it depends on, and the imports that make each dependency (see Graph)."""
     if not profile.repeats:
-        return []
+        return {}
     parsed = [(f, *dotted(f.path, profile.language.marks)) for f in files]
     known = {steps for _, steps, _ in parsed}
     files = frozenset(steps for _, steps, is_package in parsed if not is_package)
@@ -50,7 +109,7 @@ def violations(files: Iterable[SourceFile], profile: Profile, root: str) -> list
             depends = _node(profile.repeats, target, files)
             if depends is not None and depends != source:
                 edges.setdefault(source, {}).setdefault(depends, []).append((file.name, line, ".".join((root, *target))))
-    return [_violation(group, edges) for group in _groups(edges)]
+    return edges
 
 
 def _node(repeats: tuple[Repeat, ...], steps: tuple[str, ...], files: frozenset[tuple[str, ...]]) -> str | None:
