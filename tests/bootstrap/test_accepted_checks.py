@@ -97,6 +97,16 @@ def test_an_entry_whose_file_is_gone_is_a_finding_of_the_check():
                      "tests/core/test_b.py, and the check finds none (checks.no-local-clock.accepted)"]
 
 
+def test_an_entry_written_with_the_app_folder_first_is_told_on_the_command_line_to_write_its_path_below_the_app():
+    Path("app/core/ports.py").write_text("P = 1\n")
+    profile("    accepted:\n      - {file: app/core/ports.py, why: the ports are old}\n")
+    result = runner.invoke(app, ["check", "--profile", "ratchet.yaml"])
+    assert result.exit_code != 0
+    assert ("app/app/core/ports.py: checks.no-local-clock.accepted accepts the findings of app/core/ports.py, and the "
+            "check finds none (checks.no-local-clock.accepted)\n"
+            "    fix: write the path relative to the app: core/ports.py, not app/core/ports.py") in result.stdout
+
+
 def test_a_check_accepting_nothing_has_no_accepted_findings_in_its_enforcement():
     profile("")
     found, enforcement = check()

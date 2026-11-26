@@ -62,3 +62,9 @@ def test_an_entry_that_names_no_finding_is_a_violation_of_the_check(stale, messa
     path = "/".join(stale.file)
     assert found.stale == (Violation(f"app/{path}", 0, message, "no-platform", f"drop the entry of {path} from {KEY}",
                                      True),)
+
+
+def test_an_entry_written_with_the_app_folder_first_is_told_to_write_its_path_below_the_app():
+    (item,) = sifted(entry("app/kernel/a.py")).stale
+    assert (item.file, item.fix) == (
+        "app/app/kernel/a.py", "write the path relative to the app: kernel/a.py, not app/kernel/a.py")

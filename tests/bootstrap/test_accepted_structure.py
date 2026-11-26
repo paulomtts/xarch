@@ -80,6 +80,15 @@ def test_an_entry_whose_path_is_there_is_a_finding():
         "test-tree finds none there (structure.accepted) [test-tree]"]
 
 
+def test_an_entry_written_with_the_app_folder_first_is_told_to_write_its_path_below_the_app():
+    Path("sparse.yaml").write_text(PROFILE + ACCEPTED.replace("{path: modules/", "{path: app/modules/"))
+    result = runner.invoke(app, ["check", "--profile", "sparse.yaml", "--format", "json"])
+    assert [(v["file"], v["fix"]) for v in json.loads(result.stdout)["violations"]
+            if "structure.accepted" in v["message"]] == [
+        ("app/app/modules/billing/domain/errors.py", "write the path relative to the app: "
+         "modules/billing/domain/errors.py, not app/modules/billing/domain/errors.py")]
+
+
 def test_what_no_entry_names_is_still_a_finding():
     Path("sparse.yaml").write_text(PROFILE)
     found, enforcement = check()

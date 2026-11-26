@@ -10,7 +10,8 @@ folder is wanted is none.
 Each match of a counterpart's source, every path of its when matching too with the source's bindings, that
 has no match of its `has` so bound is a finding at it, but one its `accepted` names, which is waived with the entry's
 reason. An entry that waives nothing (its source now has its counterpart, or is gone) is a finding itself, so a list
-of accepted sources can only shrink. How many matches of its source each counterpart read is counted: one that read
+of accepted sources can only shrink; one below the app written with the app folder's name first is told to write its
+path below the app. How many matches of its source each counterpart read is counted: one that read
 none passes for want of anything to check.
 """
 from __future__ import annotations
@@ -18,10 +19,11 @@ from __future__ import annotations
 import re
 from collections.abc import Collection, Iterable, Mapping
 
+from xarch.kernel.logic.accepted_paths import stale_fix
 from xarch.kernel.violations import Violation
 from xarch.modules.layout.application.logic.instances import is_instance_name
 from xarch.modules.layout.domain.published import Waived
-from xarch.modules.layout.domain.structure import Counterpart, Naming, Pattern, Word
+from xarch.modules.layout.domain.structure import Allowed, Counterpart, Naming, Pattern, Word
 
 RULE = "counterpart"
 """The id of the rule."""
@@ -84,9 +86,17 @@ def paired(counterparts: Iterable[Counterpart], app: Iterable[Path], tests: Iter
                 found.append(Violation(file, 0, _message(entry, said), RULE, _fix(entry, said)))
         found += [Violation("/".join((roots[item.tests], *item.path)), 0,
                             f"{key}.accepted names {item.written}, which is no match of {entry.source.written} that "
-                            f"needs a counterpart ({key})", RULE, f"drop the entry of {item.written} from {key}.accepted")
+                            f"needs a counterpart ({key})", RULE, _unused_fix(item, key, sides[False], package))
                   for at, item in accepted.items() if at not in used]
     return tuple(found), tuple(waived), tuple(read)
+
+
+def _unused_fix(item: Allowed, key: str, app: Side, package: str) -> str:
+    """The fix of an entry of accepted that accepts nothing: to drop it, or, for one below the app written with the
+    app folder's name first, to write its path below the app."""
+    fix = f"drop the entry of {item.written} from {key}.accepted"
+    files, folders = app
+    return fix if item.tests else stale_fix(item.written, package, lambda steps: steps in files or steps in folders, fix)
 
 
 def matches(pattern: Pattern, side: Side, words: Collection[Word], naming: Naming,

@@ -10,7 +10,7 @@ from xarch.modules.layout.application.logic.unmirrored import unmirrored
 from xarch.modules.layout.application.ports.disk import Disk
 from xarch.modules.layout.application.ports.skeleton import Skeleton
 from xarch.modules.layout.contract import StructureChecked
-from xarch.modules.layout.domain.structure import Repeated
+from xarch.modules.layout.domain.structure import Repeated, Requirement
 
 
 class StructureCheckService:
@@ -34,8 +34,12 @@ class StructureCheckService:
         found = missing(required, present)
         at = [(r.path, False) for r in missed(required, present)]
         accepted = self._skeleton.accepted(profile)
+
+        def there(steps: tuple[str, ...]) -> bool:
+            return bool(self._disk.present(root, [Requirement("", steps, True, ""), Requirement("", steps, False, "")]))
+
         if tests is None:
-            return self._paired(StructureChecked(*sifted(list(zip(at, found)), accepted, package, None)), root,
+            return self._paired(StructureChecked(*sifted(list(zip(at, found)), accepted, package, None, there)), root,
                                 package, profile, None)
         beside = self._skeleton.beside(profile)
         if beside is not None:
@@ -45,7 +49,7 @@ class StructureCheckService:
                 found += unmirrored(tests.name, package, each, self._disk.below(tests, each),
                                     set(self._disk.below(root, each)), naming)
         at += [(tuple(v.file.split("/")[1:]), True) for v in found[len(at):]]
-        return self._paired(StructureChecked(*sifted(list(zip(at, found)), accepted, package, tests.name)), root,
+        return self._paired(StructureChecked(*sifted(list(zip(at, found)), accepted, package, tests.name, there)), root,
                             package, profile, tests)
 
     def _paired(self, checked: StructureChecked, root: Path, package: str, profile: str,

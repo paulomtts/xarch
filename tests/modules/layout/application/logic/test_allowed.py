@@ -11,22 +11,26 @@ STRAY = Violation("tests/modules/old", 0, "mirrors no folder of the app (app/mod
 FOUND = [((("modules", "docs", "domain"), False), MISSING), ((("modules", "old"), True), STRAY)]
 
 
+def nowhere(steps: tuple[str, ...]) -> bool:
+    return False
+
+
 def test_a_finding_an_entry_names_is_waived_and_the_others_kept():
     entry = Allowed(("modules", "docs", "domain"), False, "modules/docs/domain/", "why")
-    assert sifted(FOUND, [entry], "app", "tests") == (
+    assert sifted(FOUND, [entry], "app", "tests", nowhere) == (
         (STRAY,), (Waived("structure", "app/modules/docs", "missing domain/", "why"),))
 
 
 def test_an_entry_below_the_tests_names_only_a_finding_below_the_tests():
     entry = Allowed(("modules", "old"), True, "tests/modules/old", "why")
-    assert sifted(FOUND, [entry], "app", "tests")[1] == (Waived("test-tree", "tests/modules/old", STRAY.message, "why"),)
-    assert sifted(FOUND, [Allowed(("modules", "old"), False, "modules/old", "why")], "app", "tests")[0][:2] == (
+    assert sifted(FOUND, [entry], "app", "tests", nowhere)[1] == (Waived("test-tree", "tests/modules/old", STRAY.message, "why"),)
+    assert sifted(FOUND, [Allowed(("modules", "old"), False, "modules/old", "why")], "app", "tests", nowhere)[0][:2] == (
         MISSING, STRAY)
 
 
 def test_an_entry_that_names_no_finding_is_a_finding_of_its_rule():
     app, tests = Allowed(("kernel",), False, "kernel/", "why"), Allowed(("gone",), True, "tests/gone", "why")
-    kept, waived = sifted([], [app, tests], "app", "tests")
+    kept, waived = sifted([], [app, tests], "app", "tests", nowhere)
     assert waived == ()
     assert kept == (
         Violation("app/kernel", 0, "structure.accepted accepts kernel/ as a finding of structure, and structure finds "
@@ -35,3 +39,13 @@ def test_an_entry_that_names_no_finding_is_a_finding_of_its_rule():
         Violation("tests/gone", 0, "structure.accepted accepts tests/gone as a finding of test-tree, and test-tree "
                                    "finds none there (structure.accepted)", "test-tree",
                   "drop the entry of tests/gone from structure.accepted"))
+
+
+def test_an_entry_written_with_the_app_folder_first_is_told_to_write_its_path_below_the_app():
+    on_disk = Allowed(("app", "core"), False, "app/core/", "why")
+    missing = Allowed(("app", "modules", "docs", "domain"), False, "app/modules/docs/domain/", "why")
+    kept, _ = sifted(FOUND, [on_disk, missing], "app", "tests", lambda steps: steps == ("core",))
+    assert [(v.file, v.fix) for v in kept[2:]] == [
+        ("app/app/core", "write the path relative to the app: core/, not app/core/"),
+        ("app/app/modules/docs/domain",
+         "write the path relative to the app: modules/docs/domain/, not app/modules/docs/domain/")]

@@ -131,6 +131,15 @@ def test_an_accepted_source_that_now_has_its_counterpart_or_is_gone_is_a_finding
                   "counterpart", "drop the entry of adapters/sql/gone/ from counterparts.x.accepted"))
 
 
+
+def test_an_accepted_source_written_with_the_app_folder_first_is_told_to_write_its_path_below_the_app():
+    entry = Counterpart("x", at_app("adapters/sql/<store>/"), at_tests("conformance/<store>/"),
+                        accepted=(Allowed(("app", "adapters", "sql", "cart"), False, "app/adapters/sql/cart/", "w"),))
+    violations = paired([entry], APP, steps("conformance/shop/t.py"), WORDS, PYTHON_NAMING, "app", "tests")[0]
+    assert [(v.file, v.fix) for v in violations if v.file == "app/app/adapters/sql/cart"] == [
+        ("app/app/adapters/sql/cart",
+         "write the path relative to the app: adapters/sql/cart/, not app/adapters/sql/cart/")]
+
 def test_a_message_and_a_fix_of_the_profile_s_own_are_said_with_their_variables():
     entry = Counterpart("x", at_app("adapters/sql/<store>/"), at_tests("conformance/<store>/"), (at_tests("fakes/<store>/"),),
                         message="{store}: {source} lacks {expected} beside {when} ({key})", fix="write {expected}")

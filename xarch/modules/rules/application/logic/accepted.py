@@ -3,10 +3,12 @@ against what its files import. An entry names a file of the part, the file or fo
 (optionally only one name taken from there) and why. The may-import rule excuses every import an entry accepts (the
 filter target-accepted), and the enforcement section names each one instead. An entry that accepts nothing any more,
 because its file is gone, because the file no longer imports what it names, or because imports.may now allows that
-import, is itself a may-import violation: a ratchet of accepted imports can only shrink.
+import, is itself a may-import violation: a ratchet of accepted imports can only shrink. An entry whose file is
+written with the app folder's name first is told to write its path below the app.
 """
 from __future__ import annotations
 
+from xarch.kernel.logic.accepted_paths import stale_fix
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.application.logic.places import accepting, allowed
 from xarch.modules.rules.domain.outcomes import Ratchet
@@ -30,7 +32,7 @@ def ratchet(facts: Facts, profile: Profile) -> Ratchet:
             if read is None:
                 stale.append(Violation(f"{facts.root}/{path}", 0,
                                        f"{path} is no file of the app, which {key} accepts an import of ({key})",
-                                       RULE, f"drop the entry of {path} from {key}, or name the file as it is now"))
+                                       RULE, _gone_fix(path, key, facts)))
                 continue
             named = [fact for fact in read.facts.get("import-into-app", ())
                      if accepting(profile, part, entry.file, fact.target, fact.name) == entry]
@@ -47,3 +49,9 @@ def ratchet(facts: Facts, profile: Profile) -> Ratchet:
                       for line in dict.fromkeys(fact.line for fact in held)]
     return Ratchet(tuple(stale), tuple(found))
 
+
+def _gone_fix(path: str, key: str, facts: Facts) -> str:
+    """The fix of an entry of key whose file, path, is no file of the app: to drop or rename it, or, when it writes
+    the app folder's name before a file of the app, to write the path below the app."""
+    return stale_fix(path, facts.root, lambda steps: any(not r.in_tests and r.file.path == steps for r in facts.files),
+                     f"drop the entry of {path} from {key}, or name the file as it is now")

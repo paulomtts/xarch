@@ -52,6 +52,7 @@ RULED_OUT = {
         "cli/reports/shown.py",
         "cli/reports/vocabulary_report.py",
         "cli/reports/where_report.py",
+        "kernel/logic/accepted_paths.py",
         "kernel/logic/capabilities.py",
         "kernel/logic/cases.py",
         "kernel/logic/conditions.py",

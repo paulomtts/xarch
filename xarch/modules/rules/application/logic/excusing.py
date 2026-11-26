@@ -4,12 +4,14 @@ the check print for the finding. A finding an entry accepts is not reported, and
 instead; an entry that accepts nothing is itself a finding of the check, at its file, so a list of accepted findings,
 a ratchet, can only shrink. A tier accepts tiers findings the same way by `tiers.<tier>.accepted`, each entry naming
 a test file and, if need be, what it imports. A file is named as the profile writes it: by its path below the app, tests/<path> for a
-file below the tests root.
+file below the tests root. An entry that accepts nothing written with the app folder's name first is told to write
+its path below the app.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable
 
+from xarch.kernel.logic.accepted_paths import stale_fix
 from xarch.kernel.logic.placement import module_steps
 from xarch.kernel.violations import RULES, Violation
 from xarch.modules.rules.application.logic.engine import said_of
@@ -36,6 +38,13 @@ def _shown(path: tuple[str, ...], facts: Facts, profile: Profile) -> str:
     if path[:1] == (profile.default_tests,) and facts.tests_root:
         return "/".join((facts.tests_root, *path[1:]))
     return "/".join((facts.root, *path))
+
+
+def _fix(path: str, key: str, facts: Facts, profile: Profile) -> str:
+    """The fix of an entry of key that accepts nothing and writes path: to drop it, or, when it writes the app
+    folder's name before a file the run read, to write the path as the profile names that file."""
+    return stale_fix(path, facts.root, lambda steps: any(_written_path(r, profile) == steps for r in facts.files),
+                     f"drop the entry of {path} from {key}")
 
 
 def checks(rules: Iterable[Rule], facts: Facts, profile: Profile) -> Sifted:
@@ -98,7 +107,7 @@ def _unused(tier: str, entry: AcceptedImport, facts: Facts, profile: Profile) ->
     key, path = f"tiers.{tier}.accepted", "/".join(entry.file)
     what = f"{path} importing {entry.written}" if entry.target else f"the tiers findings of {path}"
     return Violation(_shown(entry.file, facts, profile), 0, f"{key} accepts {what}, and tiers finds none ({key})",
-                     "tiers", f"drop the entry of {path} from {key}")
+                     "tiers", _fix(path, key, facts, profile))
 
 
 def _key(rule: str) -> str:
@@ -110,4 +119,4 @@ def _stale(rule: str, entry: AcceptedFinding, facts: Facts, profile: Profile) ->
     what = (f"a finding of {path} with {' and '.join(f'{name} {said}' for name, said in entry.by)}" if entry.by
             else f"the findings of {path}")
     return Violation(_shown(entry.file, facts, profile), 0, f"{key} accepts {what}, and the check finds none ({key})",
-                     rule, f"drop the entry of {path} from {key}", rule not in RULES)
+                     rule, _fix(path, key, facts, profile), rule not in RULES)

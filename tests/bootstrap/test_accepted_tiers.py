@@ -79,6 +79,14 @@ def test_an_entry_that_accepts_nothing_is_a_tiers_finding():
         "finds none (tiers.unit.accepted) [tiers]"]
 
 
+def test_an_entry_written_with_the_app_folder_first_is_told_to_write_its_path_below_the_app():
+    profile("    accepted:\n      - {file: app/core/rates.py, why: the rates are old}\n")
+    result = runner.invoke(app, ["check", "--profile", "tiered.yaml", "--format", "json"])
+    assert [(v["file"], v["fix"]) for v in json.loads(result.stdout)["violations"]
+                                       if "tiers.unit.accepted" in v["message"]] == [
+        ("app/app/core/rates.py", "write the path relative to the app: core/rates.py, not app/core/rates.py")]
+
+
 def test_with_no_entry_every_finding_is_reported():
     profile("")
     found, enforcement = check()

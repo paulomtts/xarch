@@ -70,3 +70,9 @@ def test_an_entry_whose_file_is_gone_is_a_may_import_violation():
         "app/modules/docs/domain/gone.py", 0, f"modules/docs/domain/gone.py is no file of the app, which {KEY} accepts "
         f"an import of ({KEY})", "may-import",
         f"drop the entry of modules/docs/domain/gone.py from {KEY}, or name the file as it is now"),)
+
+
+def test_an_entry_written_with_the_app_folder_first_is_told_to_write_its_path_below_the_app():
+    prefixed = AcceptedImport(("app", *DOMAIN.split("/")), ("platform", "db.py"), "", WHY, "platform/db.py")
+    (item,) = accepting(imp(3, "app.platform", "db"), entries=(prefixed,)).stale
+    assert (item.file, item.fix) == (f"app/app/{DOMAIN}", f"write the path relative to the app: {DOMAIN}, not app/{DOMAIN}")
