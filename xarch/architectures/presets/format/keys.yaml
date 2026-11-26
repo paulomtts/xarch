@@ -263,6 +263,28 @@ keys:
       guards:
         no-comments: {}
         no-duplicates: {min_statements: 6}
+  structure:
+    meaning: what the layout accepts one by one
+    accepts: a map {accepted}
+    example: |
+      <<part>>
+      structure:
+        accepted:
+          - {path: documents/legacy/, why: the legacy documents are retired with the old reader}
+  structure.accepted:
+    meaning: the findings of the layout the profile accepts
+    accepts: >-
+      a list of {path, why}: `path` the folder or file a `structure` finding says is missing, by its path below the app,
+      or `tests/<path>`, the folder below the tests that a `test-tree` finding says mirrors nothing; `why` one line, the
+      reason. Such a finding is not reported: every `xarch check` names it in its enforcement section, with its reason,
+      instead. An entry that accepts nothing (the folder or file is there, or the folder below the tests mirrors a
+      folder of the app) is itself a finding, so the list can only shrink. `profile check` lists each entry the
+      profile compared with does not hold as looser
+    example: |
+      <<part>>
+      structure:
+        accepted:
+          - {path: documents/legacy/, why: the legacy documents are retired with the old reader}
   excluded:
     meaning: folders below the app that are not its source
     accepts: >-
@@ -285,8 +307,9 @@ keys:
     accepts: >-
       a map {<id>: <check>}: an id of your own (lowercase words joined by `-`, none of a check xarch has), and a check
       written in the words of the engine: what it reads (`read`), where (`in`), what it keeps, what must or may not hold
-      of it, what excuses it, and its `message` and `fix`; with `examples`, code it must find something in and code it
-      must find nothing in, which `profile check` runs. `xarch profile explain checks` says how a check is written and
+      of it, what excuses it, the findings it accepts one by one (`accepted`, each a file and, if need be, the values
+      of its variables, with why; one that accepts nothing is a finding), and its `message` and `fix`; with
+      `examples`, code it must find something in and code it must find nothing in, which `profile check` runs. `xarch profile explain checks` says how a check is written and
       every word it is written in; `xarch profile explain <key> --rule` shows the rules a key expands to, written as
       checks. A check that reads nothing in the project is listed under `enforcement`, and fails `check --strict`
     example: |
@@ -682,6 +705,24 @@ keys:
         unit:
           imports:
             must: [parts.documents]
+      <<tiered-part>>
+  tiers.<tier>.accepted:
+    meaning: the tiers findings the tier accepts one by one
+    accepts: >-
+      a list of {file, import, why}: `file` a test of the tier, or one in no tier, by its path below the app
+      (`tests/<path>` below the tests root); `import`, optional, what it imports, a file or folder below the app or
+      `tests/<path>`, optionally followed by `:<name>`; `why` one line, the reason. With `import`, the `tiers` findings
+      of that import in that file are accepted; without it, every `tiers` finding of the file, that it lies in no tier
+      included. Such a finding is not reported: every `xarch check` names it in its enforcement section, with its
+      reason, instead. An entry that accepts nothing is itself a `tiers` finding, so the list can only shrink. `profile
+      check` lists each entry the profile compared with does not hold as looser
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          proves: a rule of the documents
+          accepted:
+            - {file: tests/documents/test_legacy%extension%, why: the legacy tests move with the legacy reader}
       <<tiered-part>>
   tiers.<tier>.docs:
     meaning: what only fills the generated docs

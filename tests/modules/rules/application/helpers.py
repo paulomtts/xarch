@@ -1,6 +1,7 @@
 """The rules module's controller around fakes, with every service, as bootstrap/ builds it around the adapters."""
 from __future__ import annotations
 
+from tests.fakes.baselines import FakeBaselines
 from tests.fakes.check_format import FakeCheckFormat
 from tests.fakes.filesystem import FakeSourceTree
 from tests.fakes.profiles import FakeProfiles
@@ -16,10 +17,12 @@ from xarch.modules.rules.application.services.source_check import SourceCheckSer
 from xarch.modules.rules.application.services.sources import SourcesService
 
 
-def controller(tree: FakeSourceTree, profiles: FakeProfiles, structure: FakeStructure | None = None) -> RulesController:
+def controller(tree: FakeSourceTree, profiles: FakeProfiles, structure: FakeStructure | None = None,
+               baselines: FakeBaselines | None = None) -> RulesController:
     source = SourceCheckService(tree, profiles)
     return RulesController(LocateService(tree, profiles),
-                           AppCheckService(source, structure if structure is not None else FakeStructure(), tree),
+                           AppCheckService(source, structure if structure is not None else FakeStructure(), tree,
+                                           baselines if baselines is not None else FakeBaselines()),
                            ExplainingService(profiles, FakeCheckFormat()), ExamplesService(tree, profiles),
                            SourcesService(tree, profiles), AskingService(tree, profiles),
                            HoldingService(tree, profiles))

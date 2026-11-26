@@ -48,7 +48,12 @@ def anchors(required: Iterable[Requirement]) -> list[Requirement]:
 def missing(required: Iterable[Requirement], present: Collection[Requirement]) -> list[Violation]:
     """What is required and not present, but what lies in an optional part that is not present either."""
     return [Violation(r.owner, 0, f"missing {r.shown}", "structure", f"create {r.owner}/{r.shown}")
-            for r in required if r not in present and (not r.when or _anchor(r.when) in present)]
+            for r in missed(required, present)]
+
+
+def missed(required: Iterable[Requirement], present: Collection[Requirement]) -> list[Requirement]:
+    """What is required and not present, but what lies in an optional part that is not present either, as required."""
+    return [r for r in required if r not in present and (not r.when or _anchor(r.when) in present)]
 
 
 def _anchor(path: tuple[str, ...]) -> Requirement:

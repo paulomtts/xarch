@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
+from xarch.modules.rules.domain.outcomes import StructureFound
 
 
 class FakeStructure:
@@ -12,5 +13,5 @@ class FakeStructure:
     def __init__(self, violations: list[Violation] | None = None):
         self._violations = list(violations or [])
 
-    def violations(self, root: Path, package: str, profile: str, tests: Path | None) -> list[Violation]:
-        return list(self._violations)
+    def checked(self, root: Path, package: str, profile: str, tests: Path | None) -> StructureFound:
+        return StructureFound(tuple(self._violations))

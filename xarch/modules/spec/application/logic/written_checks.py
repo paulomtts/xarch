@@ -11,6 +11,7 @@ is the rules module's, which reads what this gives back.
       must_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
       must_be_reached: {from: <scope as in>, through: ..., through_only: [...], then_through: <kind> | [...], by_another_file: true}
       except: [<filter>, ...]
+      accepted: [{file: <path below the app, or tests/<path>>, <variable>: <value>, ..., why: <reason>}, ...]
       mode: fail | list
       message: <sentence>         with {<variable>}s
       fix: <sentence>
@@ -33,9 +34,12 @@ from xarch.kernel.logic.conditions import condition
 from xarch.kernel.logic.placement import stem
 from xarch.kernel.logic.targets import outside_imports
 from xarch.kernel.violations import OWN_ID, RULES
+from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.domain.values import (
+    ACCEPTED_SLOTS,
     CASE_SLOTS,
     EXAMPLE_SLOTS,
+    LINE_VARIABLE,
     REACH_SLOTS,
     SCOPE_SLOTS,
     SLOTS,
@@ -48,6 +52,7 @@ from xarch.profile_values.checks import (
     APP,
     QUANTIFIER_SLOTS,
     STRUCTURE,
+    AcceptedFinding,
     Condition,
     Quantified,
     Saying,
@@ -104,11 +109,48 @@ def _check(body: Any, where: str, declared: set[str], tiers: set[str], language:
                  _names(body.get("per_line", []), f"{where}.per_line", problems, empty=True))
     cases = _cases(body.get("cases", []), f"{where}.cases", problems)
     flagged, clean = _examples(body.get("examples"), f"{where}.examples", language, problems)
+    accepted = _accepted(body["accepted"], f"{where}.accepted", problems) if "accepted" in body else ()
     if len(quantified) != 1:
         return None
     slot = quantified[0]
     quantifier = _quantified(slot, body[slot], f"{where}.{slot}", declared, tiers, problems, words)
-    return WrittenCheck(read, within, quantifier, (*cases, own), keep, exempt, mode, flagged, clean)
+    return WrittenCheck(read, within, quantifier, (*cases, own), keep, exempt, mode, flagged, clean, accepted)
+
+
+def _accepted(value: Any, where: str, problems: list[str]) -> tuple[AcceptedFinding, ...]:
+    """The findings the check accepts, in the order written: each entry a map of the file, by its path below the app
+    (tests/<path> for a test), why, one line, and any variables it names the finding by, each with the value the
+    finding prints for it (none: every finding of the file); never its line. An entry refused adds its problem,
+    addressed by its index, and is not read; whether a variable exists and applies is the rules module's."""
+    if not isinstance(value, list) or not value:
+        problems.append(f"{where}: must be a list of {{file, why}}, each naming the finding by the values of variables "
+                        "of the check if need be, such as [{file: <path>, name: <its name>, why: <the reason>}]")
+        return ()
+    found: list[AcceptedFinding] = []
+    for index, entry in enumerate(value):
+        at = f"{where}.{index}"
+        if not isinstance(entry, Mapping):
+            problems.append(f"{at}: must be a map {{file, why}}, with variables of the check if need be")
+            continue
+        count = len(problems)
+        problems += [f"{at}: missing `{key}`" for key in ACCEPTED_SLOTS if key not in entry]
+        steps = ck.below_app(entry["file"], f"{at}.file", problems) if "file" in entry else None
+        if "why" in entry and not ck.line(entry["why"]):
+            problems.append(f"{at}.why: must be one line of text: why the check accepts the finding")
+        by: list[tuple[str, str]] = []
+        for name, said in entry.items():
+            if name in ACCEPTED_SLOTS:
+                continue
+            if name == LINE_VARIABLE:
+                problems.append(f"{at}.{name}: a line moves with every edit above it: name the finding by the value of "
+                                "a variable, such as name: <its name>, or accept every finding of the file")
+            elif not isinstance(name, str) or isinstance(said, (Mapping, list)) or said is None:
+                problems.append(f"{at}.{name}: must be the value the finding prints for the variable, as text")
+            else:
+                by.append((name, str(said)))
+        if len(problems) == count and steps is not None:
+            found.append(AcceptedFinding(steps, tuple(by), entry["why"]))
+    return tuple(found)
 
 
 def _unknown(body: Mapping[Any, Any], known: tuple[str, ...], where: str) -> list[str]:

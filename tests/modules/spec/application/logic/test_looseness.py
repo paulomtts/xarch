@@ -12,8 +12,9 @@ from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, p
 from tests.modules.spec.profiles import covered, layered, parsed, part_of, two_folders
 from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_of
 from xarch.modules.spec.domain.guards import ORDER
-from xarch.modules.spec.domain.published import Loosened, Origin
+from xarch.modules.spec.domain.published import AcceptedPath, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
+from xarch.profile_values.checks import AcceptedFinding, Quantified, Saying, Scope, WrittenCheck
 
 
 def loosened(custom: Architecture, base: Architecture) -> tuple[Loosened, ...]:
@@ -202,6 +203,9 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (faking("unit"), faking()),
         (parsed(given(layered(), "api", optional=True)), parsed(layered())),
         (accepting(ENTRY), parsed(layered())),
+        (checking(AcceptedFinding(("src", "x.py"), (), "w")), parsed(layered())),
+        (replace(parsed(layered()), structure_accepted=(AcceptedPath(("src", "x"), "w"),)), parsed(layered())),
+        (accepting_tests({"file": "tests/x/test_y.py", "why": "w"}), parsed(covered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -837,3 +841,47 @@ def test_each_import_a_part_accepts_that_the_compared_profile_does_not_is_looser
         Loosened("imports.accepted", "store", "src/docs/store/repo.py: src/docs/service/",
                  "store accepts src/docs/store/repo.py importing src/docs/service/ (parts.store.imports.accepted)"),)
     assert loosened(accepting(ENTRY), accepting(ENTRY, other)) == ()
+
+
+def checking(*entries: AcceptedFinding) -> Architecture:
+    """layered(), writing a check of its own that accepts the entries given."""
+    check = WrittenCheck(("call",), Scope(), Quantified("may_not"), (Saying("m", "f"),), accepted=entries)
+    return replace(parsed(layered()), checks={"no-print": check})
+
+
+def test_each_finding_a_check_accepts_that_the_compared_profile_does_not_is_looser():
+    named, whole = (AcceptedFinding(("src", "x.py"), (("name", "Clock"),), "w"),
+                    AcceptedFinding(("tests", "test_y.py"), (), "w"))
+    assert loosened(checking(named, whole), checking(whole)) == (
+        Loosened("checks.accepted", "", "no-print: src/x.py with name Clock",
+                 "the check no-print accepts the findings of src/x.py with name Clock (checks.no-print.accepted)"),)
+    assert loosened(checking(whole), parsed(layered())) == (
+        Loosened("checks.accepted", "", "no-print: tests/test_y.py",
+                 "the check no-print accepts the findings of tests/test_y.py (checks.no-print.accepted)"),)
+    assert loosened(checking(whole), checking(named, whole)) == ()
+
+
+def test_each_finding_of_the_layout_accepted_that_the_compared_profile_does_not_accept_is_looser():
+    def accepting_paths(*paths: str) -> Architecture:
+        return replace(parsed(layered()), structure_accepted=tuple(AcceptedPath(tuple(p.split("/")), "w") for p in paths))
+
+    assert loosened(accepting_paths("src/docs/api", "tests/old"), accepting_paths("tests/old")) == (
+        Loosened("structure.accepted", "", "src/docs/api",
+                 "the layout accepts the finding of src/docs/api (structure.accepted)"),)
+    assert loosened(accepting_paths("tests/old"), accepting_paths("tests/old", "src/docs/api")) == ()
+
+
+def accepting_tests(*entries: dict) -> Architecture:
+    """covered(), its unit tier accepting the entries given."""
+    document = covered()
+    document["tiers"]["unit"]["accepted"] = list(entries)
+    return parsed(document)
+
+
+def test_each_tiers_finding_a_tier_accepts_that_the_compared_tier_does_not_is_looser():
+    whole, one = ({"file": "tests/x/test_y.py", "why": "w"},
+                  {"file": "tests/x/test_z.py", "import": "src/docs/store/", "why": "w"})
+    assert loosened(accepting_tests(whole, one), accepting_tests(whole)) == (
+        Loosened("tiers.accepted", "unit", "tests/x/test_z.py: src/docs/store/",
+                 "the unit tier accepts the tiers findings of tests/x/test_z.py: src/docs/store/ (tiers.unit.accepted)"),)
+    assert loosened(accepting_tests(whole), accepting_tests(whole, one)) == ()

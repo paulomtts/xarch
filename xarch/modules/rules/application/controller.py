@@ -34,6 +34,8 @@ from xarch.modules.rules.contract import (
     RuleResult,
     SourcesResult,
     WordsResult,
+    WriteBaseline,
+    WriteBaselineResult,
 )
 from xarch.modules.rules.domain.errors import ChecksRefused, NoProfile, OutsideProject, RootMissing, Unloaded, Unreadable
 
@@ -82,6 +84,18 @@ class RulesController:
         folder is refused, and so are a profile whose own checks cannot run and one that cannot be used."""
         try:
             return self._app.check(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.strict, cmd.against, cmd.paths)
+        except RootMissing as e:
+            return NotADirectory(e.root)
+        except ChecksRefused as e:
+            return ChecksCannotRun(e.problems)
+        except DomainError as e:
+            return CheckRefused(e.reason)
+
+    def write_baseline(self, cmd: WriteBaseline) -> WriteBaselineResult:
+        """The baseline written; a root or tests folder that is no folder is refused, and so are a profile whose own
+        checks cannot run, one that cannot be used, and a record that cannot be read or written."""
+        try:
+            return self._app.write_baseline(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.reset)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

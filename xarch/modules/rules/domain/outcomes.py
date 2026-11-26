@@ -5,7 +5,18 @@ from dataclasses import dataclass
 
 from xarch.kernel.violations import Violation
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.published import AcceptedEdge, At, Drift, KnownName, Loosened, Translation, Unresolved, Weak
+from xarch.modules.rules.domain.published import (
+    AcceptedEdge,
+    At,
+    BaselineStanding,
+    Drift,
+    Excused,
+    KnownName,
+    Loosened,
+    Translation,
+    Unresolved,
+    Weak,
+)
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.excluded import Excluded
 
@@ -65,7 +76,8 @@ class Enforcement:
     public names only the tests use that the profile accepts (guards.dead-code.known), which the tests-only check
     then does not list; and translated, the pairs of classes no-twins accepts as translations
     (guards.no-twins.translated), which it then does not report; and accepted, the imports a part's imports.accepted
-    accepts, which may-import then does not report."""
+    accepts, which may-import then does not report; and excused, the findings the profile's other entries accept
+    (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted), which are then not reported."""
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
@@ -84,6 +96,7 @@ class Enforcement:
     known: tuple[KnownName, ...] = ()
     translated: tuple[Translation, ...] = ()
     accepted: tuple[AcceptedEdge, ...] = ()
+    excused: tuple[Excused, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -108,6 +121,30 @@ class Ratchet:
     violation, and each import accepted."""
     stale: tuple[Violation, ...]
     accepted: tuple[AcceptedEdge, ...]
+
+
+@dataclass(frozen=True)
+class Sifted:
+    """What findings come to once the entries that accept some are held against them: the findings still reported,
+    each entry that accepts nothing, as a violation, and each finding accepted."""
+    kept: tuple[Violation | Weak, ...]
+    stale: tuple[Violation, ...]
+    excused: tuple[Excused, ...]
+
+
+@dataclass(frozen=True)
+class StructureFound:
+    """What the layout finds wrong below an app folder: the violations, and the findings structure.accepted accepts,
+    which it does not report."""
+    violations: tuple[Violation, ...]
+    excused: tuple[Excused, ...] = ()
+
+
+@dataclass(frozen=True)
+class Baselined:
+    """What the baseline comes to on a run: the violations it does not hold back, in their order, and how it stands."""
+    shown: tuple[Violation, ...]
+    standing: BaselineStanding
 
 
 @dataclass(frozen=True)

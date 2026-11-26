@@ -60,9 +60,9 @@ def unit_uses(uses) -> dict:
 
 
 PART_USE = ("holds, imports, litmus, name, optional, package_only, role, shared, tests, untested, uses")
-TIER_USE = "docs, folder, imports, litmus, plain_tables, proves, uses"
+TIER_USE = "accepted, docs, folder, imports, litmus, plain_tables, proves, uses"
 FILE_USE = ("based_on, checks, docs, evals, excluded, fakes, files, guards, hints, language, layers, name, never, parts, "
-            "reserved, review, testing, tiers")
+            "reserved, review, structure, testing, tiers")
 LIST_MOVED = "moved in 0.3.0: write uses: {never: <list>}"
 SWITCH_MOVED = "moved in 0.3.0: write uses: {apply_never: true}"
 LIST_OUTSIDE = "a key of uses: write uses: {never: <list>}"

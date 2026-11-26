@@ -7,7 +7,7 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
-from xarch.modules.spec.domain.published import Eval, Held
+from xarch.modules.spec.domain.published import AcceptedPath, Eval, Held
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -37,8 +37,8 @@ FORMAT_KEYS = f"{FORMAT}/keys.yaml"
 FILE_TYPES = f"{FORMAT}/file_types.yaml"
 """The data file of the kinds of file the docs quote besides the language of the app (see file_types)."""
 
-SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "mode", "message",
-         "fix", "once_per", "per_line", "cases", "examples")
+SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_be_reached", "except", "accepted", "mode",
+         "message", "fix", "once_per", "per_line", "cases", "examples")
 """Every slot of a check a profile writes under `checks`, in the order a check is written: spec reads them, and writes
 a check with them."""
 SCOPE_SLOTS = ("files", "part", "tier", "where")
@@ -48,6 +48,10 @@ REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
 """The slots of a quantifier of reach, in the order they are written."""
 CASE_SLOTS = ("when", "message", "fix", "once_per", "per_line")
 """The slots of a case."""
+ACCEPTED_SLOTS = ("file", "why")
+"""The keys of an entry of a check's `accepted` besides the variables it names the finding by: the file, and why."""
+LINE_VARIABLE = "line"
+"""The variable an entry of a check's `accepted` may not name a finding by: a line moves with every edit above it."""
 EXAMPLE_SLOTS = ("flagged", "clean")
 """The slots of a check's examples: the code it must find something in, then the code it must find nothing in."""
 STRUCTURE_WORD = "structure"
@@ -218,6 +222,8 @@ class Tier:
     imports_also: what each of its tests may import of the app besides what the part it mirrors may (or its own
         folder's allowance), as targets; `<word>.<part>`, a part in the repeating folder, is the instance the test
         mirrors
+    accepted: the tiers findings it accepts, each a test file, what it imports (none: every finding of the file) and
+        why, in the order written
     """
     name: str
     subject: tuple[Subject, ...]
@@ -237,6 +243,7 @@ class Tier:
     imports_must: tuple[str, ...] = ()
     plain_tables: bool = False
     imports_also: tuple[Target, ...] = ()
+    accepted: tuple[AcceptedImport, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -396,6 +403,7 @@ class Architecture:
         lying in a part it does not belong in) and the clean ones, each by its path below the app with its code
     alike: the groups of parts one file cannot tell apart (`evals.placement.alike`), in the order of the file, each its
         parts by name in the order written: review reads a file of one on the sum of the group's probabilities
+    structure_accepted: the findings of the layout the profile accepts (`structure.accepted`), in the order written
     """
     name: str
     layout: Layout
@@ -428,6 +436,7 @@ class Architecture:
     evals: dict[str, Eval] = field(default_factory=dict)
     placed: tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]] = ((), ())
     alike: tuple[tuple[str, ...], ...] = ()
+    structure_accepted: tuple[AcceptedPath, ...] = ()
 
     @property
     def entry(self) -> Part | None:

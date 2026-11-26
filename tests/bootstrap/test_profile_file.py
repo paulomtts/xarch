@@ -134,7 +134,7 @@ def test_a_version_line_is_refused_as_an_unknown_key(tmp_path):
         load_architecture(profile_in(tmp_path, "xarch: 2\n" + PROFILE))
     assert caught.value.problems == (
         f"{tmp_path / 'small.yaml'}: unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, "
-        "guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers",)
+        "guards, hints, language, layers, name, never, parts, reserved, review, structure, testing, tiers",)
 
 
 def test_a_bundled_profile_may_not_be_a_preset():

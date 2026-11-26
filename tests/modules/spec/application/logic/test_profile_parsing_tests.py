@@ -326,7 +326,7 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
 
 
 @pytest.mark.parametrize("tier, expected", [
-    pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use docs, folder, imports, "
+    pytest.param({"colour": 1}, "layered.yaml: tiers.unit: unknown key 'colour': use accepted, docs, folder, imports, "
                                 "litmus, plain_tables, proves, uses", id="an unknown key"),
     pytest.param({"plain_tables": "yes"}, "layered.yaml: tiers.unit.plain_tables: must be true or false: whether "
                                           "every table test of the tier holds no branch in its body",
@@ -550,7 +550,7 @@ def test_tier_under_a_tier_is_only_unknown_with_the_plain_message():
     document = covered()
     document["tiers"]["unit"]["tier"] = "x"
     assert problems(document) == [
-        "layered.yaml: tiers.unit: unknown key 'tier': use docs, folder, imports, litmus, plain_tables, proves, uses"]
+        "layered.yaml: tiers.unit: unknown key 'tier': use accepted, docs, folder, imports, litmus, plain_tables, proves, uses"]
 
 
 def test_a_path_written_for_tests_is_told_it_names_a_tier_not_a_folder():

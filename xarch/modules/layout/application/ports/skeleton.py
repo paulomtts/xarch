@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from xarch.modules.layout.domain.structure import Beside, Naming
+from xarch.modules.layout.domain.structure import Allowed, Beside, Naming
 
 
 class Skeleton(Protocol):
@@ -33,6 +33,10 @@ class Skeleton(Protocol):
         """For each folder or file the layout requires only where an optional part holding it is there, that part's
         path, the deepest: both below the app root, outside the repeating folders; or, root given, both below an
         instance of the repeating folder in root."""
+        ...
+
+    def accepted(self, profile: str) -> list[Allowed]:
+        """The findings of the layout the profile accepts (structure.accepted), in the order written."""
         ...
 
     def beside(self, profile: str) -> Beside | None:

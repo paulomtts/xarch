@@ -230,3 +230,11 @@ class DocFile:
     """
     path: tuple[str, ...]
     template: str
+
+
+@dataclass(frozen=True)
+class AcceptedPath:
+    """A finding of the layout the profile accepts (`structure.accepted`): the folder or file it is about, by its path
+    below the app (tests/<path> for one below the tests root), as written; and why it is accepted."""
+    path: tuple[str, ...]
+    why: str

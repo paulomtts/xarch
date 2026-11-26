@@ -59,8 +59,10 @@ def made(written: Mapping[str, WrittenCheck], profile: Profile) -> MadeChecks:
             problems += [f"checks.{name}.{problem}" for problem in refused.problems]
             continue
         lacking = unsupplied(f"checks.{name}", rule, profile.language, "check")
-        problems += lacking
-        if not lacking:
+        named = rule.naming("accepted", tuple(dict.fromkeys(variable for entry in check.accepted
+                                                            for variable, _ in entry.by)))
+        problems += [*lacking, *(f"checks.{name}.{problem}" for problem in named)]
+        if not lacking and not named:
             found.append(OwnCheck(rule, check.flagged, check.clean))
     return MadeChecks(tuple(found), tuple(problems))
 

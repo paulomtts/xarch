@@ -42,8 +42,11 @@ never for an exception): `names` dropped, or a pattern added that no bundled pat
 `immutable` dropped, `built_by` dropped or a part added to it; a part's `shared` dropped or lowered; a tier's
 `imports.must` dropped, or a part added to it; a tier no longer `plain_tables`; `testing.beside` set where the bundled
 profile leaves it out; an entry of `testing.shared` the bundled profile does not share; a tier `fakes.tiers` lists
-that the bundled profile's does not. Anything stricter, and what is compared in no way above (the layout, new parts,
-the guards' other parameters, `fakes`), is not listed.
+that the bundled profile's does not; an entry of a check's `accepted` (a file, and the variables it names) that the
+bundled profile's check of the same id does not hold; an entry of `structure.accepted` (a path) the bundled profile
+does not hold; an entry of a tier's `accepted` (a file, and what it imports) the bundled tier does not hold. Anything
+stricter, and what is compared in no way above (the layout, new parts, the guards' other parameters, `fakes`), is not
+listed.
 
 A custom profile whose `based_on` is the path of a profile file is compared with that file, called by its path as
 written, and is handed the files of its chain in order: that one, the one it names in turn, and so on; no file of the
@@ -67,6 +70,7 @@ from xarch.modules.spec.application.logic.holds_written import NARROWER
 from xarch.modules.spec.domain.guards import KEY, ORDER
 from xarch.modules.spec.domain.published import AGAINST, BASED_ON, CLOSEST, KINDS, LINE, LITMUS, Held, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture, DeadCode, NoTwins, PackageOnly, Part, Tier
+from xarch.profile_values.checks import AcceptedFinding
 from xarch.profile_values.placement import Target
 
 Looser = tuple[str, str, str]
@@ -77,7 +81,7 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
-          "files.pinned", "reserved", "known",
+          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted",
           "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
@@ -314,6 +318,12 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
                       if part not in marked]
             found += [("imports.also", mine.name, _shown(t, words)) for t in mine.imports_also
                       if not any(_covers(b, _into(t, pairs)) for b in tier.imports_also)]
+    for tier in base.tiers:
+        mine = tiers.get(tier.name)
+        if mine is not None:
+            held = {(entry.file, entry.written) for entry in tier.accepted}
+            found += [("tiers.accepted", mine.name, f"{'/'.join(entry.file)}: {entry.written}" if entry.written
+                       else "/".join(entry.file)) for entry in mine.accepted if (entry.file, entry.written) not in held]
     found += [("uses.apply_never", tiers[tier.name].name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     for tier in base.tiers:
@@ -340,6 +350,13 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("reserved", "", name) for name in base.reserved if name not in custom.reserved]
     accepted = _known(base)
     found += [("known", "", entry) for entry in _known(custom) if entry not in accepted]
+    held = {entry.path for entry in base.structure_accepted}
+    found += [("structure.accepted", "", "/".join(entry.path)) for entry in custom.structure_accepted
+              if entry.path not in held]
+    for name, check in custom.checks.items():
+        held = {(entry.file, entry.by) for entry in base.checks[name].accepted} if name in base.checks else set()
+        found += [("checks.accepted", "", f"{name}: {_finding(entry)}") for entry in check.accepted
+                  if (entry.file, entry.by) not in held]
     translators = _translators(base)
     found += [("translated", part, "") for part in _translators(custom) if pairs.get(part, part) not in translators]
     found += [("review.never", "", path) for path in base.never if path not in custom.never]
@@ -347,6 +364,12 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("evals.placement.lines", name, f"{custom.lines.get(name, LINE):.2f}") for name in shared
               if custom.lines.get(name, LINE) < base.lines.get(pairs[name], LINE)]
     return found
+
+
+def _finding(entry: AcceptedFinding) -> str:
+    """A finding an entry of a check's `accepted` names, as said: its file, then the variables it names it by."""
+    named = " and ".join(f"{variable} {said}" for variable, said in entry.by)
+    return f"{'/'.join(entry.file)}{f' with {named}' if named else ''}"
 
 
 def _allowed(part: Part) -> tuple[str, ...]:
@@ -555,6 +578,13 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tests may also import the fakes (fakes.tiers)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
+        case "tiers.accepted":
+            return f"the {part} tier accepts the tiers findings of {what} (tiers.{part}.accepted)"
+        case "structure.accepted":
+            return f"the layout accepts the finding of {what} (structure.accepted)"
+        case "checks.accepted":
+            check, _, finding = what.partition(": ")
+            return f"the check {check} accepts the findings of {finding} (checks.{check}.accepted)"
         case "known":
             return f"the tests-only check accepts {what} as a name only the tests use (guards.dead-code.known)"
         case "translated":

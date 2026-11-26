@@ -39,6 +39,17 @@ class Naming:
 
 
 @dataclass(frozen=True)
+class Allowed:
+    """A finding of the layout the profile accepts (structure.accepted): the folder or file it is about, by its steps
+    below the app root, or below the tests root when tests; as the profile writes it; and why."""
+    path: tuple[str, ...]
+    tests: bool
+    written: str
+    why: str
+
+
+
+@dataclass(frozen=True)
 class Beside:
     """Where the tests sit when every test of a part sits beside the code it tests (testing.beside): the patterns of a
     test file's name, matched against the file name alone with `*` for any text, and the folders below the tests root

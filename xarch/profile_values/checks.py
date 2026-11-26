@@ -93,13 +93,23 @@ class Quantified:
 
 
 @dataclass(frozen=True)
+class AcceptedFinding:
+    """A finding a check of the profile's own accepts (`checks.<id>.accepted`): the file it is in, by its path below the
+    app (tests/<path> for a file below the tests root); the variables it is named by, each with the value the finding
+    prints for it (none: every finding of the file); and why it is accepted."""
+    file: tuple[str, ...]
+    by: tuple[tuple[str, str], ...]
+    why: str
+
+
+@dataclass(frozen=True)
 class WrittenCheck:
     """A check of the profile's own: the files it reads (within, the format's `in`), the kinds of fact it reads, the
     filters a fact passes to be read (keep), its quantifier, the filters any one of which excuses a finding (exempt,
     the format's `except`), whether a finding fails the check or is listed (mode), how a finding is said (its cases
     in order, then its own message and fix), and its examples: the files of a small project in which it must find
     something (flagged), and of one in which it must find nothing (clean), each its path below the app
-    (tests/<path> for a test) and its code."""
+    (tests/<path> for a test) and its code; and the findings it accepts, each with why (accepted)."""
     read: tuple[str, ...]
     within: Scope
     quantified: Quantified
@@ -109,3 +119,4 @@ class WrittenCheck:
     mode: str = FAIL
     flagged: tuple[tuple[str, str], ...] = ()
     clean: tuple[tuple[str, str], ...] = ()
+    accepted: tuple[AcceptedFinding, ...] = ()
