@@ -147,7 +147,7 @@ anything else holds no table, and no later `for` is tried.
 Any other form reads no table, and the next form of the list is still tried.
 
 A file read for tests holds a test for each of its functions, a method too, whose name matches the pattern of a
-function form of the framework's `testing.declared`, as fnmatch matches a name: it is a test of the first such form,
+function form of the framework's `testing.declared`, as a name pattern matches a name: it is a test of the first such form,
 tagged with that form's index, untitled, its name the function's and its body that very function, in the order of the
 functions. A call form declares no test this reader reads: Python's reader does not supply `test.call`. A file read
 with no form holds no test. A call holds no type arguments this reader reads: Python's reader does not supply
@@ -172,10 +172,10 @@ import tokenize
 import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from fnmatch import fnmatchcase
 from pathlib import Path
 
 from xarch.kernel.logic.names import is_private_name
+from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.domain.parsed import (
     Call,
@@ -382,7 +382,7 @@ def _tests(functions: tuple[Function, ...], declared: tuple[TestForm, ...]) -> t
     found: list[Test] = []
     for function in functions:
         form = next((index for index, held in enumerate(declared)
-                     if held.function and fnmatchcase(function.name, held.function)), None)
+                     if held.function and name_matches(held.function, function.name)), None)
         if form is not None:
             found.append(Test(function.line, function.name, form, False, function))
     return tuple(found)

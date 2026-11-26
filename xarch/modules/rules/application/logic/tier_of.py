@@ -22,9 +22,8 @@ folders below the app root, where no tier's folder lies.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from fnmatch import fnmatchcase
 
-from xarch.kernel.logic.placement import place_of, stem
+from xarch.kernel.logic.placement import name_matches, place_of, stem
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import instance_root, matches, targets_of
 from xarch.modules.rules.domain.profile import Profile
@@ -53,7 +52,7 @@ class Tested:
 
 def is_test_file(profile: Profile, path: tuple[str, ...]) -> bool:
     """Whether the file name matches one of the profile's test file patterns; no file is a test when it names none."""
-    return bool(path) and profile.framework is not None and any(fnmatchcase(path[-1], pattern)
+    return bool(path) and profile.framework is not None and any(name_matches(pattern, path[-1])
                                                                 for pattern in profile.framework.files)
 
 

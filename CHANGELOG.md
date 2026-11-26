@@ -7,6 +7,13 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- A name pattern writes `?` for any one character and `|` between alternatives, beside `*` for any text, everywhere a
+  pattern of names is written (an `imports.may` name pattern, `holds` names, the targets `name` and `text`, every
+  filter that takes a pattern, a framework's test files and `function` forms), by one implementation the README
+  documents once under "Name patterns": `*Row|*Row]|*Row,*` matches `UserRow` and `list[UserRow]` but not `RowId`,
+  which `*Row*` matches. A framework's test file names and `function` forms are matched by it too rather than by the
+  platform's file-name matching, so `[...]` there is no longer a set of characters. A pattern without `?` or `|`
+  matches as before.
 - A `call`, a `method-call` and a `construction` carry their `function`, the function of the top level or the method
   of a class of the top level they sit in, however deep (empty at the top level of the file), supplied by the reader as
   `call.function` (exact in Python); `{function}` says it, and an entry of `checks.<id>.accepted` that names

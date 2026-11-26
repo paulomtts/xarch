@@ -6,12 +6,11 @@ from __future__ import annotations
 
 import re
 from collections.abc import Collection, Mapping
-from fnmatch import fnmatchcase
 from typing import Any
 
 from xarch.kernel.logic import names
 from xarch.kernel.logic.cases import CASED, CASES, filled
-from xarch.kernel.logic.placement import place_of
+from xarch.kernel.logic.placement import name_matches, place_of
 from xarch.kernel.logic.targets import outside_imports
 from xarch.kernel.placement import EACH
 from xarch.kernel.violations import RULES
@@ -454,7 +453,7 @@ def use_case_file(value: Any, framework: Framework | None, where: str, problems:
     if not _file_name(language).fullmatch(name):
         problems.append(f"{where}: must be a file name below the test folders, {such}")
         return None
-    if framework is not None and not any(fnmatchcase(name, pattern) for pattern in framework.files):
+    if framework is not None and not any(name_matches(pattern, name) for pattern in framework.files):
         problems.append(f"{where}: {value!r} is not a name `{files_key}` recognises as a test file")
         return None
     return value
@@ -737,11 +736,12 @@ def _declared_form(entry: Any, where: str, problems: list[str], language: Langua
 
 def _function_form(entry: Mapping[Any, Any], where: str, problems: list[str], language: Language,
                    count: int) -> TestForm | None:
-    """A function form: a name pattern, `*` for any text, and no slot of a call form; count is how many problems
+    """A function form: a name pattern (see name_matches), and no slot of a call form; count is how many problems
     there were before the entry."""
     problems += [f"{where}.{slot}: a function form takes no slot: drop {slot}" for slot in CALL_SLOTS if slot in entry]
     pattern = entry["function"]
-    if not (isinstance(pattern, str) and names.is_name(pattern.replace("*", "x"), language.names)):
+    if not (isinstance(pattern, str) and all(names.is_name(alternative.replace("*", "x").replace("?", "x"),
+                                                           language.names) for alternative in pattern.split("|"))):
         problems.append(f"{where}.function: must be a function name pattern: a name with `*` for any text")
     return TestForm(function=pattern) if len(problems) == count else None
 

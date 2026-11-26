@@ -439,6 +439,18 @@ or one no bundled profile resembles, else `{"profile", "chosen_by", "match", "lo
 two decimals (`0.8`), `counts` `{"parts",
 "part_keys", "tiers", "guards", "profile"}` each `[comparable, all]`, and `higher` `null` or `{"profile", "match"}`.
 
+### Name patterns
+
+Every pattern of names is written the same way: the name pattern of an `imports.may` target (`parts.store:*Id`), the
+names `holds` gives a kind, the targets `name` and `text`, the filters that take a pattern (`named`, `extends`,
+`has-parameter`, `returns-annotated`, `passes`, ...), the test files a framework names and its `function` forms. A
+pattern matches a name as a whole: `*` stands for any text (none too), `?` for any one character, and `|` parts
+alternatives, any one of which may match; every other character stands for itself (a `|` of the name is matched by
+`?`). So `*Row` matches `UserRow` but not `RowId`, where `*Row*` matches both (and `CredentialRowsPage`);
+`*Row|*Row]|*Row,*` matches a type that ends in `Row` alone or inside a generic (`list[UserRow]`, `dict[UserRow,
+int]`), and `actor|scope|org_id` any of three names. A pattern written as a filter's value is one word, with no space.
+Paths are written apart: a counterpart's path, `review.never` and `review.mask` say their own.
+
 ### Checks of your own
 
 Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `counterpart`, `stand-ins`, `scenario-coverage`,

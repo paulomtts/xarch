@@ -3,9 +3,9 @@ there, a tier's `folder` or the fakes' folder; any other belongs beside the code
 from __future__ import annotations
 
 from collections.abc import Iterable
-from fnmatch import fnmatchcase
 
 from xarch.kernel.logic.names import is_private_name
+from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.violations import Violation
 from xarch.modules.layout.domain.structure import Beside, Naming
 
@@ -21,7 +21,7 @@ def stray(tests: str, files: Iterable[tuple[str, ...]], beside: Beside, naming: 
     for path in sorted(files):
         if not path or any(is_private_name(step, naming.private) for step in path[:-1]):
             continue
-        if not any(fnmatchcase(path[-1], pattern) for pattern in beside.files):
+        if not any(name_matches(pattern, path[-1]) for pattern in beside.files):
             continue
         if any(path[:len(folder)] == folder for folder in beside.kept):
             continue

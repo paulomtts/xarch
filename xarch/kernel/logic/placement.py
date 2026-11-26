@@ -8,7 +8,7 @@ longest of the language's endings it carries, see stem), and a file that stands 
 A target names a part, a scope, an optional path below the part and an optional name pattern. Scope "own" reaches the
 part in the importer's instance, "any" in any instance, "none" a part outside the instances. EVERYTHING reaches every
 place, including the places no part claims. A target with a name pattern reaches only a name imported from the place
-that the pattern matches (`*` stands for any text, the rest is matched as written), never the place as a whole.
+that the pattern matches (see name_matches), never the place as a whole.
 
 A part may always import itself: its own instance for a part inside a repeating folder, the part for one outside. A rule
 never says so; `with_itself` adds it to the row of the part.
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Collection, Iterable, Mapping
+from functools import lru_cache
 
 from xarch.kernel.placement import EACH, EVERYTHING, Marks, Place
 from xarch.profile_values.placement import Repeat, Target
@@ -100,8 +101,18 @@ def named_beside(patterns: Iterable[tuple[str, ...]], folder: tuple[str, ...]) -
 
 
 def name_matches(pattern: str, name: str) -> bool:
-    """Whether a name matches a pattern in which `*` stands for any text and every other character for itself."""
-    return re.fullmatch(".*".join(re.escape(piece) for piece in pattern.split("*")), name) is not None
+    """Whether a name matches a pattern as a whole: `*` stands for any text (none too), `?` for any one character,
+    `|` parts alternatives, any one of which may match, and every other character stands for itself. The one pattern
+    of names every check, target and list of names is written with."""
+    return _compiled(pattern).fullmatch(name) is not None
+
+
+@lru_cache(maxsize=4096)
+def _compiled(pattern: str) -> re.Pattern[str]:
+    """The regular expression a name pattern is (see name_matches)."""
+    tokens = {"*": ".*", "?": "."}
+    return re.compile("|".join("".join(tokens.get(c, re.escape(c)) for c in alternative)
+                               for alternative in pattern.split("|")))
 
 
 def reaches(target: Target, source: Place, place: Place, name: str | None = None) -> bool:

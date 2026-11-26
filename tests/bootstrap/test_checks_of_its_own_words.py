@@ -341,3 +341,17 @@ def test_an_accepted_entry_that_names_a_function_accepts_the_calls_in_that_funct
     accepted = {**ONE_CLAIM, "accepted": [{"file": "store/x.py", "function": "fail_expired",
                                            "why": "it claims what expired, once"}]}
     assert [line for _, line, _ in found(tmp_path, {"one-claim": accepted}, {"store/x.py": CLAIMING})] == [10, 13]
+
+
+ROWS_OUT = {
+    "read": "function", "in": {"part": "store"}, "keep": [{"returns-annotated": "*Row|*Row]|*Row,*"}],
+    "may_not": "exist", "message": "{name} returns {returns} at line {line}", "fix": "return a value of the domain",
+    "examples": {"flagged": {"store/x.py": "def load() -> list[UserRow]: ...\n"},
+                 "clean": {"store/x.py": "def load() -> RowId: ...\n"}}}
+
+
+def test_a_pattern_may_write_alternatives_so_a_type_ending_in_a_word_is_told_from_one_holding_it(tmp_path):
+    """`*Row*` would match RowId and CredentialRowsPage too; the alternatives match only a type that ends in Row."""
+    files = {"store/x.py": ("def a() -> UserRow: ...\ndef b() -> list[UserRow]: ...\ndef c() -> dict[UserRow, int]: ...\n"
+                            "def d() -> RowId: ...\ndef e() -> CredentialRowsPage: ...\n")}
+    assert [line for _, line, _ in found(tmp_path, {"rows-out": ROWS_OUT}, files)] == [1, 2, 3]

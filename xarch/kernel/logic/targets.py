@@ -19,7 +19,7 @@ from xarch.kernel.placement import EACH
 from xarch.profile_values.placement import Repeat, Target
 
 NAME_PATTERN = re.compile(r"[^\s@/:]+")
-"""A name pattern: any text but whitespace and the separators of a target, `*` standing for any text."""
+"""A name pattern: any text but whitespace and the separators of a target, written as name_matches reads it."""
 _HEAD = re.compile(r"[^/:]*")
 _REFERENCE = re.compile(r"(?P<part>[^/:]*)(?:/(?P<sub>[^:]*))?(?::(?P<names>.*))?", re.DOTALL)
 _NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "

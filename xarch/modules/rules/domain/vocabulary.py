@@ -28,11 +28,13 @@ FILE, FACT, TARGET = "file", "fact", "target"
 
 FOLDER, PATTERN, KIND, KEY, NUMBER = "folder", "pattern", "kind", "key", "whole number"
 """What a filter's value is, for a filter that takes one: a folder below the root of the file (a/b), a name pattern
-with `*` for any text, the name of a kind of fact, a key of a part, or a whole number."""
+(`*` any text, `?` any one character, `|` between alternatives), the name of a kind of fact, a key of a part, or a
+whole number."""
 
 NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "patterns", "parts", "places"
-"""What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns with
-`*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
+"""What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns (`*`
+any text, `?` any one character, `|` between alternatives), names of parts, or places written as an entry of
+`imports.may` writes a target."""
 
 HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED, CHAINED = "hit", "key", "scope part", "values", "counted", "chained"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
@@ -308,15 +310,15 @@ FILTERS: tuple[Filter, ...] = (
     Filter("public", "the name the fact carries is public: the language's reader says it is for other files to use",
            FACT, ("public",)),
     Filter("special", "the name the fact carries is one the language reserves for itself", FACT, ("name",)),
-    Filter("named", "the name the fact carries matches the pattern, `*` standing for any text", FACT, ("name",),
-           value=PATTERN),
+    Filter("named", "the name the fact carries matches the pattern, `*` standing for any text, `?` for any one "
+                    "character, `|` between alternatives", FACT, ("name",), value=PATTERN),
     Filter("fake-named", "the name the fact carries is a fake's: one of the starts `fakes.prefix` gives, followed by "
                          "more", FACT, ("name",)),
     Filter("top-level", "the function is defined at the top level of its file, in no class", FACT, ("top-level",)),
     Filter("forwards", "the method only passes its arguments on to one call on what its object holds", FACT,
            ("forwards",)),
-    Filter("has-parameter", "the function has a parameter whose name matches the pattern, `*` standing for any text",
-           FACT, ("parameters",), value=PATTERN),
+    Filter("has-parameter", "the function has a parameter whose name matches the pattern, `*` standing for any text, "
+                            "`?` for any one character, `|` between alternatives", FACT, ("parameters",), value=PATTERN),
     Filter("parameter-has-default", "the function has a parameter whose name matches the pattern and that has a "
                                     "default", FACT, ("parameters",), value=PATTERN),
     Filter("parameter-annotated", "the function has a parameter whose annotation, as written, matches the pattern; a "
@@ -327,16 +329,17 @@ FILTERS: tuple[Filter, ...] = (
            ("returned",)),
     Filter("exception", "the class is an exception: it derives from one of the language's exceptions, or from a class "
                         "of the app that is one, however far", FACT, ("exception",)),
-    Filter("extends", "the class derives from a class whose name matches the pattern, `*` standing for any text: one of "
-                      "its bases, or a base of a class the project defines that it derives from, however far, each "
-                      "read through the import that binds it", FACT, ("bases",), value=PATTERN),
+    Filter("extends", "the class derives from a class whose name matches the pattern, `*` standing for any text, `?` "
+                      "for any one character, `|` between alternatives: one of its bases, or a base of a class the "
+                      "project defines that it derives from, however far, each read through the import that binds it",
+           FACT, ("bases",), value=PATTERN),
     Filter("record", "the class is a record, as the language's reader decides", FACT, ("record",)),
     Filter("interface", "the class is an interface: the language marks it as one", FACT, ("interface",)),
     Filter("immutable", "the class is an immutable record: one of its bases, or one of its decorators called with the "
                         "keywords written beside it, is a name the language marks immutable records with", FACT,
            ("immutable",)),
-    Filter("passes", "the call passes a keyword argument whose name matches the pattern, `*` standing for any text",
-           FACT, ("arguments",), value=PATTERN),
+    Filter("passes", "the call passes a keyword argument whose name matches the pattern, `*` standing for any text, "
+                     "`?` for any one character, `|` between alternatives", FACT, ("arguments",), value=PATTERN),
     Filter("passes-literal", "the call passes a keyword argument whose name matches the pattern with a literal value; "
                              "written `<name>=<text>`, the value as written must match the text after `=` too", FACT,
            ("arguments",), value=PATTERN),
