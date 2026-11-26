@@ -204,6 +204,14 @@ AT = "layered.yaml: parts.store.imports.accepted"
     pytest.param([{**ACCEPTED, "file": "notes/x.py"}],
                  [f"{AT}.0.file: 'notes/x.py' lies in no part, not in store: list it under the part it lies in"],
                  id="a file of no part"),
+    pytest.param([{**ACCEPTED, "file": "app/src/docs/store/repo.py"}],
+                 [f"{AT}.0.file: 'app/src/docs/store/repo.py' lies in no part: write it below the app "
+                  "(src/docs/store/repo.py, not app/src/docs/store/repo.py)"],
+                 id="a file of the part written with the app folder's name first"),
+    pytest.param([{**ACCEPTED, "file": "src/src/docs/store/repo.py"}],
+                 [f"{AT}.0.file: 'src/src/docs/store/repo.py' lies in no part, not in store: list it under the part "
+                  "it lies in"],
+                 id="a first step a part starts with is no app folder's name"),
     pytest.param([{**ACCEPTED, "import": "src/./api.py"}],
                  [f"{AT}.0.import: 'src/./api.py': must be a path below the app, such as documents/store"],
                  id="a step that is no name"),

@@ -238,6 +238,11 @@ All notable changes to this project are written here. The format follows
   there once that name is taken off (or, for `structure.accepted`, is a `structure` finding). Before, its fix only said
   to drop the entry. A path is still written one way: the prefixed form is not accepted (under `imports.accepted`,
   such a file usually lies in no part, and the profile is refused when it loads, as before).
+- An entry of `imports.accepted` whose file lies in no part because it writes the app folder's name first is refused
+  with what to write: `'app/core/ports.py' lies in no part: write it below the app (core/ports.py, not
+  app/core/ports.py)`, instead of being told to list it under the part it lies in. The loader does not know the app
+  folder's name, so it reads a path that way when no part starts with its first step and the path below that step
+  lies in the entry's part; any other file in no part is refused as before.
 
 ## [0.3.0] - 2026-11-24
 

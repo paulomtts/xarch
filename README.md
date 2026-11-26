@@ -191,7 +191,9 @@ frees one path.
 Every `accepted` list (`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`,
 `counterparts.<id>.accepted`, `imports.accepted`) writes a path below the app, never from the folder holding it: when
 the app folder is `app`, an entry written `app/core/ports.py` accepts nothing, and its finding says to write
-`core/ports.py` instead (under `imports.accepted`, such a file lies in no part and the profile is refused).
+`core/ports.py` instead (under `imports.accepted`, such a file lies in no part and the profile is refused, told
+`write it below the app (core/ports.py, not app/core/ports.py)` when no part starts with that first step and the path
+below it lies in the part).
 
 `cycles` says what the `cycles` check accepts one by one. Its nodes are the instances of the repeating folders and the
 folders the layout names beside them, each written by its path below the app (`adapters/demo/`, a trailing `/`
