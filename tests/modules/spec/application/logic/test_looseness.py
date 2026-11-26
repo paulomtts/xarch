@@ -245,6 +245,8 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (pairing("x", "src/old/store/"), parsed(layered())),
         (accepting_tests({"file": "tests/x/test_y.py", "why": "w"}), parsed(covered())),
         (looping(("src/a", "src/b"), left=("src/w",)), parsed(layered())),
+        (parsed(layered()), pairing("x")),
+        (parsed(layered()), replace(parsed(layered()), yes_line=0.7)),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -923,6 +925,8 @@ def test_each_source_a_counterpart_accepts_that_the_compared_profile_s_counterpa
         Loosened("counterparts.accepted", "", "x: src/old/store/",
                  "the counterpart x accepts src/old/store/ with none (counterparts.x.accepted)"),)
     assert loosened(pairing("x", "src/old/store/"), pairing("y", "src/old/store/")) == (
+        Loosened("counterparts", "", "y", "the counterpart y is dropped: no source of it needs a counterpart "
+                                          "(counterparts.y)"),
         Loosened("counterparts.accepted", "", "x: src/old/store/",
                  "the counterpart x accepts src/old/store/ with none (counterparts.x.accepted)"),)
     assert loosened(pairing("x", "src/old/store/"), pairing("x", "src/old/store/", "src/new/store/")) == ()
@@ -959,3 +963,23 @@ def test_each_cycle_accepted_and_each_node_left_out_that_the_compared_profile_do
         Loosened("cycles.accepted", "", "src/a, src/b", "cycles accepts the cycle of src/a, src/b (cycles.accepted)"),
         Loosened("cycles.left_out", "", "src/w", "cycles leaves src/w out of its graph (cycles.left_out)"))
     assert loosened(looping(), looping(("src/a", "src/b"), left=("src/w",))) == ()
+
+
+def test_a_counterpart_the_compared_profile_writes_and_this_one_drops_is_looser():
+    assert loosened(parsed(layered()), pairing("x")) == (
+        Loosened("counterparts", "", "x", "the counterpart x is dropped: no source of it needs a counterpart "
+                                          "(counterparts.x)"),)
+    assert loosened(pairing("x"), parsed(layered())) == ()
+
+
+def test_a_yes_line_other_than_the_compared_profile_s_is_looser_whether_changed_or_dropped():
+    changed = replace(parsed(layered()), yes_line=0.6)
+    assert loosened(changed, replace(parsed(layered()), yes_line=0.7)) == (
+        Loosened("evals.placement.yes_line", "", "0.60, not at 0.70",
+                 "an entry of a litmus list answers yes at 0.60, not at 0.70 as in the profile it is compared with "
+                 "(evals.placement.yes_line)"),)
+    assert loosened(parsed(layered()), replace(parsed(layered()), yes_line=0.7)) == (
+        Loosened("evals.placement.yes_line", "", "0.50, not at 0.70",
+                 "an entry of a litmus list answers yes at 0.50, not at 0.70 as in the profile it is compared with "
+                 "(evals.placement.yes_line)"),)
+    assert loosened(changed, changed) == ()

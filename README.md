@@ -787,7 +787,9 @@ enforcement
   part's `imports.accepted` (a file and what it imports) the other's part does not hold, and an entry of a check's
   `accepted` (a file, and the variables it names) the other's check of the same id does not hold, and an entry of
   `structure.accepted` (a path) the other does not hold, and an entry of a tier's `accepted` (a file, and what it
-  imports) the other's tier does not hold.
+  imports) the other's tier does not hold, and an entry of a counterpart's `accepted` or of `cycles.accepted` or
+  `cycles.left_out` the other does not hold, a counterpart the other writes that this one drops (by id), and an
+  `evals.placement.yes_line` other than the other's (written, or 0.5 when it is left out).
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.

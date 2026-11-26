@@ -36,7 +36,9 @@ question as written or reworded, as one text may be reworded); a public name `gu
 only the tests' that the bundled profile's does not; a part `guards.no-twins.translated` lists that the bundled
 profile's does not; a path `review.never` holds back, or a text `review.mask` hides, in the bundled profile that the
 custom one does not write (each compared as written: it sends more); a part whose line under `evals.placement.lines`
-is below the one the bundled profile gives it (written, else LINE: it flags less); a kind a part's `holds` allows that
+is below the one the bundled profile gives it (written, else LINE: it flags less); an `evals.placement.yes_line`
+other than the bundled profile's (written, else YES_LINE: either way an entry of a litmus list reads otherwise); a
+counterpart the bundled profile writes that the custom one does not (by id); a kind a part's `holds` allows that
 the bundled part's does not (no `holds` allows every kind, and `classes` allows `records` and `exceptions` too); a
 setting of a kind dropped or widened, compared for each kind either part lists and both allow, on the settings each
 holds the kind to (those written under it, else for `records` and `exceptions` those under `classes`, `immutable`
@@ -86,8 +88,10 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
-          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted", "counterparts.accepted",
-          "cycles.accepted", "cycles.left_out", "translated", "review.never", "review.mask", "evals.placement.lines")
+          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted",
+          "counterparts", "counterparts.accepted",
+          "cycles.accepted", "cycles.left_out", "translated", "review.never", "review.mask", "evals.placement.lines",
+          "evals.placement.yes_line")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 ENTRIES = "entries: "
 """What the `what` of a part that keeps no entry of the litmus list it is compared with starts with, before the labels
@@ -362,6 +366,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     held = {entry.path for entry in base.structure_accepted}
     found += [("structure.accepted", "", "/".join(entry.path)) for entry in custom.structure_accepted
               if entry.path not in held]
+    written = {item.id for item in custom.counterparts}
+    found += [("counterparts", "", item.id) for item in base.counterparts if item.id not in written]
     paired = {item.id: {entry.path for entry in item.accepted} for item in base.counterparts}
     found += [("counterparts.accepted", "", f"{item.id}: {'/'.join(entry.path)}{'/' if item.source.folder else ''}")
               for item in custom.counterparts for entry in item.accepted if entry.path not in paired.get(item.id, ())]
@@ -380,6 +386,8 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("review.mask", "", text) for text in base.mask if text not in custom.mask]
     found += [("evals.placement.lines", name, f"{custom.lines.get(name, LINE):.2f}") for name in shared
               if custom.lines.get(name, LINE) < base.lines.get(pairs[name], LINE)]
+    found += [("evals.placement.yes_line", "", f"{custom.yes_line:.2f}, not at {base.yes_line:.2f}")
+              ] if custom.yes_line != base.yes_line else []
     return found
 
 
@@ -627,6 +635,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tier accepts the tiers findings of {what} (tiers.{part}.accepted)"
         case "structure.accepted":
             return f"the layout accepts the finding of {what} (structure.accepted)"
+        case "counterparts":
+            return f"the counterpart {what} is dropped: no source of it needs a counterpart (counterparts.{what})"
         case "counterparts.accepted":
             counterpart, _, source = what.partition(": ")
             return f"the counterpart {counterpart} accepts {source} with none (counterparts.{counterpart}.accepted)"
@@ -647,6 +657,9 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"{what} may be sent again: the profile it is compared with holds it back (review.never)"
         case "review.mask":
             return f"{what} is no longer masked before review sends (review.mask)"
+        case "evals.placement.yes_line":
+            return f"an entry of a litmus list answers yes at {what} as in the profile it is compared with " \
+                   "(evals.placement.yes_line)"
         case "evals.placement.lines":
             return (f"{part} reads as doubtful only below {what}, a lower line than the profile it is compared with "
                     "gives it (evals.placement.lines)")

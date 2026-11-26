@@ -163,6 +163,10 @@ All notable changes to this project are written here. The format follows
   `xarch profile explain --profile` lists the optional parts, the counterparts and the accepted imports, its JSON
   adding `optional`, `counterparts` and `accepted_imports`. Each is said only when the profile writes it, so the
   answers under the bundled profiles are as before.
+- The comparison with another profile (`profile check`, the enforcement section) lists as looser a counterpart the
+  compared profile writes and this one drops, by id (`counterparts`), and an `evals.placement.yes_line` other than
+  the compared profile's, changed or left out (`evals.placement.yes_line`). The bundled profiles write neither, so
+  their comparisons are as before.
 
 ### Changed
 
