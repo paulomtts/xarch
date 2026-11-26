@@ -18,6 +18,14 @@ lead to; a declaration or file reached already reaches further through its facts
 each kept fact of the scope that nothing reached is a finding: by its name, a declaration (and, for a rule that is
 reached only from elsewhere, by a root other than its own file), and by its steps, a file.
 
+Under MUST_NOT_REACH, a file reaches as under MUST_REACH, and each file of the scope that reaches is a finding: its file
+fact said at the line of its first step (the kept fact of its own that matched, else the link that leads on), with the
+way it reaches, each file a link leads to then what the fact that matched names, the shortest way found first.
+
+A rule that counts reads the kept facts of each file of its scope alone, in the order the file says them: under AT_MOST
+each one after its count is a finding, under AT_LEAST a file that keeps fewer than its count is one, its file fact the
+fact said; an exemption excuses a finding as any other.
+
 How many facts a rule reads at all is counted apart (read): a rule that reads none passes for want of anything to
 check.
 """
@@ -35,9 +43,14 @@ from xarch.modules.rules.application.logic.targets import finding, matched
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
 from xarch.modules.rules.domain.rule import (
+    AT_LEAST,
+    AT_MOST,
+    COUNTS,
     FAIL,
+    FILE_REACH,
     MAY_NOT,
     MUST_BE_REACHED,
+    MUST_NOT_REACH,
     MUST_REACH,
     Fact,
     Facts,
@@ -64,11 +77,14 @@ def said_of(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Said]
     rules = tuple(rules)
     reached = {index: _reach(rule, facts, profile) for index, rule in enumerate(rules)
                if rule.quantifier in (MUST_REACH, MUST_BE_REACHED)}
+    ways = {index: _ways(rule, facts, profile) for index, rule in enumerate(rules) if rule.quantifier == MUST_NOT_REACH}
     found: list[Said] = []
     for position, read in enumerate(facts.files):
         for index, rule in enumerate(rules):
             if in_scope(rule.scope, read, facts, profile):
-                found += (_unreached(rule, read, position, reached[index], facts, profile) if index in reached
+                found += (_reaching(rule, read, ways[index], facts, profile) if index in ways
+                          else _unreached(rule, read, position, reached[index], facts, profile) if index in reached
+                          else _counted(rule, read, facts, profile) if rule.quantifier in COUNTS
                           else _file(rule, read, facts, profile))
     return found
 
@@ -81,7 +97,7 @@ def read(rule: Rule, facts: Facts, profile: Profile) -> int:
     for file in facts.files:
         if not in_scope(rule.scope, file, facts, profile):
             continue
-        if rule.quantifier == MUST_REACH:
+        if rule.quantifier in (*FILE_REACH, AT_LEAST):
             count += 1
             continue
         count += sum(1 for kind in rule.facts for fact in file.facts.get(kind, ())
@@ -140,6 +156,65 @@ def _reach(rule: Rule, facts: Facts, profile: Profile) -> Reached:
     return found
 
 
+Way = tuple[int, tuple[str, ...]]
+"""How a file reaches a target: the line of its first step, and the way on, each step as it is said."""
+
+
+def _ways(rule: Rule, facts: Facts, profile: Profile) -> dict[tuple[str, ...], Way]:
+    """How each file on the side of the rule's scope reaches a target, by its steps: a kept fact of its own that matches
+    one, else the first of its links that leads to a file that reaches, by the shortest way; a file that reaches none
+    is not held."""
+    side, _ = reach_scopes(rule)
+    assert side is not None
+    keep, via = _questions(rule.keep), _questions(rule.via)
+    on_side = [read for read in facts.files if in_scope(side, read, facts, profile)]
+    ways: dict[tuple[str, ...], Way] = {}
+    for read in on_side:
+        own = next((fact for kind in rule.facts for fact in read.facts.get(kind, ())
+                    if _all(keep, Found(rule, read, fact), facts, profile)
+                    and matched(rule.targets, Found(rule, read, fact), facts, profile) is not None), None)
+        if own is not None:
+            ways[read.steps] = (own.line, (_named(own, facts),))
+    links = {read.steps: [f for kind in rule.links for f in read.facts.get(kind, ())
+                          if _all(via, Found(rule, read, f), facts, profile)] for read in on_side}
+    grown = True
+    while grown:
+        known = dict(ways)
+        for steps, linked in links.items():
+            if steps in known:
+                continue
+            link = next((f for f in linked if f.target in known), None)
+            if link is not None:
+                ways[steps] = (link.line, (".".join((facts.root, *link.target)), *known[link.target][1]))
+        grown = len(ways) > len(known)
+    return ways
+
+
+def _named(fact: Fact, facts: Facts) -> str:
+    """What a fact that matched a target names, as a way says it: what it reaches, else its dotted path, else its name
+    or text."""
+    if fact.target:
+        return ".".join((facts.root, *fact.target))
+    return ".".join(fact.path) or fact.name or fact.text
+
+
+def _reaching(rule: Rule, read: Read, ways: dict[tuple[str, ...], Way], facts: Facts,
+              profile: Profile) -> list[Said]:
+    """The finding of a file of the scope of a rule under MUST_NOT_REACH that reaches a target: its file fact, at the
+    line of its first step and with its way; none when an exemption excuses it."""
+    way = ways.get(read.steps)
+    if way is None:
+        return []
+    exempt = _questions(rule.exempt)
+    found: list[Said] = []
+    for fact in read.facts.get("file", ()):
+        candidate = Found(rule, read, fact._replace(line=way[0], chain=way[1]))
+        if exempt and _any(exempt, candidate, facts, profile):
+            continue
+        found.append((_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile), candidate))
+    return found
+
+
 def _spread(reaching: set[tuple[str, ...]], links: dict[tuple[str, ...], list[tuple[str, ...]]]) -> None:
     """Add to reaching every file that links, however far, to a file that reaches."""
     grown = True
@@ -181,6 +256,25 @@ def _unreached(rule: Rule, read: Read, position: int, reached: Reached, facts: F
         by = reached.get(_key(read, fact))
         if not _all(keep, candidate, facts, profile) or (by is not None and (not rule.elsewhere or by - {position})):
             continue
+        if exempt and _any(exempt, candidate, facts, profile):
+            continue
+        found.append((_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile), candidate))
+    return found
+
+
+def _counted(rule: Rule, read: Read, facts: Facts, profile: Profile) -> list[Said]:
+    """The findings of a rule that counts in one file: under AT_MOST its kept facts after the count, under AT_LEAST its
+    file fact when it keeps fewer than the count; those an exemption excuses dropped."""
+    keep, exempt = _questions(rule.keep), _questions(rule.exempt)
+    held = [fact for kind in rule.facts for fact in read.facts.get(kind, ())
+            if _all(keep, Found(rule, read, fact), facts, profile)]
+    if rule.quantifier == AT_MOST:
+        subjects = held[rule.count:]
+    else:
+        subjects = list(read.facts.get("file", ())) if len(held) < rule.count else []
+    found: list[Said] = []
+    for fact in subjects:
+        candidate = Found(rule, read, fact)
         if exempt and _any(exempt, candidate, facts, profile):
             continue
         found.append((_said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile), candidate))

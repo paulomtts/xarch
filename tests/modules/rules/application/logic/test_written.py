@@ -8,7 +8,7 @@ from xarch.kernel.logic.targets import target
 from xarch.modules.rules.application.logic.written import check_of, written, written_own
 from xarch.modules.rules.domain.rule import EXISTING, MAY_NOT, MUST_BE_REACHED, MUST_REACH, Match, OwnCheck, Rule
 from xarch.profile_values.checks import Condition, Quantified, Saying, Scope, WrittenCheck, WrittenTarget
-from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm
+from xarch.profile_values.language import LINE, CheckedLanguage, CommentForm, Worked
 from xarch.profile_values.placement import Repeat, Target
 
 SAID = (Saying("m", "f"),)
@@ -125,6 +125,19 @@ def test_the_tokens_of_the_language_are_filled_in(text, importing, written_out):
     language = CheckedLanguage(extensions=(".py",), comments=(CommentForm(LINE, "#"),), importing=importing)
     assert written_own((OwnCheck(rule, (("notes%extension%", text),), ()),), language) == {
         "no-todo": check_of(rule, language.member, (("notes.py", written_out),), (), words={})}
+
+
+@pytest.mark.parametrize("subclass, written_out", [
+    pytest.param("class {name}({base}): ...", "class FakeStore(StorePort): ...\n",
+                 id="the subclass token is written as the language declares a class with a base"),
+    pytest.param("", "%subclass FakeStore StorePort%\n",
+                 id="a language that does not say how it declares one leaves the token as written"),
+])
+def test_the_subclass_token_is_filled_in_from_the_worked_templates(subclass, written_out):
+    rule = Rule("x", Scope(), ("class",), MAY_NOT, EXISTING, SAID)
+    language = CheckedLanguage(extensions=(".py",), worked=Worked(subclass=subclass))
+    assert written_own((OwnCheck(rule, (("a%extension%", "%subclass FakeStore StorePort%\n"),), ()),), language) == {
+        "x": check_of(rule, language.member, (("a.py", written_out),), (), words={})}
 
 
 def test_an_outside_name_is_written_back_with_the_member_of_the_language():

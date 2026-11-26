@@ -29,6 +29,8 @@ FACTS: dict[str, str] = {
     "use": "each name read, as the dotted path the import binding its first name reaches, and how much it bound",
     "call": "each call whose callee an import binds, as that dotted path, with its arguments",
     "call.type_arguments": "the type arguments a call is given",
+    "call.keywords": "the keyword arguments a call or a method call passes, each with its value as written when it is "
+                     "a literal",
     "method_call": "each call of an attribute no import binds, and whether it is on the object a method is called on",
     "parameter_call": "each call of a method of a function's parameter",
     "callback": "each call of a function's own parameter, whether it is the receiver and whether it is annotated "
@@ -40,6 +42,8 @@ FACTS: dict[str, str] = {
     "class.types": "the annotation of each field a class declares, as written",
     "class.exception": "whether a class derives from one of the language's builtin exceptions",
     "class.named": "every name a class's bases and body mention",
+    "class.bases": "each base a class names, followed through the import that binds it, or named as written when no "
+                   "import binds it, so that a class of its own file is found",
     "class.immutable": "whether a class is an immutable record, by the marks of the language's data file",
     "class.interface": "whether a class is an interface, by the marks of the language's data file",
     "file.package": "a file stands for the folder that holds it",
@@ -52,6 +56,9 @@ FACTS: dict[str, str] = {
     "function.statements": "how many statements a function's body holds, and how many of them do nothing",
     "function.shape": "a fingerprint of a function's code, the same for two functions that do the same",
     "function.signature": "a function's parameters by kind",
+    "function.parameters": "each parameter of a function in the order it declares them: its name, its annotation as "
+                           "written (empty for none) and whether it has a default",
+    "function.return_annotation": "a function's return annotation as written, empty for none",
     "function.sole_call": "the one call a function's whole body makes, with its arguments",
     "function.decorated": "whether a function has a decorator",
     "function.forwards": "whether a method only passes its arguments on to one call on what its object holds, and "
@@ -73,6 +80,7 @@ FACTS: dict[str, str] = {
     "named": "every name a file mentions, annotations included",
     "piece": "the functions and classes at the top level of a file and the methods of those classes, each with the "
              "lines it spans",
+    "file.lines": "how many lines a file holds",
 }
 """Each fact a check, or a review of the code, may read, and what it is."""
 

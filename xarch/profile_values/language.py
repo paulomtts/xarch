@@ -109,6 +109,23 @@ class Writing:
 
 
 @dataclass(frozen=True)
+class Worked:
+    """How the language writes the code of the checks written for the explanation, as its data file's `worked` says
+    it, each template one line (empty: the file does not write it, and the token is left as written): subclass, a
+    class that derives from a base, {name} and {base} standing for the class's name and its base's; function, a function
+    of one parameter, {name} and {parameter}; defaulted, the same whose parameter has a default, {value}; annotated,
+    the same whose parameter has an annotation, {annotation}; returning, a function of no parameter with a return
+    annotation, {name} and {returns}; and keyword_call, a call passing one keyword argument, {callee}, {keyword} and
+    {value}."""
+    subclass: str = ""
+    function: str = ""
+    defaulted: str = ""
+    annotated: str = ""
+    returning: str = ""
+    keyword_call: str = ""
+
+
+@dataclass(frozen=True)
 class CheckedLanguage:
     """The language of the app as a check reads it: how a message names it, the endings of a source file's name
     (extensions, in the order written; a message prints the first), the files that stand for the folder holding them
@@ -129,12 +146,12 @@ class CheckedLanguage:
     has none. supplies are the facts its reader supplies, each graded (None: its data file does not say); importing
     is how a file imports a name from another file of the app, {dotted} standing for that file's dotted path and
     {name} for the name (empty: its data file does not say); writing is how it writes a row of a table of cases (see
-    Writing); names is the pattern of a name the language allows, a regular expression (empty: its data file gives
-    none); package is the pattern of what an import names from outside the app as one step, and member the text that
-    joins a package to a name in it in a profile's lists (both empty: its data file does not say, and an outside name is
-    then its whole text); standard_modules are the top-level modules of its standard library, which the reader is handed
-    to mark an import of one: spec fills them from the data file's lists or from the runtime (empty: no module is
-    standard)."""
+    Writing), and worked how it writes the code of the checks written for the explanation (see Worked); names is the
+    pattern of a name the language allows, a regular expression (empty: its data file gives none); package is the
+    pattern of what an import names from outside the app as one step, and member the text that joins a package to a name
+    in it in a profile's lists (both empty: its data file does not say, and an outside name is then its whole text);
+    standard_modules are the top-level modules of its standard library, which the reader is handed to mark an import
+    of one: spec fills them from the data file's lists or from the runtime (empty: no module is standard)."""
     title: str = ""
     extensions: tuple[str, ...] = ()
     package_files: tuple[str, ...] = ()
@@ -160,6 +177,7 @@ class CheckedLanguage:
     unannotated: str = ""
     standard_modules: frozenset[str] = frozenset()
     writing: Writing = Writing()
+    worked: Worked = Worked()
 
     @property
     def marks(self) -> Marks:

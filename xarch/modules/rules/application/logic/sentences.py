@@ -10,6 +10,7 @@ from string import Formatter
 
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.placement import EVERYTHING
+from xarch.modules.rules.application.logic.filters import question
 from xarch.modules.rules.application.logic.places import label, narrowed, targets_of
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.rule import Facts, Found, Match
@@ -127,6 +128,11 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "returned": lambda found, facts, profile: ".".join(found.fact.target),
     "verb": lambda found, facts, profile: _VERBS.get(found.fact.kind, ""),
     "function": lambda found, facts, profile: found.fact.path[0] if found.fact.path else "",
+    "count": lambda found, facts, profile: str(_count(found, facts, profile)),
+    "lines": lambda found, facts, profile: str(found.fact.lines),
+    "chain": lambda found, facts, profile: " -> ".join(found.fact.chain),
+    "parameters": lambda found, facts, profile: ", ".join(name for name, _, _ in found.fact.parameters),
+    "returns": lambda found, facts, profile: found.fact.returns,
 }
 """What each variable prints of a finding, by its name."""
 
@@ -135,6 +141,14 @@ NAMES = tuple(_VALUES)
 
 _VERBS = {kind.name: kind.verb for kind in KINDS if kind.verb}
 """What a file does with what a fact of each kind names."""
+
+
+def _count(found: Found, facts: Facts, profile: Profile) -> int:
+    """How many facts of its rule's kinds the finding's file keeps."""
+    rule, read = found.rule, found.read
+    keep = [question(condition) for condition in rule.keep]
+    return sum(1 for kind in rule.facts for fact in read.facts.get(kind, ())
+               if all(asked(Found(rule, read, fact), facts, profile) for asked in keep))
 
 
 def _package(found: Found, facts: Facts) -> str:

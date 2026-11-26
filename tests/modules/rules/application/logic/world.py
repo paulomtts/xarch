@@ -17,7 +17,7 @@ and variable can name a fact by its file and line: PROFILE's app (package `app`)
     app/platform/broken.py                    a file that does not parse
     tests/modules/docs/domain/test_doc.py     a unit test of domain: imports of the app, a helper, a fake, a test
     tests/modules/docs/builders.py            a helper that is no test
-    tests/fakes/repo.py                       the fakes: FakeRepo, and Fake itself
+    tests/fakes/repo.py                       the fakes: FakeRepo, deriving from Repo, and Fake itself
     tests/architecture/test_rules.py          a guard test, placed by its tier's folder
 """
 from __future__ import annotations
@@ -27,7 +27,18 @@ from dataclasses import replace
 from tests.modules.rules.builders import PROFILE, RULES, imp, in_tests, source
 from xarch.kernel.source import Unparsable
 from xarch.modules.rules.application.logic.facts import facts_of
-from xarch.modules.rules.domain.parsed import Call, Callback, Class, Comment, Function, Method, MethodCall, SoleCall, Use
+from xarch.modules.rules.domain.parsed import (
+    Call,
+    Callback,
+    Class,
+    Comment,
+    Function,
+    Method,
+    MethodCall,
+    Parameter,
+    SoleCall,
+    Use,
+)
 from xarch.modules.rules.domain.rule import Fact, Found, Match, Read, Rule
 from xarch.profile_values.checks import Saying, Scope
 from xarch.profile_values.placement import Target
@@ -55,21 +66,24 @@ APP = [
                     Class(8, "Shown", methods=(Method(8, "__repr__", "str"),)),
                     Class(9, "Frozen", immutable=True), Class(9, "Loose"),
                     Class(9, "Pair", bases=(("typing", "NamedTuple"),), immutable=True)),
-           functions=(Function(10, "make", returns_named=frozenset({"Shown"}), statements=1),
+           functions=(Function(10, "make", returns_named=frozenset({"Shown"}), statements=1,
+                               parameters=(Parameter("title", "str"), Parameter("actor", "Actor | None", True)),
+                               returns="Shown"),
                       Function(11, "get", owner="Doc", forwards="self.repo.get",
                                sole_call=SoleCall(("self", "repo", "get"), then=("name",))),
                       Function(12, "put", owner="Doc", forwards="self.repo.put", sole_call=SoleCall(("self", "repo", "put")))),
            comments=(Comment(13, "# noqa: E501", marker="#"), Comment(14, "# a note TODO", marker="#")),
            callbacks=(Callback(15, "make", "check", annotated=True), Callback(16, "get", "self", receiver=True)),
            uses=(Use(17, ("datetime", "datetime", "now"), 2), Use(18, ("yaml", "load"), 1)),
-           method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute")),
-           module_functions=("make",), named=frozenset({"Doc", "make", "Repo"})),
+           method_calls=(MethodCall(19, "resolve", held=True), MethodCall(20, "absolute", passed=(("strict", "True"),))),
+           module_functions=("make",), named=frozenset({"Doc", "make", "Repo"}), lines=12),
     source("modules/docs/application/ports/repo.py", imp(1, "typing", "Protocol"),
            replace(imp(3, "app.modules.docs.domain.doc", "Doc"), type_only=True),
            classes=(Class(2, "Repo", bases=(("typing", "Protocol"),), interface=True),)),
     source("modules/docs/application/services/publish.py", imp(1, "app.modules.docs.domain", "doc"),
            imp(2, "app.modules.docs.domain.doc", "Doc"), imp(3, "app.platform", "db"),
-           calls=(Call(4, DOC), Call(5, MAKE), Call(6, ("yaml", "dump"))), uses=(Use(5, MAKE, 2), Use(7, MAKE, 2)),
+           calls=(Call(4, DOC, passed=(("title", "'x'"), ("size", ""))), Call(5, MAKE),
+                  Call(6, ("yaml", "dump"), passed=(("sort_keys", "False"),))), uses=(Use(5, MAKE, 2), Use(7, MAKE, 2)),
            named=frozenset({"Doc", "Repo"})),
     source("bootstrap/wiring.py", imp(1, "app.modules.docs.domain.doc", "Doc"), calls=(Call(2, DOC),)),
     source("modules/__init__.py", imp(1, "app.kernel", "ids")),
@@ -84,7 +98,9 @@ TESTS = [
              imp(2, "tests.modules.docs", "builders"), imp(3, "tests.fakes", "repo"),
              imp(4, "tests.architecture", "test_rules"), imp(5, "app.platform", "db")),
     in_tests("modules/docs/builders.py"),
-    in_tests("fakes/repo.py", classes=(Class(1, "FakeRepo"), Class(2, "Fake"))),
+    in_tests("fakes/repo.py", imp(1, "app.modules.docs.application.ports.repo", "Repo"),
+             classes=(Class(1, "FakeRepo", (("app", "modules", "docs", "application", "ports", "repo", "Repo"),),
+                            base_names=("Repo",)), Class(2, "Fake"))),
     in_tests("architecture/test_rules.py", imp(1, "app.kernel", "ids"))]
 
 FACTS = facts_of(APP, TESTS, PROFILE, "app", "tests")

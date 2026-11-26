@@ -48,12 +48,14 @@ not follow (see Import.unresolved)."""
 class Call:
     """A call whose callee is a Ref, and the line it is on: its positional arguments and its keyword arguments as
     (name, value), each value a Ref; unpacked is whether it also passes *args or **kwargs; types are the type
-    arguments it is given, in the order written, each a Ref as any name is."""
+    arguments it is given, in the order written, each a Ref as any name is, after passed: each keyword argument as
+    (name, its value as written when it is a literal, else "")."""
     line: int
     func: tuple[str, ...]
     args: tuple[Ref, ...] = ()
     keywords: tuple[tuple[str, Ref], ...] = ()
     unpacked: bool = False
+    passed: tuple[tuple[str, str], ...] = ()
     types: tuple[Ref, ...] = ()
 
 
@@ -105,10 +107,11 @@ class MethodCall:
     callee an import binds, such as `Path.cwd()` after `from pathlib import Path`, is a Call), and the line it is on:
     the attribute's name, and held: whether the expression is the object a method is called on (its first parameter,
     not a staticmethod's) or a chain of attributes on it, `self.name()` or `self.repo.name()`, as in a function nested
-    in that method too."""
+    in that method too; passed, each keyword argument as a Call holds it."""
     line: int
     name: str
     held: bool = False
+    passed: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -131,7 +134,9 @@ class Class:
     as written (a string annotation by its text); immutable: it is an immutable record, as the reader was told one is
     marked (see RecordMark); interface: it is an interface, as the reader was told one is marked (see
     InterfaceMark); public: it is for other files to use, as the language's reader says; record: it is a record, as the
-    language's reader says."""
+    language's reader says; base_names: each of its bases by the name it is written with, its last step ("" for a base
+    that is no name), in the order of bases, so that a base no import binds, such as a class of its own file, is still
+    named."""
     line: int
     name: str
     bases: tuple[Ref, ...] = ()
@@ -145,6 +150,7 @@ class Class:
     interface: bool = False
     public: bool = True
     record: bool = False
+    base_names: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -195,6 +201,15 @@ class Signature:
 
 
 @dataclass(frozen=True)
+class Parameter:
+    """A parameter of a function, as its signature declares it: its name, its annotation as written ("" when it has
+    none, as in a language that writes none), and whether it has a default."""
+    name: str
+    annotation: str = ""
+    default: bool = False
+
+
+@dataclass(frozen=True)
 class SoleCall:
     """The one call a function's whole body returns or makes, a docstring aside, perhaps awaited: its callee as the
     chain of names it is (("self", "repo", "get")), empty when it is no such chain; each positional argument as the
@@ -224,7 +239,8 @@ class Function:
     mentions, by its last step: its decorators, its parameters' annotations and defaults, its return annotation and its
     body (a string annotation read as the expression it holds, no other text). expressions holds each expression of its
     body that chooses between values, as (line, the keyword the reader records it by). public: it is for other files to
-    use, as the language's reader says."""
+    use, as the language's reader says. parameters: each of its parameters in the order its signature declares them
+    (see Parameter); returns: its return annotation as written, "" when it has none."""
     line: int
     name: str
     tables: tuple[Table, ...] = ()
@@ -243,6 +259,8 @@ class Function:
     named: frozenset[str] = frozenset()
     expressions: tuple[tuple[int, str], ...] = ()
     public: bool = True
+    parameters: tuple[Parameter, ...] = ()
+    returns: str = ""
 
     @property
     def real_statements(self) -> int:
@@ -277,9 +295,9 @@ class SourceFile:
     name it only passes on (listed as text for those who import it from here) or does not use. pieces are its functions and classes at the
     top level and the methods of those classes, in the order of their first line (see Piece). tests are the tests it
     declares, as its reader reads them by the framework's forms (see Test): a function form's are also among its
-    functions, a call form's are not; a file read with no form holds none. beside: the file is a test that sits beside
-    the code it tests, below the app root (testing.beside); its path is below the app root, and it is no file of the
-    app's code. error is how it fails to parse, and then it holds nothing else."""
+    functions, a call form's are not; a file read with no form holds none. lines is how many lines it holds. beside:
+    the file is a test that sits beside the code it tests, below the app root (testing.beside); its path is below the
+    app root, and it is no file of the app's code. error is how it fails to parse, and then it holds nothing else."""
     name: str
     path: tuple[str, ...]
     imports: tuple[Import, ...]
@@ -300,3 +318,4 @@ class SourceFile:
     pieces: tuple[Piece, ...] = ()
     tests: tuple[Test, ...] = ()
     beside: bool = False
+    lines: int = 0

@@ -10,7 +10,7 @@ from collections.abc import Iterable, Mapping
 
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.logic.targets import written_target
-from xarch.modules.rules.domain.rule import MUST_BE_REACHED, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import COUNTS, MUST_BE_REACHED, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.vocabulary import TARGETS
 from xarch.profile_values.checks import Quantified, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
@@ -18,6 +18,11 @@ from xarch.profile_values.language import CheckedLanguage
 _IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
 """The token of a line that imports a name from a file of the app, in the code of a check written for the
 explanation."""
+_WORKED = {"subclass": ("name", "base"), "function": ("name", "parameter"),
+           "defaulted": ("name", "parameter", "value"), "annotated": ("name", "parameter", "annotation"),
+           "returning": ("name", "returns"), "keyword_call": ("callee", "keyword", "value")}
+"""The tokens of the code of a check written for the explanation that the language's `worked` templates fill in, each
+`%<template> <value> ...%`, with the placeholders its values stand for, in order."""
 _VALUED = frozenset(kind.name for kind in TARGETS if kind.values)
 """The kinds of target that take values: a check writes one with its values, even none, and any other alone."""
 
@@ -58,20 +63,34 @@ def check_of(rule: Rule, member: str, flagged: tuple[tuple[str, str], ...] = (),
     """The rule as the check a profile would write, with the examples given, an outside name joined with member, a place
     written as a reference with words (see written_target); raises ValueError for a place in the own instance of a part
     words gives no word."""
-    targets = () if rule.quantifier == MUST_BE_REACHED else tuple(_target(match, member, words) for match in rule.targets)
-    quantified = Quantified(rule.quantifier, targets, rule.links, rule.via, rule.roots, rule.spread, rule.elsewhere)
+    targets = () if rule.quantifier in (MUST_BE_REACHED, *COUNTS) else tuple(
+        _target(match, member, words) for match in rule.targets)
+    quantified = Quantified(rule.quantifier, targets, rule.links, rule.via, rule.roots, rule.spread, rule.elsewhere,
+                            rule.count)
     return WrittenCheck(rule.facts, rule.scope, quantified, rule.sayings, rule.keep, rule.exempt, rule.mode, flagged,
                         clean)
 
 
 def _tokens_filled(text: str, language: CheckedLanguage) -> str:
-    """The text with the tokens of the language filled in: `%extension%`, `%comment%`, and `%import <dotted> <name>%`,
-    a line that imports name from the file of the app that dotted names, as the language's importing says
-    (left as written when it does not say)."""
+    """The text with the tokens of the language filled in: `%extension%`, `%comment%`, `%import <dotted> <name>%`, a
+    line that imports name from the file of the app that dotted names, as the language's importing says, and each
+    token of _WORKED, as the language's worked template of that name writes it (each left as written when the language
+    does not say)."""
     text = text.replace("%extension%", language.extension).replace("%comment%", language.comment)
+    for template, placeholders in _WORKED.items():
+        form = getattr(language.worked, template)
+        if form:
+            token = re.compile(rf"%{template}{' ([^ %]+)' * len(placeholders)}%")
+            text = token.sub(lambda found, form=form, held=placeholders: _fill(form, dict(zip(held, found.groups()))),
+                             text)
     if not language.importing:
         return text
     return _IMPORT.sub(lambda found: language.importing.format(dotted=found["dotted"], name=found["name"]), text)
+
+
+def _fill(template: str, values: Mapping[str, str]) -> str:
+    """The template with each `{<name>}` of the values replaced in one pass, any other text kept as it is."""
+    return re.sub("{(" + "|".join(values) + ")}", lambda found: values[found.group(1)], template)
 
 
 def _filled(files: tuple[tuple[str, str], ...], language: CheckedLanguage) -> tuple[tuple[str, str], ...]:

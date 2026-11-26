@@ -49,6 +49,11 @@ marked as its receiver, unless the function is decorated `staticmethod`, and a p
 `Callable` (of typing or collections.abc, read through the import that binds it; alone, subscripted, in a `|` union,
 inside `Optional[...]`, or as the text of a string annotation) is marked as annotated callable.
 
+A file holds as many lines as its text splits into, a last line with no line break counted too.
+
+A class also names each of its bases by the name it is written with, its last step (a subscripted base by what it
+subscripts, "" for any other expression), so that a base no import binds, a class of its own file, is still named.
+
 A class is an exception when one of its bases is the bare name of a builtin exception that the module does not bind
 (and the file holds no star import), or a class defined before it in the file that is one.
 
@@ -67,6 +72,10 @@ what it calls, reads (attributes, globals), its constants, its keyword names, as
 of each kind it has, do show. Its annotations, defaults and decorators are no part of it; a body of inert statements
 alone has no shape.
 
+A function lists its parameters in the order its signature declares them (positional ones, `*args`, keyword-only
+ones, `**kwargs`), each with its annotation as written (`ast.unparse`, a string annotation by its text, "" for none)
+and whether it has a default, and its return annotation as written ("" for none).
+
 A function records whether it is decorated, its parameters by kind, and, when its whole body, a docstring left out, is
 one `return` or bare statement of one call, perhaps awaited, that call: its callee as a chain of names, and each of its
 arguments as the bare name it passes (a starred one marked), or as nothing for any other expression. A body that is one
@@ -75,6 +84,10 @@ attributes. A method forwards to that call's callee when it has no decorator, is
 `__`), and its whole body is that call on a chain of at least two attributes of its first parameter
 (`self.repo.get(...)`), passing each of its other parameters straight through (a `*args` as `*args`, a `**kwargs` as
 `**kwargs`) and nothing else.
+
+A call, and a method call, lists each keyword argument it passes by name (not `**`), with its value as written when
+that is a literal: a constant (`3`, `"x"` with its quotes, `True`, `None`) or a signed number (`-1`); any other value
+as "".
 
 A call whose callee is an attribute of an expression, `<expr>.<name>(...)`, and is no Ref is listed as a method call by
 the attribute's name, marked held when the expression is the first parameter of the method the call lies in (not a
@@ -173,6 +186,7 @@ from xarch.modules.rules.domain.parsed import (
     Function,
     Method,
     MethodCall,
+    Parameter,
     ParameterCall,
     Ref,
     Row,
@@ -357,7 +371,8 @@ def _parsed(name: str, path: tuple[str, ...], text: str, forms: tuple[TableForm,
                       uses=tuple(calls.uses), parameter_calls=tuple(calls.parameter_calls),
                       module_functions=_module_functions(tree), named=_named(tree), callbacks=tuple(calls.callbacks),
                       method_calls=tuple(calls.method_calls), constants=tuple(_constants(tree, private)),
-                      unmentioned=_unmentioned(tree), pieces=_pieces(tree), tests=_tests(functions, declared))
+                      unmentioned=_unmentioned(tree), pieces=_pieces(tree), tests=_tests(functions, declared),
+                      lines=len(text.splitlines()))
 
 
 def _tests(functions: tuple[Function, ...], declared: tuple[TestForm, ...]) -> tuple[Test, ...]:
@@ -516,7 +531,21 @@ def _function(node: ast.FunctionDef | ast.AsyncFunctionDef, scope: list[Scope], 
     forwards = _forwards(node.name, bool(node.decorator_list), signature, sole_call) if owner else ""
     return Function(node.lineno, node.name, tables, mentions, blocks, asserts, owner, statements, shape,
                     bool(node.decorator_list), signature, sole_call, returns, inert, forwards, _mentioned(node),
-                    choices, public=not is_private_name(node.name, private))
+                    choices, public=not is_private_name(node.name, private), parameters=_parameters(node),
+                    returns=_annotation(node.returns) or "")
+
+
+def _parameters(node: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[Parameter, ...]:
+    """Each parameter of the function in the order its signature declares them, its annotation as written (a string
+    annotation by its text) and whether it has a default; `*args` and `**kwargs` by their names, with none."""
+    a = node.args
+    positional = [*a.posonlyargs, *a.args]
+    defaulted = len(positional) - len(a.defaults)
+    found = [Parameter(x.arg, _annotation(x.annotation) or "", index >= defaulted) for index, x in enumerate(positional)]
+    found += [Parameter(a.vararg.arg, _annotation(a.vararg.annotation) or "")] if a.vararg else []
+    found += [Parameter(x.arg, _annotation(x.annotation) or "", d is not None) for x, d in zip(a.kwonlyargs, a.kw_defaults)]
+    found += [Parameter(a.kwarg.arg, _annotation(a.kwarg.annotation) or "")] if a.kwarg else []
+    return tuple(found)
 
 
 def _mentioned(node: ast.AST) -> frozenset[str]:
@@ -1121,15 +1150,16 @@ class _Calls(ast.NodeVisitor):
             if subject is not None:
                 self._subjects[id(node.func)] = subject
         func = _ref(node.func, self._chain, self._bare)
+        passed = tuple((k.arg, _literal_text(k.value)) for k in node.keywords if k.arg is not None)
         if func is None and isinstance(node.func, ast.Attribute):
-            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value)))
+            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed))
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
                              if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
-                self.found.append(Call(node.lineno, func, args, keywords, unpacked))
+                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed))
             else:
                 assert isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name)
                 self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,
@@ -1189,6 +1219,15 @@ class _Calls(ast.NodeVisitor):
             self.uses.append(Use(node.lineno, name, bound, self._subjects.get(id(node))))
 
 
+def _literal_text(node: ast.expr) -> str:
+    """A value as written (`ast.unparse`) when it is a literal: a constant (a number, a string with its quotes, `True`,
+    `None`), or a number with a sign; "" for any other expression."""
+    inner = node.operand if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)) else node
+    if isinstance(inner, ast.Constant) and (inner is node or isinstance(inner.value, (int, float, complex))):
+        return ast.unparse(node)
+    return ""
+
+
 def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Function, ...],
              marks: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = (),
              where: _Where | None = None) -> list[Class]:
@@ -1210,8 +1249,16 @@ def _classes(tree: ast.Module, private: str, special: str, functions: tuple[Func
                                tuple(_annotation(child.annotation) or "" for child in declared),
                                _immutable(node, bases, scope, marks), _interface(bases, interface),
                                not is_private_name(node.name, private),
-                               record=_record(node.name, methods, functions, special)))
+                               record=_record(node.name, methods, functions, special),
+                               base_names=tuple(_base_name(b) for b in node.bases)))
     return found
+
+
+def _base_name(node: ast.expr) -> str:
+    """The name a base is written with, its last step: a subscripted base by what it subscripts; "" for one that is
+    no name or chain of attributes."""
+    node = node.value if isinstance(node, ast.Subscript) else node
+    return node.id if isinstance(node, ast.Name) else node.attr if isinstance(node, ast.Attribute) else ""
 
 
 def _record(name: str, methods: tuple[Method, ...], functions: tuple[Function, ...], special: str) -> bool:

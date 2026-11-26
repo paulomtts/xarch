@@ -209,7 +209,9 @@ comment being one `no-comments` keeps) and the comments its tools read after the
 encoding declaration, the keywords of the statements that branch and of the expressions that choose between values
 (`branching_expressions`), and what makes a class an immutable record (`immutable`: marks, each `{base}`,
 `{decorator, keywords}`, `{fields}` or `{type}`, such as `{decorator: dataclasses.dataclass, keywords: {frozen:
-"True"}}`). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
+"True"}}`), and how the code of the checks `profile explain` shows as examples is written (`worked`: one-line
+templates, `subclass` a class deriving from a base, `class {name}({base}): ...` for Python; a token whose template
+the file leaves out stays as written). Whether a class is a record, a type that only holds data, the reader says: the fact `class.record` a
 reader supplies, which `holds`, its kind `records` and the filter `record` read. Whether a function is defined at the
 top level of its file, in no class, is the fact `function.top_level` a reader supplies, which the kinds `functions` and
 `records` of `holds`, `guards.dead-code.tests_only` and the filter `top-level` read; `holds` itself reads it only when
@@ -391,7 +393,40 @@ once for each value of its variables; `per_line` says the findings of one line t
 one, each written as its values joined by `, `). An import made only for the type checker, never when the code
 runs, carries the field `type-only` (the fact `import.type_only`; Python's reader sets it on each import in the body of
 an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import` or
-`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A check carries `examples`: code it
+`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A class carries its
+`bases` (the fact `class.bases`): each base it names, read through the import that binds it (an alias by the name it
+was imported as) or as a class of its own file, then the bases of each class the project defines, in the app or in
+the tests, however far; the filter `extends: <pattern>` holds of a class one of those matches by its name, so
+`keep: [{named: "*Page"}, {extends: Reactive}]` finds a page that derives from `Reactive` through any number of classes
+between, and `except: [{extends: "*Port"}]` excuses a fake that derives from a port. A base taken from a package file
+that only re-exports it is followed no further than its name. Two quantifiers count instead of matching targets,
+in each file of the scope alone (never across a part or the instances of a repeating folder): `at_most: <n>` makes
+each kept fact of a file after the n-th a finding, at its own line (`read: class`, `keep: [{named: "*Port"}]`,
+`at_most: 1`: one port per file), and `at_least: <n>` makes a file that keeps fewer a finding, at line 0; `{count}`
+says how many the file keeps. The kind `file` carries `lines` (the fact `file.lines`), which the filter
+`longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
+each file over 700 lines. `must_not_reach` is the negation of `must_reach`, written the same way (`targets`, `through`,
+`through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the files its links
+lead to however far, is a finding at the line of its first step, and `{chain}` says the way, each file a link leads
+to as a dotted name, then what matched (`app.store -> app.store.sql -> sqlalchemy`), the shortest found. An import of
+a name from a package file reaches that package file (`import-into-app` follows a name to its own file only when the
+name is a file), and the way then goes on through every file the package file imports, so a name the package only
+re-exports is followed, and so is anything else the package file imports. The kind `function` (a method too) carries
+its `parameters`, in the order its signature declares them, each with its name, its annotation as written and whether
+it has a default, and its `returns`, the return annotation as written (the facts `function.parameters` and
+`function.return_annotation`; an annotation is empty where the code writes none, or in a language that writes none,
+and then matches no pattern): the filters `has-parameter: <pattern>` (a parameter of that name),
+`parameter-has-default: <pattern>` (such a parameter, with a default), `parameter-annotated: <pattern>` (a parameter
+whose annotation matches) and `returns-annotated: <pattern>` read them, and `{parameters}` and `{returns}` say them:
+`keep: [{parameter-has-default: actor}]` finds each function that gives `actor` a default, `keep:
+[{returns-annotated: "*Row*"}]` each that returns a row. The kinds `call`, `method-call` and `construction` carry
+their `arguments` (the fact `call.keywords`): each keyword argument they pass, by name, with its value as written when
+it is a literal (`3`, `'x'`, `True`; a name or any other expression is no literal); the filter `passes: <pattern>`
+holds of a call that passes a keyword the pattern names, and `passes-literal: <pattern>` of one that passes it a
+literal, `<pattern>=<text>` matching the value's text too: `read: method-call`, `keep: [{passes-literal:
+skip_locked=True}]` finds each `.with_for_update(skip_locked=True)`. Positional arguments are not read. A `call`
+carries its `name` too, the last name of its callee, so `named` and the target `name` apply to it (`keep: [{named:
+"get_*"}]`). A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.
 
 ```yaml

@@ -8,8 +8,9 @@ is the rules module's, which reads what this gives back.
       in: {files: app | tests | all, part: <part> | structure, tier: <tier>, where: [<filter>, ...]}
       keep: [<filter>, ...]
       may_not | may_only: <target> | [<target>, ...]
-      must_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
+      must_reach | must_not_reach: {targets: <target> | [<target>, ...], through: <kind> | [<kind>, ...], through_only: [<filter>, ...]}
       must_be_reached: {from: <scope as in>, through: ..., through_only: [...], then_through: <kind> | [...], by_another_file: true}
+      at_most | at_least: <whole number>
       except: [<filter>, ...]
       accepted: [{file: <path below the app, or tests/<path>>, <variable>: <value>, ..., why: <reason>}, ...]
       mode: fail | list
@@ -50,6 +51,7 @@ from xarch.modules.spec.domain.values import (
 from xarch.profile_values.checks import (
     ANY,
     APP,
+    COUNT_SLOTS,
     QUANTIFIER_SLOTS,
     STRUCTURE,
     AcceptedFinding,
@@ -196,6 +198,8 @@ def filters(value: Any, where: str, problems: list[str]) -> tuple[Condition, ...
             found.append(item.strip())
         elif isinstance(item, Mapping) and len(item) == 1:
             ((name, given),) = item.items()
+            if isinstance(given, int) and not isinstance(given, bool):
+                given = str(given)
             if isinstance(name, str) and isinstance(given, str) and given.strip() and " " not in given.strip():
                 found.append(f"{name.strip()} {given.strip()}")
             else:
@@ -258,17 +262,22 @@ def _targets(value: Any, where: str, problems: list[str]) -> tuple[WrittenTarget
 
 def _quantified(slot: str, value: Any, where: str, declared: set[str], tiers: set[str],
                 problems: list[str], words: Collection[str]) -> Quantified:
+    if slot in COUNT_SLOTS:
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            problems.append(f"{where}: must be a whole number, 0 or more")
+            return Quantified(slot)
+        return Quantified(slot, count=value)
     if slot not in REACH_SLOTS:
         return Quantified(slot, _targets(value, where, problems))
     if not isinstance(value, Mapping):
         problems.append(f"{where}: must be a map {{{', '.join(REACH_SLOTS[slot])}}}")
         return Quantified(slot)
     problems += _unknown(value, REACH_SLOTS[slot], where)
-    required = ("targets",) if slot == "must_reach" else ("from", "through")
+    required = ("targets",) if slot in ("must_reach", "must_not_reach") else ("from", "through")
     problems += [f"{where}: missing `{key}`" for key in required if key not in value]
     through = _names(value.get("through"), f"{where}.through", problems)
     only = filters(value.get("through_only", []), f"{where}.through_only", problems)
-    if slot == "must_reach":
+    if slot in ("must_reach", "must_not_reach"):
         return Quantified(slot, _targets(value.get("targets", []), f"{where}.targets", problems), through, only)
     elsewhere = value.get("by_another_file", False)
     if not isinstance(elsewhere, bool):

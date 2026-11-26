@@ -1,15 +1,20 @@
 """Checks of a profile's own, written for the explanation: the example of how a check is written, and of the words no
 check xarch has is written with. Their code names the language only by the tokens its data file gives (`%comment%`,
 the marker of a line comment, `%extension%`, the ending of a source file, and `%import <dotted> <name>%`, a line that
-imports a name from a file of the app, as its `importing` says), so that they hold for any language;
+imports a name from a file of the app, as its `importing` says, and `%subclass <name> <base>%`, a class that derives
+from a base, `%function <name> <parameter>%`, `%defaulted <name> <parameter> <value>%`, `%annotated <name>
+<parameter> <annotation>%`, `%returning <name> <returns>%` and `%keyword_call <callee> <keyword> <value>%`, as its
+`worked` says), so that they hold for any language;
 their parts and tiers are those of the smallest profile with a test tier: a part `documents`, a tier `unit` testing
 it, and test files named check_* (the one beside the code, in a profile that says testing.beside)."""
 from __future__ import annotations
 
-from xarch.modules.rules.domain.rule import MAY_NOT, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, AT_MOST, EXISTING, MAY_NOT, MUST_NOT_REACH, Match, OwnCheck, Rule
 from xarch.profile_values.checks import APP, TESTS, Condition, Saying, Scope
 
 TODO = (Match("text", words=("*TODO*",)),)
+SCREENS = ("documents/screens%extension%", "%subclass Screen Reactive%\n")
+"""A file whose class derives from a base its file does not define."""
 
 WORKED: tuple[OwnCheck, ...] = (
     OwnCheck(Rule("no-todo", Scope(APP, where=(Condition("placed"),)), ("comment",), MAY_NOT, TODO,
@@ -62,5 +67,70 @@ WORKED: tuple[OwnCheck, ...] = (
                   key="checks.tests-take-only-fakes"),
              (("tests/documents/check_notes%extension%", "%import app.documents.store Store%\n"),),
              (("tests/documents/check_notes%extension%", "%comment% one case per title\n"),)),
+    OwnCheck(Rule("pages-never-reactive", Scope(APP, where=(Condition("placed"),)), ("class",), MAY_NOT, EXISTING,
+                  (Saying("{name} in {file} derives from Reactive at line {line}", "build {name} from plain parts"),),
+                  keep=(Condition("named", "*Page"), Condition("extends", "Reactive")),
+                  key="checks.pages-never-reactive"),
+             (SCREENS, ("documents/pages%extension%", "%import app.documents.screens Screen%\n%subclass HomePage Screen%\n")),
+             (SCREENS, ("documents/pages%extension%", "%subclass HomePage Plain%\n"))),
+    OwnCheck(Rule("one-note-per-file", Scope(APP, where=(Condition("placed"),)), ("comment",), AT_MOST, EXISTING,
+                  (Saying("{file} leaves {count} notes, and one more at line {line}: {text}",
+                          "keep one note, and move the others where the team tracks its work"),),
+                  key="checks.one-note-per-file", count=1),
+             (("documents/notes%extension%", "%comment% split this file\n%comment% and rename it\n"),),
+             (("documents/notes%extension%", "%comment% split by kind\n"),)),
+    OwnCheck(Rule("notes-say-why", Scope(APP, where=(Condition("placed"),)), ("comment",), AT_LEAST, EXISTING,
+                  (Saying("{file} holds {count} comments, and says nowhere why it is there",
+                          "say in a comment what the file is for"),),
+                  key="checks.notes-say-why", count=1),
+             (("documents/rules%extension%", "%import app.documents.types.title Title%\n"),),
+             (("documents/rules%extension%", "%comment% the rules a title keeps\n"),)),
+    OwnCheck(Rule("short-files", Scope(APP, where=(Condition("placed"),)), ("file",), MAY_NOT, EXISTING,
+                  (Saying("{file} holds {lines} lines", "split it by what each part of it is about"),),
+                  keep=(Condition("longer-than", "2"),), key="checks.short-files"),
+             (("documents/notes%extension%", "%comment% one\n%comment% two\n%comment% three\n"),),
+             (("documents/notes%extension%", "%comment% one\n"),)),
+    OwnCheck(Rule("types-never-reach-the-store", Scope(APP, where=(Condition("below", "documents/types"),)), ("import",),
+                  MUST_NOT_REACH, (Match("path", names=(("app", "documents", "store"),)),),
+                  (Saying("{file} reaches the store at line {line}: {chain}",
+                          "keep the types of documents apart from where they are saved"),),
+                  key="checks.types-never-reach-the-store", links=("import-into-app",)),
+             (("documents/types/title%extension%", "%import app.documents.rules trim%\n"),
+              ("documents/rules%extension%", "%import app.documents.store Store%\n")),
+             (("documents/types/title%extension%", "%import app.documents.types.text Text%\n"),
+              ("documents/rules%extension%", "%import app.documents.store Store%\n"))),
+    OwnCheck(Rule("loads-take-no-actor", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} takes an actor at line {line}: {parameters}", "read the actor where it is decided"),),
+                  keep=(Condition("named", "load*"), Condition("has-parameter", "actor")),
+                  key="checks.loads-take-no-actor"),
+             (("documents/rules%extension%", "%function load_title actor%\n"),),
+             (("documents/rules%extension%", "%function load_title path%\n"),)),
+    OwnCheck(Rule("actor-has-no-default", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} gives actor a default at line {line}", "make every caller pass the actor"),),
+                  keep=(Condition("parameter-has-default", "actor"),), key="checks.actor-has-no-default"),
+             (("documents/rules%extension%", "%defaulted publish actor 1%\n"),),
+             (("documents/rules%extension%", "%function publish actor%\n"),)),
+    OwnCheck(Rule("rules-take-no-store", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} takes a store at line {line}", "take only what the rule reads"),),
+                  keep=(Condition("parameter-annotated", "*Store"),), key="checks.rules-take-no-store"),
+             (("documents/rules%extension%", "%annotated trim titles TitleStore%\n"),),
+             (("documents/rules%extension%", "%annotated trim titles Titles%\n"),)),
+    OwnCheck(Rule("rules-return-no-rows", Scope(APP, where=(Condition("placed"),)), ("function",), MAY_NOT, EXISTING,
+                  (Saying("{name} returns {returns} at line {line}", "return a value of documents"),),
+                  keep=(Condition("returns-annotated", "*Row"),), key="checks.rules-return-no-rows"),
+             (("documents/rules%extension%", "%returning title TitleRow%\n"),),
+             (("documents/rules%extension%", "%returning title Title%\n"),)),
+    OwnCheck(Rule("stores-take-no-literal-limit", Scope(APP, where=(Condition("placed"),)), ("call",), MAY_NOT,
+                  EXISTING, (Saying("{path} is given a limit as a literal at line {line}",
+                                    "take the limit from the settings"),),
+                  keep=(Condition("passes-literal", "limit"),), key="checks.stores-take-no-literal-limit"),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit 3%\n"),),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit size%\n"),)),
+    OwnCheck(Rule("stores-pass-a-guard", Scope(APP, where=(Condition("placed"),)), ("call",), MAY_NOT,
+                  (Match("path", names=(("app", "documents", "store", "Store"),)),),
+                  (Saying("{path} is built with no guard at line {line}", "pass it the guard"),),
+                  exempt=(Condition("passes", "guard"),), key="checks.stores-pass-a-guard"),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit 3%\n"),),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store guard 1%\n"),)),
 )
 """The worked checks, the first the example of how a check is written."""

@@ -31,6 +31,36 @@ All notable changes to this project are written here. The format follows
   when there is one), and an entry that accepts nothing is a finding of the check, so the list can only shrink. An
   entry naming a finding by its `line`, or by a variable the check does not have, is refused; each entry the compared
   profile's check does not hold is listed as looser (`checks.accepted`).
+- The filter `extends: <pattern>` of a check of your own: a class derives from a class whose name the pattern matches,
+  one of its bases or, however far, a base of a class the project defines (of the app or of the tests) that it derives
+  from, each read through the import that binds it or as a class of its own file. The kind `class` carries the new
+  field `bases`, which the new fact `class.bases` supplies (Python's reader: exact, naming each base by its last step
+  as written, so that a class of the same file is followed too). A language's data file may give `worked`, the
+  templates the code of the checks `profile explain` shows is written with (`subclass`, a class deriving from a base),
+  so that the example of `filters.extends` is written in the language. The bundled profiles read nothing new.
+- The quantifiers `at_most: <n>` and `at_least: <n>` of a check of your own count the facts it keeps in each file of
+  its scope, alone: under `at_most` each kept fact after the n-th is a finding at its line, under `at_least` a file
+  that keeps fewer is a finding at line 0; the variable `{count}` says how many the file keeps, and is refused in a
+  check that does not count. The kind `file` carries the new field `lines`, from the new fact `file.lines` (Python's
+  reader: exact), which the filter `longer-than: <n>` and the variable `{lines}` read. A filter's value may be written
+  as a number. The bundled profiles read nothing new.
+- The quantifier `must_not_reach` of a check of your own, the negation of `must_reach` written the same way (`targets`,
+  `through`, `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the
+  files its links lead to however far, is a finding at the line of its first step, and the new variable `{chain}`
+  says the way (`app.store -> app.store.sql -> sqlalchemy`); a name taken from a package file leads through that
+  package file to every file it imports. The bundled profiles read nothing new.
+- The kind `function` carries the new fields `parameters` (each parameter in order: its name, its annotation as
+  written, empty for none, and whether it has a default) and `returns` (its return annotation as written), from the
+  new facts `function.parameters` and `function.return_annotation` (Python's reader: exact); the filters
+  `has-parameter`, `parameter-has-default`, `parameter-annotated` and `returns-annotated` match them by a pattern, and
+  the variables `{parameters}` and `{returns}` say them. The language's `worked` templates gain `function`,
+  `defaulted`, `annotated`, `returning` and `keyword_call`. The bundled profiles read nothing new.
+- The kinds `call`, `method-call` and `construction` carry the new field `arguments`, from the new fact
+  `call.keywords` (Python's reader: exact): each keyword argument a call passes, by name, with its value as written
+  when it is a literal; the filters `passes: <pattern>` and `passes-literal: <pattern>[=<text>]` read it. Positional
+  arguments are not read. The bundled profiles read nothing new.
+- The kind `call` carries the field `name`, the last name of its callee, so the filter `named` and the target `name`
+  apply to a call (they were refused there before). The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

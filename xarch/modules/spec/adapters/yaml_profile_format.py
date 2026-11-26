@@ -13,6 +13,7 @@ from xarch.platform.yaml_writer import YamlWriter
 from xarch.profile_values.checks import (
     ANY,
     APP,
+    COUNT_SLOTS,
     FAIL,
     NEGATION,
     STRUCTURE,
@@ -95,6 +96,8 @@ class YamlProfileFormat:
                 "per_line": [f"per_line: {self._list(saying.per_line)}"] if saying.per_line else []}
 
     def _quantified(self, quantified: Quantified) -> list[str]:
+        if quantified.slot in COUNT_SLOTS:
+            return [f"{quantified.slot}: {quantified.count}"]
         if quantified.slot not in REACH_SLOTS:
             return [f"{quantified.slot}: {self._targets(quantified.targets)}"]
         said = {"targets": [f"targets: {self._targets(quantified.targets)}"],

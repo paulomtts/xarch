@@ -102,6 +102,38 @@ def test_a_construction_of_a_class_deriving_from_an_exception_of_another_file_sa
     assert [(fact.name, fact.traits) for fact in built] == [("Refused", frozenset({"exception"}))]
 
 
+REACTIVE = ("ui", "Reactive")
+
+
+def test_a_class_carries_its_bases_however_far_through_the_classes_the_project_defines():
+    """A base is followed through the import that binds it, or to a class of the class's own file, and then through
+    that class's bases when the project defines it, in the app or in the tests; a base the reader could not follow is
+    its name alone, and one that is no name is none; a class never derives from itself."""
+    base = source("kernel/screens.py", imp(1, "ui", "Reactive"),
+                  classes=(Class(2, "Screen", (REACTIVE,), base_names=("Reactive",)),
+                           Class(3, "Panel", (None,), base_names=("Screen",)),
+                           Class(4, "Odd", (None, None), base_names=("Unbound", ""))))
+    page = source("modules/docs/domain/page.py", imp(1, "app.kernel.screens", "Panel"),
+                  classes=(Class(2, "HomePage", (("app", "kernel", "screens", "Panel"),), base_names=("Panel",)),
+                           Class(3, "Loop", (None,), base_names=("Loop",))))
+    fake = in_tests("fakes/page.py", imp(1, "app.modules.docs.domain.page", "HomePage"),
+                    classes=(Class(2, "FakePage", (("app", "modules", "docs", "domain", "page", "HomePage"),),
+                                   base_names=("HomePage",)),
+                             Class(3, "FakerPage", (None,), base_names=("FakePage",))))
+    files = facts_of([base, page], [fake], PROFILE, "app", "tests").files
+    screens, homes, fakes = (read.facts["class"] for read in files)
+    panel = ("app", "kernel", "screens", "Panel")
+    screen = ("app", "kernel", "screens", "Screen")
+    home = ("app", "modules", "docs", "domain", "page", "HomePage")
+    assert [(f.name, f.bases) for f in screens] == [("Screen", (REACTIVE,)), ("Panel", (screen, REACTIVE)),
+                                                    ("Odd", (("Unbound",),))]
+    assert [(f.name, f.bases) for f in homes] == [("HomePage", (panel, screen, REACTIVE)),
+                                                  ("Loop", ())]
+    assert [(f.name, f.bases) for f in fakes] == [("FakePage", (home, panel, screen, REACTIVE)),
+                                                  ("FakerPage", (("tests", "fakes", "page", "FakePage"), home, panel,
+                                                                 screen, REACTIVE))]
+
+
 def test_a_reference_is_a_use_of_a_function_of_the_app_but_the_callee_of_a_call_on_its_line():
     assert SERVICE.facts["function-reference"] == (
         Fact("function-reference", 8, (*MAKE, "cache"), target=("modules", "docs", "domain", "doc", "make"),

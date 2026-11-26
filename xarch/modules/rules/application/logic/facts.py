@@ -10,7 +10,7 @@ turns its language's imports and names into such paths, and a fact into the app 
                         could not be read as text at all, text then saying why
     file                the file as a whole, at line 0; traits no-statements when no function or method of it holds
                         a real statement, exceptions-only when it defines classes, every one an exception (below), and no
-                        top-level function
+                        top-level function; lines how many lines it holds
     names-mentioned     every name the file mentions, annotations included, by its last step alone
     import              each import as written: the module it names (path), relative, standard, type-only
     imported-name       each name an import takes, path the module and the name (the module alone for an import of
@@ -19,8 +19,8 @@ turns its language's imports and names into such paths, and a fact into the app 
     use                 each name read, path the dotted path it reaches, bound how many steps the binding import bound
     method-call         each call of an attribute no import binds, name the attribute; on-own-object when it is
                         on the object a method is called on
-    call                each call whose callee an import binds, path the callee; at where the callee sits when it is
-                        the app's
+    call                each call whose callee an import binds, path the callee and name its last step; at where the
+                        callee sits when it is the app's
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
                         root and at where that sits (None when no part and no folder of the layout governs it), name
                         the name it takes when that is no file; a test's relative imports are its own and none is one,
@@ -30,7 +30,7 @@ turns its language's imports and names into such paths, and a fact into the app 
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
     class               each class defined at the top level, name its name, names those its bases and body mention;
                         exception, record, interface and immutable when it is one (below); public when the reader
-                        says it is public
+                        says it is public; bases every class it derives from, however far (below)
     function            each function defined at the top level or in a class of the top level, name its name, path
                         its class and its name; top-level when it is in no class; public when the reader says it is
                         public; forwards when it is a method the reader says only forwards, text the callee it
@@ -55,6 +55,10 @@ and the facts derived from them over the whole app:
     interface           a class the reader says is an interface, by the marks of the language's data file, the last
                         of its name in its file
     immutable           a class the reader says is an immutable record, by the marks of the language's data file
+    bases               of a class, each base it names: where the import that binds it leads, the class of its own
+                        file it names, else the name it is written with alone; then, for each base that is a class of
+                        the app or of the tests defined at the top level of a file, that class's bases, however far,
+                        each once (a class never derives from itself)
 """
 from __future__ import annotations
 
@@ -69,7 +73,7 @@ from xarch.modules.rules.application.logic.places import place
 from xarch.modules.rules.application.logic.tier_of import tested
 from xarch.modules.rules.domain.parsed import Class, Function, SourceFile
 from xarch.modules.rules.domain.profile import Profile
-from xarch.modules.rules.domain.rule import MUST_REACH, Defined, Fact, Facts, Read, Rule
+from xarch.modules.rules.domain.rule import AT_LEAST, FILE_REACH, Defined, Fact, Facts, Read, Rule
 from xarch.modules.rules.domain.vocabulary import KINDS as VOCABULARY
 from xarch.profile_values.checks import Scope
 
@@ -108,7 +112,10 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                              for c in f.classes},
                       {steps: frozenset(f.module_functions) for f, steps in parsed},
                       frozenset(_exceptions(parsed, root)),
-                      frozenset((root, *steps, c.name) for f, steps in parsed for c in f.classes if c.record))
+                      frozenset((root, *steps, c.name) for f, steps in parsed for c in f.classes if c.record),
+                      _bases([*((f, steps, root) for f, steps in parsed),
+                              *((f, steps, root if f.beside else tests_root) for f, steps, _ in tests
+                                if f.error is None)]))
     covered = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
     placed = [_covered(Read(file, steps, package, False, _placed(profile, cache, steps)), covered)
               for file, steps, package in app]
@@ -145,7 +152,8 @@ def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -
     kinds: list[str] = []
     for rule in rules:
         if in_scope(rule.scope, read, facts, profile):
-            kinds += [*rule.facts, *rule.spread, *rule.links, *(("file",) if rule.quantifier == MUST_REACH else ())]
+            kinds += [*rule.facts, *rule.spread, *rule.links,
+                      *(("file",) if rule.quantifier in (*FILE_REACH, AT_LEAST) else ())]
         side, roots = reach_scopes(rule)
         if side is not None and in_scope(side, read, facts, profile):
             kinds += [*rule.facts, *rule.links]
@@ -155,9 +163,10 @@ def _read(read: Read, rules: tuple[Rule, ...], facts: Facts, profile: Profile) -
 
 
 def reach_scopes(rule: Rule) -> tuple[Scope | None, Scope | None]:
-    """The files a rule of reach reads besides its scope: for MUST_REACH, every file of its scope's side, whose facts
+    """The files a rule of reach reads besides its scope: for MUST_REACH and MUST_NOT_REACH, every file of its scope's
+    side, whose facts
     may match a target or lead to one; for MUST_BE_REACHED, its roots. None where the rule has none."""
-    return (Scope(rule.scope.files) if rule.quantifier == MUST_REACH else None), rule.roots
+    return (Scope(rule.scope.files) if rule.quantifier in FILE_REACH else None), rule.roots
 
 
 def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: Defined,
@@ -172,7 +181,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "syntax-error":
             return ()
         case "file":
-            return (Fact("file", 0, traits=_file(file, read, defined)),)
+            return (Fact("file", 0, traits=_file(file, read, defined), lines=file.lines),)
         case "names-mentioned":
             return (Fact("names-mentioned", 0, names=file.named),)
         case "comment":
@@ -180,8 +189,10 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
                               text=c.text) for c in file.comments)
         case "class":
             ports = {c.name: c for c in file.classes if c.interface}
+            side = root if not read.in_tests or file.beside else facts.tests_root
             return tuple(Fact("class", c.line, (c.name,), c.name, _class(c, read, defined, ports),
-                              names=c.named) for c in file.classes)
+                              names=c.named, bases=_lineage((side, *read.steps, c.name), defined.bases))
+                         for c in file.classes)
         case "function":
             return tuple(_function(f) for f in file.functions)
         case "callback":
@@ -197,15 +208,16 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
         case "use":
             return tuple(Fact("use", u.line, u.name, bound=u.bound) for u in file.uses)
         case "method-call":
-            return tuple(Fact("method-call", m.line, name=m.name, traits=_TRAITS[False, False, m.held])
-                         for m in file.method_calls)
+            return tuple(Fact("method-call", m.line, name=m.name, traits=_TRAITS[False, False, m.held],
+                              arguments=m.passed) for m in file.method_calls)
         case "call":
-            return tuple(Fact("call", c.line, c.func,
-                              at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None)
+            return tuple(Fact("call", c.line, c.func, c.func[-1],
+                              at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None,
+                              arguments=c.passed)
                          for c in file.calls)
         case "construction":
             return tuple(Fact("construction", c.line, c.func, c.func[-1], _built(c.func, defined),
-                              at=defined.classes[c.func])
+                              at=defined.classes[c.func], arguments=c.passed)
                          for c in file.calls if c.func in defined.classes)
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))
@@ -281,12 +293,14 @@ def _built(func: tuple[str, ...], defined: Defined) -> frozenset[str]:
 def _function(function: Function) -> Fact:
     path = (function.owner, function.name) if function.owner else (function.name,)
     public = _PUBLIC if function.public else frozenset()
+    signature = {"parameters": tuple((p.name, p.annotation, p.default) for p in function.parameters),
+                 "returns": function.returns}
     if not function.owner:
-        return Fact("function", function.line, path, function.name, _TOP | public)
+        return Fact("function", function.line, path, function.name, _TOP | public, **signature)
     if not function.forwards or function.sole_call is None:
-        return Fact("function", function.line, path, function.name, public)
+        return Fact("function", function.line, path, function.name, public, **signature)
     return Fact("function", function.line, path, function.name, _FORWARDS | public, target=function.sole_call.then,
-                text=function.forwards)
+                text=function.forwards, **signature)
 
 
 def _file(file: SourceFile, read: Read, defined: Defined) -> frozenset[str]:
@@ -310,6 +324,34 @@ def _exceptions(files: Iterable[tuple[SourceFile, tuple[str, ...]]], root: str) 
                 found.add(key)
                 grown = True
     return found
+
+
+def _bases(files: Iterable[tuple[SourceFile, tuple[str, ...], str]]) -> dict[tuple[str, ...], tuple[tuple[str, ...], ...]]:
+    """The bases of every class of the files, each file with its steps below the root and that root, by the class's
+    dotted path: a base an import binds by where it leads, one written as the name of a class of the same file by that
+    class's path, any other by the name it is written with, alone; a base that is no name is none."""
+    found: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = {}
+    for file, steps, root in files:
+        local = {c.name for c in file.classes}
+        for cls in file.classes:
+            written = cls.base_names or ("",) * len(cls.bases)
+            found[(root, *steps, cls.name)] = tuple(
+                base if base is not None else (root, *steps, name) if name in local else (name,)
+                for base, name in zip(cls.bases, written) if base is not None or name)
+    return found
+
+
+def _lineage(path: tuple[str, ...], bases: dict[tuple[str, ...], tuple[tuple[str, ...], ...]]) -> tuple[tuple[str, ...], ...]:
+    """Every class the class at path derives from, however far: its own bases first, then theirs when the project
+    defines them, each once, the class itself never."""
+    found: list[tuple[str, ...]] = []
+    pending = list(bases.get(path, ()))
+    while pending:
+        base = pending.pop(0)
+        if base not in found and base != path:
+            found.append(base)
+            pending += bases.get(base, ())
+    return tuple(found)
 
 
 def _imported(file: SourceFile) -> Iterator[Fact]:
