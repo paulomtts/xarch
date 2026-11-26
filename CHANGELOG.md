@@ -192,6 +192,10 @@ All notable changes to this project are written here. The format follows
 
 ### Fixed
 
+- The README and `xarch profile explain quantifiers.at_most` say what a finding of `at_most` names: the fact after the
+  n-th, by its own variables, which is what an entry of `checks.<id>.accepted` names too (an entry naming a fact
+  within the limit accepts nothing), and that `{count}` is how many the file keeps, the same on each of its findings;
+  a test accepts the reported fact by name.
 - `import-into-app` carries `type-only` (the fact `import.type_only`), so `keep: [not type-only]` and
   `must_not_reach.through_only: [not type-only]` (or `must_reach`'s) are no longer refused on it: a check can skip the
   imports of the app made only for the type checker, and a closure can follow only those made when the code runs. The

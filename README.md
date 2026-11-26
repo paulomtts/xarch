@@ -475,7 +475,11 @@ that only re-exports it is followed no further than its name. Two quantifiers co
 in each file of the scope alone (never across a part or the instances of a repeating folder): `at_most: <n>` makes
 each kept fact of a file after the n-th a finding, at its own line (`read: class`, `keep: [{named: "*Port"}]`,
 `at_most: 1`: one port per file), and `at_least: <n>` makes a file that keeps fewer a finding, at line 0; `{count}`
-says how many the file keeps. The kind `file` carries `lines` (the fact `file.lines`), which the filter
+says how many the file keeps, the same on each finding of the file, so with three ports and `at_most: 1` the second
+and the third are each a finding that says 3. A finding of `at_most` is the fact after the n-th, said by its own
+variables, and so is what an entry of `accepted` names: with `at_most: 1` and `StorePort` before `CachePort`, the entry
+that accepts the finding is `{file: store/ports.py, name: CachePort, why: ...}`, and one that names `StorePort`, which
+is within the limit, accepts nothing. The kind `file` carries `lines` (the fact `file.lines`), which the filter
 `longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
 each file over 700 lines. `must_not_reach` is the negation of `must_reach`, written the same way (`targets`, `through`,
 `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the files its links

@@ -412,7 +412,9 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
                                   "of the kinds `then_through` names leads to it from something already reached, "
                                   "however far", True),
     Quantifier("at_most", "a file of the scope may keep at most the number of facts: each kept fact after that many, "
-                          "in the order the file says them, is a finding, counted in that file alone"),
+                          "in the order the file says them, is a finding, counted in that file alone, and said by its "
+                          "own variables, which an accepted entry names too (one naming a fact within the number "
+                          "accepts nothing); {count} is how many the file keeps, the same on each of its findings"),
     Quantifier("at_least", "a file of the scope that keeps fewer facts than the number is a finding, its file fact the "
                            "fact said, counted in that file alone"),
 )

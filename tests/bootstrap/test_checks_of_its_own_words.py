@@ -94,6 +94,22 @@ def test_at_most_finds_each_kept_fact_of_a_file_beyond_the_number_at_its_own_lin
         ("app/store/ports.py", 5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
 
 
+def test_at_most_names_the_fact_after_the_limit_and_an_accepted_entry_names_that_fact(tmp_path):
+    """StorePort is within the limit: CachePort, the fact after it, is the finding, and so what an entry names; each
+    finding of the file says the same count, how many the file keeps. An entry naming StorePort accepts nothing."""
+    accepted = {**ONE_PORT, "accepted": [{"file": "store/ports.py", "name": "CachePort", "why": "a cache beside it"}]}
+    assert found(tmp_path, {"one-port-per-file": accepted}, {"store/ports.py": PORTS}) == [
+        ("app/store/ports.py", 5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
+    within = {**ONE_PORT, "accepted": [{"file": "store/ports.py", "name": "StorePort", "why": "the first"}]}
+    project(tmp_path, {"one-port-per-file": within}, {"store/ports.py": PORTS})
+    document = json.loads(runner.invoke(app, ["check", "--format", "json"]).output)
+    assert [(v["line"], v["message"]) for v in document["violations"] if v["rule"] == "one-port-per-file"] == [
+        (None, "checks.one-port-per-file.accepted accepts a finding of store/ports.py with name StorePort, and the check "
+            "finds none (checks.one-port-per-file.accepted)"),
+        (4, "app/store/ports.py declares 3 interfaces, and CachePort at line 4 is one too many"),
+        (5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
+
+
 SOME_PORT = {
     "read": "class", "in": {"part": "store"}, "keep": [{"named": "*Port"}], "at_least": 1,
     "message": "{file} declares {count} interfaces, and needs one", "fix": "declare its port, or move the file",
