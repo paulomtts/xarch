@@ -336,7 +336,7 @@ def test_a_part_whose_litmus_is_a_list_has_each_entry_asked_as_a_yes_or_no_in_th
     assert len(named) == 4
     assert bodies[0]["questions"]["litmus.services.publish"]["type"] == "noul"
     (read,) = json.loads(result.output)["placement"]["files"]
-    assert read["litmus"] == {"holds": True, "yes_line": 0.5, "measured": False, "entries": [
+    assert read["litmus"] == {"holds": True, "advisory": True, "yes_line": 0.5, "measured": False, "entries": [
         {"label": "1", "mode": "any", "yes": 0.9, "answered_yes": True},
         {"label": "publish", "mode": "any", "yes": 0.9, "answered_yes": True},
         {"label": "title", "mode": "all", "yes": 0.9, "answered_yes": True}]}

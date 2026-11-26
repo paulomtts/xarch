@@ -97,6 +97,8 @@ CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
 
 UNMEASURED = "a line not yet measured"
 """What is said of the yes line of the entries of a litmus list: a placeholder, which nothing measured."""
+NOTE = "advisory, never makes a file doubtful"
+"""What is said of what the entries of a litmus list read: a note, which placement's choice alone turns into doubt."""
 
 def _what_leaves(sends: Sender, pieced: bool = False) -> str:
     """What leaves the machine in a review that sends, to whom, and that the key alone allows it."""
@@ -124,7 +126,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
     if planned.litmus:
         lines += [f"the yes-or-no questions of the parts whose litmus is a list, each asked of a file of its part in the "
                   f"request of placement's question, an entry answering yes at {planned.yes_line:.2f} or above "
-                  f"({UNMEASURED}):",
+                  f"({UNMEASURED}); advisory: their answers are a note on the file and never make it doubtful:",
                   *(f"  {name} ({entry.mode}): {entry.ask}" for name, _, entry in planned.litmus)]
     if planned.piece_ask:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
@@ -164,7 +166,7 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
                       "left_out": [_left_out(item) for item in planned.left_out]},
         "question": {"ask": planned.question.ask, "role_only": list(planned.role_only),
                      "options": [{"name": o.name, "description": o.description} for o in planned.question.options],
-                     "litmus": {"yes_line": planned.yes_line, "measured": False, "questions": [
+                     "litmus": {"advisory": True, "yes_line": planned.yes_line, "measured": False, "questions": [
                          {"name": name, "part": part, "label": entry.label, "mode": entry.mode, "ask": entry.ask}
                          for name, part, entry in planned.litmus]} if planned.litmus else None},
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "cached": r.cached, "text": r.text,
@@ -326,7 +328,7 @@ def _litmus(item: Reading) -> list[str]:
     if item.litmus_holds is None:
         return []
     said = "holds" if item.litmus_holds else "does not hold"
-    return [f"      litmus: {said} (an entry answers yes at {item.yes_line:.2f} or above, {UNMEASURED}): "
+    return [f"      litmus note ({NOTE}): {said} (an entry answers yes at {item.yes_line:.2f} or above, {UNMEASURED}): "
             + ", ".join(f"{entry.label} ({entry.mode}) {entry.yes:.2f} {'yes' if entry.said_yes else 'no'}"
                         for entry in item.litmus)]
 
@@ -378,7 +380,7 @@ def _file(item: Reading) -> dict[str, Any]:
             "ruled_out": [{"part": out.part, "by": out.by, "probability": out.probability} for out in item.ruled_out],
             "accepted": _acceptance(item.accepted), "accepted_before": _acceptance(item.accepted_before),
             "litmus": None if item.litmus_holds is None else {
-                "holds": item.litmus_holds, "yes_line": item.yes_line, "measured": False,
+                "holds": item.litmus_holds, "advisory": True, "yes_line": item.yes_line, "measured": False,
                 "entries": [{"label": entry.label, "mode": entry.mode, "yes": entry.yes, "answered_yes": entry.said_yes}
                             for entry in item.litmus]}}
 

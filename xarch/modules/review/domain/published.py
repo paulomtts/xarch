@@ -226,7 +226,8 @@ class Reading:
     doubtful file a person accepted, what they said: accepted when its code is the same as then (the file is then not
     doubtful), accepted_before when its code changed since (it is doubtful again), None otherwise; and, for a file of
     a part whose litmus is a list of two entries or more, each entry as read, whether the litmus holds (None for any
-    other file) and the yes line each entry was read against: a file whose litmus does not hold is doubtful."""
+    other file) and the yes line each entry was read against, a note only: whether the litmus holds never makes the
+    file doubtful."""
     file: str
     part: str
     chars: int

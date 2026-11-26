@@ -1699,9 +1699,9 @@ keys:
       a number above 0 and below 1, 0.5 unless written. A file of a part whose litmus is a list of two entries or more
       is asked each entry as a yes-or-no question of its own, in the same request as placement's question; an entry
       answers yes when its probability of yes is at or above this line, and the part's litmus holds when at least one
-      `any` entry (when there is any) and every `all` entry answers yes; a file whose part's litmus does not hold reads
-      as doubtful there. The default is a placeholder, never measured: measure it before relying on what the entries
-      say
+      `any` entry (when there is any) and every `all` entry answers yes. What the entries say is advisory, a note on
+      the file: it never makes a file doubtful, which placement's question alone decides. The default is a
+      placeholder, never measured
     example: |
       evals:
         placement:
