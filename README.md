@@ -669,7 +669,7 @@ run in which a part's `imports.accepted` accepts an import also has `"accepted"`
 `{"file", "line", "part", "import", "why"}`, the import as the entry writes it. A run in which an entry of a
 check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcement`: each `{"rule", "file", "line",
 "key", "message", "why"}`, the finding as it would be reported, and `key` the entry's list
-(`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`).
+(`checks.<id>.accepted`, `structure.accepted`, `tiers.<tier>.accepted`, `counterparts.<id>.accepted`).
 
 - `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
@@ -841,8 +841,8 @@ of one key are counted, and its count is its ceiling. Commit the file.
 - `baseline write` with a record only lowers it: a key no longer found is dropped and a count lowered, never raised,
   and a new finding stays a violation; `--reset` writes every violation found now.
 - An entry that accepts a finding (`imports.accepted`, `checks.<id>.accepted`, `structure.accepted`,
-  `tiers.<tier>.accepted`) is applied first: an accepted finding is no violation, so it is never recorded, and a stale
-  entry is a violation like any other.
+  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`) is applied first: an accepted finding is no violation, so it
+  is never recorded, and a stale entry is a violation like any other.
 
 In JSON, `enforcement.baseline` is present only when the record is: `{"file", "recorded", "baselined", "below",
 "rules": [{"rule", "recorded", "found"}]}`. `xarch baseline write --format json` prints `{"ok", "file", "recorded",
