@@ -295,7 +295,7 @@ def test_check_and_profile_check_take_against_the_profile_it_is_compared_with(co
 def test_the_help_of_strict_names_the_profile_it_is_compared_with():
     command = typer.main.get_command(app).commands["check"]
     strict = next(param for param in command.params if "--strict" in param.opts)
-    assert "guards left off that the profile it is compared with switches on (every guard, when none is compared)" in (
+    assert "guards left off that the profile it is compared with switches on (every guard, when none is compared;" in (
         strict.help)
     assert "compared bundled profile" not in strict.help
 

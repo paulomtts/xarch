@@ -840,8 +840,10 @@ Without `--strict` the section never changes the exit code. `--strict` fails (ex
 `strict_failures`: what the profile in force leaves unenforced or unseen: each guard left off that the bundled profile
 in force, or the one a custom profile is compared with, does not also leave off (with no profile to compare with,
 every guard left off); each ungoverned file; each missing or changed init file; each skip; each dynamic import; each
-unresolved import; each weak finding; each approximate key; each part redefined without its litmus. The text lists
-them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
+unresolved import; each weak finding; each approximate key; each check of the profile's own and each counterpart
+that reads nothing; each part that keeps no litmus, or no entry of the litmus list, the compared profile (or the
+anchor of a chain of profile files) gives it; and a baseline that records more than is found. The violations a
+baseline holds back are not failed on. The text lists them after the section, under `strict:`. The guard test `init` writes runs `check --strict` (see
 [Project files](#project-files)): a fresh project of either bundled profile has no such finding.
 
 ## Adopting xarch on existing code: `xarch baseline write`

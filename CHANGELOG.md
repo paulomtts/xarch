@@ -170,6 +170,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- `xarch check --help` says everything `--strict` fails on: a counterpart that reads nothing beside a check of the
+  profile's own, a part that keeps no entry of the litmus list the compared profile gives it, the guards of the
+  anchor and every file of a chain of profile files, and a baseline that records more than is found, the violations
+  it holds back not failed on; the README's list of what `--strict` fails on says the same.
 - A check of the profile's own written under `may_not` that reads nothing is told so in words that fit it: nothing it
   keeps is there, so the project is clean of what it forbids when what it keeps is only that, else it should widen
   what it reads. Before, it was told it passes for want of anything to check, to widen what it reads or drop it,

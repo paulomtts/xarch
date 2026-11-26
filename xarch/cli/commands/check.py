@@ -28,11 +28,13 @@ from xarch.modules.spec.contract import Origin, ProfileRefused
 StrictOption = Annotated[bool, typer.Option(
     "--strict", metavar="",
     help="Also fail (exit 1) on every finding the enforcement section lists under `strict` (JSON `strict_failures`): "
-         "guards left off that the profile it is compared with switches on (every guard, when none is compared), "
-         "ungoverned files, missing or changed init files, skipped tests, dynamic imports, imports the reader could "
-         "not follow, checks met to the letter only (weak), approximate keys, checks of the profile's own that read "
-         "nothing, and a part redefined without the litmus the compared profile gives it. Every other way a custom "
-         "profile differs from the compared one is shown, never failed on.")]
+         "guards left off that the profile it is compared with switches on (every guard, when none is compared; for "
+         "a chain of profile files, the bundled profile it rests on and every file of the chain), ungoverned files, "
+         "missing or changed init files, skipped tests, dynamic imports, imports the reader could not follow, checks "
+         "met to the letter only (weak), approximate keys, checks of the profile's own and counterparts that read "
+         "nothing, a part that keeps no litmus, or no entry of the litmus list, the compared profile gives it, and a "
+         "baseline (.xarch/baseline.json) that records more than is found; the violations a baseline holds back are "
+         "not failed on. Every other way a custom profile differs from the compared one is shown, never failed on.")]
 PathsArgument = Annotated[list[Path] | None, typer.Argument(
     show_default=False,
     help="Files or folders, read from the working folder, whose violations alone are shown and decide the exit code. "
