@@ -132,6 +132,14 @@ class Sifted:
 
 
 @dataclass(frozen=True)
+class StructureFound:
+    """What the layout finds wrong below an app folder: the violations, and the findings structure.accepted accepts,
+    which it does not report."""
+    violations: tuple[Violation, ...]
+    excused: tuple[Excused, ...] = ()
+
+
+@dataclass(frozen=True)
 class Checked:
     """What a check found: the violations, in the order the checks found them; the state of its enforcement; and the
     profile it checked against."""

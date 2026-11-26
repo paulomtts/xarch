@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Protocol
 
 from xarch.modules.layout.domain.errors import ProfileUnusable
-from xarch.modules.layout.domain.structure import Beside, Naming
-from xarch.modules.spec.contract import ProfileRefused, Skeleton, SkeletonResult
+from xarch.modules.layout.domain.structure import Allowed, Beside, Naming
+from xarch.modules.spec.contract import DEFAULT_TESTS, ProfileRefused, Skeleton, SkeletonResult
 
 
 class _Spec(Protocol):
@@ -42,6 +42,12 @@ class SpecSkeleton:
         entries = (skeleton.top_level if root is None
                    else next(r for r in skeleton.repeating if r.root == root).entries)
         return {e.path: e.when for e in entries if e.when and not e.optional}
+
+    def accepted(self, profile: str) -> list[Allowed]:
+        """An entry written tests/<path> is about the folder or file <path> below the tests root."""
+        return [Allowed(entry.path[1:], True, "/".join(entry.path), entry.why) if entry.path[0] == DEFAULT_TESTS
+                else Allowed(entry.path, False, "/".join(entry.path), entry.why)
+                for entry in self._skeleton(profile).accepted]
 
     def beside(self, profile: str) -> Beside | None:
         skeleton = self._skeleton(profile)

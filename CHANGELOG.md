@@ -7,6 +7,11 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- `structure: {accepted: [{path, why}, ...]}` accepts findings of the layout one by one: a folder or file a
+  `structure` finding says is missing, by its path below the app, or `tests/<path>`, a folder below the tests a
+  `test-tree` finding says mirrors nothing. A finding accepted is not reported, every `check` names it under
+  `accepted:` (JSON `enforcement.accepted_findings`), and an entry that accepts nothing is a finding of its rule, so
+  the list can only shrink; each entry the compared profile does not hold is listed as looser (`structure.accepted`).
 - A check of the profile's own may accept findings one by one under `checks.<id>.accepted: [{file, why}, ...]`,
   each entry a file (below the app, `tests/<path>` below the tests root) and, if need be, the values the finding
   prints for some of the check's variables (`name: InvoiceClock`); with none, every finding of the check in the file.

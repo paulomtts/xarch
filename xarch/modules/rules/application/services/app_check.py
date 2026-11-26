@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from xarch.modules.rules.application.logic.chosen import chosen
@@ -36,11 +37,14 @@ class AppCheckService:
         app, tested = self._tree.resolved(cwd, root), (self._tree.resolved(cwd, tests) if tests is not None else None)
         package = app.name
         checked = self._source.check(app, package, profile, tested)
-        violations = ordered((*checked.violations, *self._structure.violations(app, package, profile, tested)))
+        structure = self._structure.checked(app, package, profile, tested)
+        violations = ordered((*checked.violations, *structure.violations))
         partial = None
         if paths is not None:
             places = [self._tree.resolved(cwd, path) for path in dict.fromkeys(paths)]
             violations, elsewhere = chosen(violations, places, app.parent, tested)
             partial = Partial(tuple(path.as_posix() for path in paths), elsewhere)
-        return AppChecked(tuple(violations), self._source.view(checked.enforcement), dict(checked.profile.hints),
+        view = self._source.view(replace(checked.enforcement,
+                                         excused=(*checked.enforcement.excused, *structure.excused)))
+        return AppChecked(tuple(violations), view, dict(checked.profile.hints),
                           passed(violations, checked.enforcement.strict, strict), partial)

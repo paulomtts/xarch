@@ -27,6 +27,7 @@ class Target:
     names: str = ""
 
 
+
 @dataclass(frozen=True)
 class AcceptedImport:
     """An import a part accepts although its `imports.may` does not allow it (`imports.accepted`): the file importing,

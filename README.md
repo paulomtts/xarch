@@ -125,7 +125,7 @@ parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...] | {parts*, types_only}}
 tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     docs}}
-fakes:    {folder*, for*, prefix | [prefix, ...], tiers}
+fakes:    {folder*, for*, prefix | [prefix, ...], tiers}     structure: {accepted: [{path*, why*}, ...]}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
@@ -135,6 +135,14 @@ review:   {never, mask}                                 what `xarch review` may 
 evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
 ```
+
+`structure.accepted` lists findings of the layout the profile accepts one by one, each with a reason: `path` the
+folder or file a `structure` finding says is missing, by its path below the app (`modules/billing/domain/errors.py`),
+or `tests/<path>`, a folder below the tests that a `test-tree` finding says mirrors nothing (`tests/modules/legacy/`);
+a trailing `/` is optional. Such a finding is not reported and the enforcement section names it under `accepted:`;
+an entry that accepts nothing (the path is there, or mirrors a folder of the app now) is itself a finding of its
+rule, so the list can only shrink. Unlike `parts.<part>.optional`, which frees a part in every instance, an entry
+frees one path.
 
 A key on a part is about its own code and reach; a guard is a pre-built check with a scope, which names the parts it
 reads.
@@ -423,12 +431,12 @@ that switches or configures each (`-` for none: the rule is always on):
 | Rule id | What it catches | Key |
 |---|---|---|
 | `syntax` | a file that does not parse, or that cannot be read as UTF-8 text at all (the message says which), so no other check could read it | - |
-| `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder; an optional part, and what it holds where it is not there, aside | `parts`, `parts.name`, `parts.optional` |
+| `structure` | a folder or file of the layout missing, at any depth, in the app and in every instance of each repeating folder; an optional part, and what it holds where it is not there, aside, and a path `structure.accepted` names; an entry of it that names no finding | `parts`, `parts.name`, `parts.optional`, `structure.accepted` |
 | `may-import` | an import between parts that the importing part's `imports.may` does not allow, or a name its pattern does not match, but one its `imports.accepted` names, which the enforcement section names instead; the findings of one import line are one, listing what it may not take (the names the pattern does not match, or the places it may not import); an entry of `imports.accepted` that accepts nothing any more (its file gone, the import gone, or `imports.may` now allowing it) | `parts.imports.may`, `parts.imports.accepted` |
 | `libraries` | an outside package a part does not list, or a standard-library name `reserved` holds that it does not list; the rest of the standard library is always allowed, tests are not checked | `parts.imports.libraries`, `reserved` |
 | `never-use` | a name or module a part (or, with `uses.apply_never`, its tests) may not use, or a method written `.name()` it may not call on anything but its own object and what that holds | `never`, `parts.uses.never`, `tiers.uses.apply_never` |
 | `tiers` | a test importing what its tier does not allow, or another test file, or a test in no tier | `tiers`, `tiers.folder`, `tiers.imports.may`, `tiers.imports.also`, `parts.tests`, `testing.shared`, `fakes.tiers` |
-| `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app | `tiers`, `testing` |
+| `test-tree` | a folder below `tests/<repeating folder>/` that mirrors no folder of the app, but one `structure.accepted` names; an entry `tests/<path>` of it that names no finding | `tiers`, `testing`, `structure.accepted` |
 | `types-only` | a test, or code of a part, calling what it may import only as a type | `tiers.imports.types_only`, `parts.imports.may.types_only` |
 | `cycles` | instances of the repeating folders that import each other, directly or through others (across repeating folders too, and through a folder the layout names beside the instances, such as `adapters/web/` beside `adapters/<adapter>/`, which takes part in the graph though it is no instance); each group of instances that all reach each other is one finding, however many cycles run through it: it names the group's instances, how many dependencies run between them, and the dependencies to cut, each with its imports (once per file and line), reported at the first import of the first of them. They are the dependencies that go back in an order of the group chosen so that few imports go back (greedily: an instance nothing left depends on first, one that depends on nothing left last, else the one whose imports out most outweigh its imports in); cutting them all leaves the group with no cycle | - (needs a repeating folder) |
 | `package-only` | an import of a file of a part from outside it, where the part is imported as a package | `parts.package_only` |
@@ -552,7 +560,7 @@ run in which a part's `imports.accepted` accepts an import also has `"accepted"`
 `{"file", "line", "part", "import", "why"}`, the import as the entry writes it. A run in which an entry of a
 check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcement`: each `{"rule", "file", "line",
 "key", "message", "why"}`, the finding as it would be reported, and `key` the entry's list
-(`checks.<id>.accepted`).
+(`checks.<id>.accepted`, `structure.accepted`).
 
 - `ok`: no violation (of the paths given, for a partial check), and with `--strict` no enforcement finding either; it agrees with the exit code. `strict`:
   whether `--strict` was given. `profile`: the profile in force, a bundled name or a path, as selected.
@@ -570,7 +578,7 @@ check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcem
 - `enforcement`: every key always present, empty when there is nothing to report. `profile.looser` items are
   `{"key", "part", "what", "sentence"}` with `key` one of `imports.may`, `imports.may.types_only`, `imports.libraries`,
   `uses.never`, `untested`, `optional`, `imports.accepted`, `imports.types_only`, `imports.also`, `uses.apply_never`, `testing.skips`, `testing.shared`,
-  `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `checks.accepted`, `translated` (the `sentence` names the full address, such as
+  `fakes.tiers`, `files.pinned`, `reserved`, `imports.must`, `litmus`, `known`, `checks.accepted`, `structure.accepted`, `translated` (the `sentence` names the full address, such as
   `parts.kernel.imports.may`); `excluded` items
   `{"folder", "reason"}`; `known` items `{"file", "line", "name"}`, each public name `guards.dead-code.known` accepts
   as only the tests'; `translated` items `{"file", "line", "function", "built", "other"}`, each pair of classes
@@ -638,7 +646,8 @@ enforcement
   to it, a tier no longer `plain_tables`, `testing.beside` set where the other leaves it out, an entry of
   `testing.shared` the other does not share, a tier `fakes.tiers` lists that the other's does not, and an entry of a
   part's `imports.accepted` (a file and what it imports) the other's part does not hold, and an entry of a check's
-  `accepted` (a file, and the variables it names) the other's check of the same id does not hold.
+  `accepted` (a file, and the variables it names) the other's check of the same id does not hold, and an entry of
+  `structure.accepted` (a path) the other does not hold.
   Stricter differences, new parts, the layout and the guards' other parameters are not compared. This comparison is
   information: the profile defines the architecture, so how it differs from another is no finding for `--strict`, but
   for a litmus dropped, which leaves a part's code no question to be placed by.
@@ -653,7 +662,8 @@ enforcement
   accepts nothing any more (its file is gone, the file no longer imports what it names, or `imports.may` now allows
   it) is itself a `may-import` violation, so a list of accepted imports, a ratchet, can only shrink. Each finding
   an entry of a check's `accepted` accepts is listed here too, as the check would report it, with the entry's list and
-  its reason; an entry that accepts nothing is a finding of its check.
+  its reason; an entry that accepts nothing is a finding of its check. So is each finding of the layout
+  `structure.accepted` accepts.
 - `known`: each public name `guards.dead-code.known` accepts as only the tests', where it is defined: a test names
   it and no other file of the app does, the `tests_only` check lists it no more, so the acceptance stays visible
   here. An entry that no longer holds (its file defines no such name, another file of the app names it, or no test

@@ -22,6 +22,7 @@ from xarch.modules.spec.domain.published import (
     READS,
     SCORE,
     YES_NO,
+    AcceptedPath,
     DocFile,
     Entry,
     Eval,
@@ -70,7 +71,7 @@ class Skeleton:
     name may be in it (names, a regular expression); "" for any of them: the language does not say; and whether
     every test of a part sits beside the code it tests (beside, testing.beside), the patterns of a test file's name
     (test_files), and the folders below the tests root whose tests stay there under beside (kept: each tier's folder,
-    then the fakes' folder)."""
+    then the fakes' folder); and the findings of the layout the profile accepts (accepted, structure.accepted)."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
     title: str = ""
@@ -81,6 +82,7 @@ class Skeleton:
     beside: bool = False
     test_files: tuple[str, ...] = ()
     kept: tuple[tuple[str, ...], ...] = ()
+    accepted: tuple[AcceptedPath, ...] = ()
 
 
 @dataclass(frozen=True)

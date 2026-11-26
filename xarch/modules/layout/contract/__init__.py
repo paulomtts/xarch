@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
+from xarch.modules.layout.domain.published import Waived
+
+__all__ = ["CheckStructure", "StructureChecked", "StructureRefused", "StructureResult", "Waived"]
 
 
 @dataclass(frozen=True)
@@ -21,7 +24,10 @@ class CheckStructure:
 
 @dataclass(frozen=True)
 class StructureChecked:
+    """What the layout finds wrong, and the findings an entry of structure.accepted accepts, which it does not
+    report."""
     violations: tuple[Violation, ...]
+    waived: tuple[Waived, ...] = ()
 
 
 @dataclass(frozen=True)

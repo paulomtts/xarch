@@ -43,7 +43,8 @@ never for an exception): `names` dropped, or a pattern added that no bundled pat
 `imports.must` dropped, or a part added to it; a tier no longer `plain_tables`; `testing.beside` set where the bundled
 profile leaves it out; an entry of `testing.shared` the bundled profile does not share; a tier `fakes.tiers` lists
 that the bundled profile's does not; an entry of a check's `accepted` (a file, and the variables it names) that the
-bundled profile's check of the same id does not hold. Anything stricter, and what is compared in no way above (the layout, new parts,
+bundled profile's check of the same id does not hold; an entry of `structure.accepted` (a path) the bundled profile
+does not hold. Anything stricter, and what is compared in no way above (the layout, new parts,
 the guards' other parameters, `fakes`), is not listed.
 
 A custom profile whose `based_on` is the path of a profile file is compared with that file, called by its path as
@@ -79,7 +80,7 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
-          "files.pinned", "reserved", "known", "checks.accepted",
+          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted",
           "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
@@ -342,6 +343,9 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
     found += [("reserved", "", name) for name in base.reserved if name not in custom.reserved]
     accepted = _known(base)
     found += [("known", "", entry) for entry in _known(custom) if entry not in accepted]
+    held = {entry.path for entry in base.structure_accepted}
+    found += [("structure.accepted", "", "/".join(entry.path)) for entry in custom.structure_accepted
+              if entry.path not in held]
     for name, check in custom.checks.items():
         held = {(entry.file, entry.by) for entry in base.checks[name].accepted} if name in base.checks else set()
         found += [("checks.accepted", "", f"{name}: {_finding(entry)}") for entry in check.accepted
@@ -567,6 +571,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tests may also import the fakes (fakes.tiers)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
+        case "structure.accepted":
+            return f"the layout accepts the finding of {what} (structure.accepted)"
         case "checks.accepted":
             check, _, finding = what.partition(": ")
             return f"the check {check} accepts the findings of {finding} (checks.{check}.accepted)"

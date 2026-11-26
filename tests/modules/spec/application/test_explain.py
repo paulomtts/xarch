@@ -95,6 +95,8 @@ SHAPE = (
     Shown('guards.no-callbacks', 1, 'no function of the parts calls a parameter annotated as a callable', False, True),
     Shown('guards.private-imports', 1, 'no name another file keeps private is imported from it', False, True),
     Shown('excluded', 0, 'folders below the app that are not its source', False, True),
+    Shown('structure', 0, 'what the layout accepts one by one', False, True),
+    Shown('structure.accepted', 1, 'the findings of the layout the profile accepts', False, True),
     Shown('hints', 0, 'your own advice for a rule', False, False),
     Shown('checks', 0, 'checks of your own, beside the keys', False, True),
     Shown('files', 0, 'the files `init` writes besides the docs', False, True),

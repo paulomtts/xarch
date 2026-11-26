@@ -32,7 +32,7 @@ COPY = Origin("mine.yaml", False, "base", OFF, OFF, (), "based_on", 1.0, False, 
                  CheckProfile(APP, "mine.yaml"),
                  ProfileChecked("mine.yaml", (
                      Problem("load", "mine.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, fakes, files, "
-                                     "guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers"),
+                                     "guards, hints, language, layers, name, never, parts, reserved, review, structure, testing, tiers"),
                      Problem("load", "mine.yaml: parts.core: missing `role`")), 0, None),
                  id="a profile that does not load has every problem reported at once"),
     pytest.param(dict(files={"mine.yaml": WITH_EXAMPLE}, texts=WITH_EXAMPLE_FILES, reads=WITH_EXAMPLE_READS),
@@ -85,7 +85,7 @@ def test_against_a_profile_with_several_problems_is_refused_with_all_of_them_on_
     spec, _ = spec_controller(files={"mine.yaml": MINE, "broken.yaml": broken})
     assert spec.check_profile(CheckProfile(APP, "mine.yaml", "broken.yaml")) == ProfileRefused(
         "--against does not load: broken.yaml: unknown key 'colour': use based_on, checks, docs, evals, excluded, "
-        "fakes, files, guards, hints, language, layers, name, never, parts, reserved, review, testing, tiers; "
+        "fakes, files, guards, hints, language, layers, name, never, parts, reserved, review, structure, testing, tiers; "
         "broken.yaml: parts.core: missing `role`")
 
 

@@ -12,7 +12,7 @@ from tests.modules.spec.application.origins import BASE, PARTS, TESTING, TIER, p
 from tests.modules.spec.profiles import covered, layered, parsed, part_of, two_folders
 from xarch.modules.spec.application.logic.looseness import LOOSER, LOW, origin_of
 from xarch.modules.spec.domain.guards import ORDER
-from xarch.modules.spec.domain.published import Loosened, Origin
+from xarch.modules.spec.domain.published import AcceptedPath, Loosened, Origin
 from xarch.modules.spec.domain.values import Architecture
 from xarch.profile_values.checks import AcceptedFinding, Quantified, Saying, Scope, WrittenCheck
 
@@ -204,6 +204,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (parsed(given(layered(), "api", optional=True)), parsed(layered())),
         (accepting(ENTRY), parsed(layered())),
         (checking(AcceptedFinding(("src", "x.py"), (), "w")), parsed(layered())),
+        (replace(parsed(layered()), structure_accepted=(AcceptedPath(("src", "x"), "w"),)), parsed(layered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -857,3 +858,13 @@ def test_each_finding_a_check_accepts_that_the_compared_profile_does_not_is_loos
         Loosened("checks.accepted", "", "no-print: tests/test_y.py",
                  "the check no-print accepts the findings of tests/test_y.py (checks.no-print.accepted)"),)
     assert loosened(checking(whole), checking(named, whole)) == ()
+
+
+def test_each_finding_of_the_layout_accepted_that_the_compared_profile_does_not_accept_is_looser():
+    def accepting_paths(*paths: str) -> Architecture:
+        return replace(parsed(layered()), structure_accepted=tuple(AcceptedPath(tuple(p.split("/")), "w") for p in paths))
+
+    assert loosened(accepting_paths("src/docs/api", "tests/old"), accepting_paths("tests/old")) == (
+        Loosened("structure.accepted", "", "src/docs/api",
+                 "the layout accepts the finding of src/docs/api (structure.accepted)"),)
+    assert loosened(accepting_paths("tests/old"), accepting_paths("tests/old", "src/docs/api")) == ()

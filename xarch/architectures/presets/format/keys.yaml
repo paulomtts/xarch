@@ -263,6 +263,28 @@ keys:
       guards:
         no-comments: {}
         no-duplicates: {min_statements: 6}
+  structure:
+    meaning: what the layout accepts one by one
+    accepts: a map {accepted}
+    example: |
+      <<part>>
+      structure:
+        accepted:
+          - {path: documents/legacy/, why: the legacy documents are retired with the old reader}
+  structure.accepted:
+    meaning: the findings of the layout the profile accepts
+    accepts: >-
+      a list of {path, why}: `path` the folder or file a `structure` finding says is missing, by its path below the app,
+      or `tests/<path>`, the folder below the tests that a `test-tree` finding says mirrors nothing; `why` one line, the
+      reason. Such a finding is not reported: every `xarch check` names it in its enforcement section, with its reason,
+      instead. An entry that accepts nothing (the folder or file is there, or the folder below the tests mirrors a
+      folder of the app) is itself a finding, so the list can only shrink. `profile check` lists each entry the
+      profile compared with does not hold as looser
+    example: |
+      <<part>>
+      structure:
+        accepted:
+          - {path: documents/legacy/, why: the legacy documents are retired with the old reader}
   excluded:
     meaning: folders below the app that are not its source
     accepts: >-

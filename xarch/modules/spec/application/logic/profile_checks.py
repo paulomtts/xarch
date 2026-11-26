@@ -22,6 +22,7 @@ from xarch.modules.spec.application.logic.outside_name import outside_name
 from xarch.modules.spec.application.logic.profile_listing import listing_in
 from xarch.modules.spec.application.logic.project_files import APP_PLACEHOLDER
 from xarch.modules.spec.domain.profile_keys import DECLARED, FILE, FIXTURE, LAYER, NAMING, PAGE, RULE_ID, TABLES
+from xarch.modules.spec.domain.published import AcceptedPath
 from xarch.modules.spec.domain.values import NAME, Doc, FileEntry, Language, Layout, Naming, Part, Tier
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import SPEC_FORMS
@@ -846,6 +847,36 @@ def text(value: Any) -> bool:
 
 def line(value: Any) -> bool:
     return text(value) and "\n" not in value
+
+
+def structure_accepted(value: Any, problems: list[str]) -> tuple[AcceptedPath, ...]:
+    """The findings of the layout the profile accepts (`structure: {accepted: [{path, why}, ...]}`), in the order
+    written: each a folder or file by its path below the app (tests/<path> below the tests root), and why, one line. An
+    entry refused adds its problem, addressed by its index, and is not read."""
+    if not isinstance(value, Mapping):
+        problems.append("structure: must be a map {accepted: [{path, why}, ...]}")
+        return ()
+    problems += unknown_keys(value, ("accepted",), "structure")
+    listed = value.get("accepted", [])
+    if not isinstance(listed, list) or not listed:
+        problems.append("structure.accepted: must be a list of {path, why}, such as [{path: <folder or file below the "
+                        "app, or tests/<path>>, why: <the reason>}]")
+        return ()
+    found: list[AcceptedPath] = []
+    for index, entry in enumerate(listed):
+        at = f"structure.accepted.{index}"
+        if not isinstance(entry, Mapping):
+            problems.append(f"{at}: must be a map {{path, why}}")
+            continue
+        count = len(problems)
+        problems += unknown_keys(entry, ("path", "why"), at)
+        problems += [f"{at}: missing `{key}`" for key in ("path", "why") if key not in entry]
+        steps = below_app(entry["path"], f"{at}.path", problems) if "path" in entry else None
+        if "why" in entry and not line(entry["why"]):
+            problems.append(f"{at}.why: must be one line of text: why the layout accepts it")
+        if len(problems) == count and steps is not None:
+            found.append(AcceptedPath(steps, entry["why"]))
+    return tuple(found)
 
 
 def below_app(value: Any, where: str, problems: list[str]) -> tuple[str, ...] | None:

@@ -244,6 +244,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     parts = {part: replace(item, entry=True) if part == entry else item for part, item in parts.items()}
     written = ck.init_files(_bare_from(document.get("files", {})), pages, files, problems, "docs.pages", language)
     excluded = ck.excluded_folders(document["excluded"], built.tree, problems) if "excluded" in document else ()
+    accepted = ck.structure_accepted(document["structure"], problems) if "structure" in document else ()
     own = (own_checks.checks(document["checks"], declared, tiers, language, problems, words=words)
            if "checks" in document else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
@@ -260,7 +261,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     framework = replace(testing.framework, beside=beside, shared=shared) if testing else None
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, framework, uses_never, excluded, hints, based_on, language,
-                        reserved, needs.approximate(shortfalls), own, never, mask, placement, own_evals, placed, alike)
+                        reserved, needs.approximate(shortfalls), own, never, mask, placement, own_evals, placed, alike,
+                        structure_accepted=accepted)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

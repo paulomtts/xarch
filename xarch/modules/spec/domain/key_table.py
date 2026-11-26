@@ -41,6 +41,7 @@ from xarch.modules.spec.domain.profile_keys import (
     READ_BY_REVIEW,
     REVIEW,
     SCENARIO_COVERAGE,
+    STRUCTURE,
     TABLES,
     TESTING,
     TIER,
@@ -71,6 +72,7 @@ _KEYS: tuple[Key, ...] = (
     Key(PROFILE, "fakes", rules=("stand-ins", "dead-code"), opens=FAKES),
     Key(PROFILE, "guards", opens=GUARD),
     Key(PROFILE, "excluded"),
+    Key(PROFILE, "structure", rules=("structure", "test-tree"), opens=STRUCTURE),
     Key(PROFILE, "hints", False, False),
     Key(PROFILE, "checks"),
     Key(PROFILE, "files", opens=FILE),
@@ -97,6 +99,8 @@ _KEYS: tuple[Key, ...] = (
     Key(PART_IMPORTS, "accepted", rules=("may-import",)),
 
     Key(PART_IMPORTS_MAY, "types_only", rules=("types-only",)),
+
+    Key(STRUCTURE, "accepted", rules=("structure", "test-tree")),
 
     Key(PART_USES, "never", rules=("never-use",)),
 

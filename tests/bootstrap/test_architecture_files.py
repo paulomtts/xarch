@@ -143,7 +143,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
     pytest.param('3', [MUST_BE_A_MAPPING], id='a number'),
     pytest.param('just a string', [MUST_BE_A_MAPPING], id='a string'),
     pytest.param('xarch: 2', ["unknown key 'xarch': use based_on, checks, docs, evals, excluded, fakes, files, guards, "
-                              "hints, language, layers, name, never, parts, reserved, review, testing, tiers",
+                              "hints, language, layers, name, never, parts, reserved, review, structure, testing, tiers",
                               'missing `name`', 'missing `parts`'], id='a version line is an unknown key'),
     pytest.param('name: [a]\nparts: [1]\nnever: x\nlayers: 3\ntiers: 4\nfakes: 5\nguards: 6\n'
                  'excluded: 7\nhints: 8\nfiles: 9\ndocs: 10\n',
@@ -238,7 +238,7 @@ def test_duplicate_keys_in_json_are_rejected(tmp_path):
                  id='a part still writing forbidden'),
     pytest.param('name: n\nparts: {a/: {role: r}}\nxarch2: 1\nrules: {a: []}\n',
                  ["unknown keys 'rules', 'xarch2': use based_on, checks, docs, evals, excluded, fakes, files, guards, hints, "
-                  "language, layers, name, never, parts, reserved, review, testing, tiers"],
+                  "language, layers, name, never, parts, reserved, review, structure, testing, tiers"],
                  id='two keys that are nowhere'),
     pytest.param('name: n\n  bad: indentation\n',
                  ['not valid YAML: line 2, column 6: mapping values are not allowed here'],

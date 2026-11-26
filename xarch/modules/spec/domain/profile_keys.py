@@ -33,6 +33,7 @@ MOCKS = "testing.mocks"
 MOCK_SPECS = "testing.mocks.specs"
 FIXTURE = "testing.fixture"
 FAKES = "fakes"
+STRUCTURE = "structure"
 GUARD = "guard"
 SCENARIO_COVERAGE = "guard.scenario-coverage"
 NO_DUPLICATES = "guard.no-duplicates"
@@ -72,6 +73,7 @@ SCOPES = {
     MOCK_SPECS: "testing.mocks.specs[]",
     FIXTURE: "testing.mocks.fixtures.<parameter>",
     FAKES: "fakes",
+    STRUCTURE: "structure",
     GUARD: "guards",
     SCENARIO_COVERAGE: "guards.scenario-coverage",
     NO_DUPLICATES: "guards.no-duplicates",
