@@ -29,6 +29,23 @@ All notable changes to this project are written here. The format follows
   fewer is one finding at line 0 of its first file; `{count}` says how many the group keeps. An unknown `per`, an
   unknown key or a map with no `count` is refused at its address, and `per` on a quantifier that does not count is
   refused. A count written as a number reads as before.
+- A name pattern writes `?` for any one character and `|` between alternatives, beside `*` for any text, everywhere a
+  pattern of names is written (an `imports.may` name pattern, `holds` names, the targets `name` and `text`, every
+  filter that takes a pattern, a framework's test files and `function` forms), by one implementation the README
+  documents once under "Name patterns": `*Row|*Row]|*Row,*` matches `UserRow` and `list[UserRow]` but not `RowId`,
+  which `*Row*` matches. A framework's test file names and `function` forms are matched by it too rather than by the
+  platform's file-name matching, so `[...]` there is no longer a set of characters. A pattern without `?` or `|`
+  matches as before.
+- A `call`, a `method-call` and a `construction` carry their `function`, the function of the top level or the method
+  of a class of the top level they sit in, however deep (empty at the top level of the file), supplied by the reader as
+  `call.function` (exact in Python); `{function}` says it, and an entry of `checks.<id>.accepted` that names
+  `function: <name>` accepts the calls of that function alone, so another site in the same file is still a finding.
+- The kind `import-to-definition` reads each import of the app as `import-into-app` does, but a name taken from a
+  package file that only passes it on (takes it by an import of its own, under its name or another) is followed to the
+  module that defines it, through each package file that passes it on, each once, so `must_not_reach` and
+  `must_reach` (`through: import-to-definition`) can say a name defined in a file rather than in its package; a name
+  the package file defines itself is read as before. The language's reader supplies the name an import binds each
+  name it takes to (`import.aliases`, exact in Python). `import-into-app`, and so the bundled profiles, read as before.
 - `counterparts: {<id>: {for, has, when, accepted, message, fix}}` says what lies with what, path by path: each match
   of `for` (a folder ending in `/`, else a file, below the app or `tests/<path>` below the tests), where every path of
   `when` matches too, with no match of `has` is a new `counterpart` finding at it. `<word>` binds the text of a step or
@@ -207,6 +224,18 @@ All notable changes to this project are written here. The format follows
   alone and the reversed one, in one more request, only when the first answer reads within 0.15 of the eval's line,
   as placement does; each answer is kept under the key it had, and a dry run names the orders each request carries
   (JSON `requests[].questions`).
+- The README and `xarch profile explain quantifiers.at_most` say what a finding of `at_most` names: the fact after the
+  n-th, by its own variables, which is what an entry of `checks.<id>.accepted` names too (an entry naming a fact
+  within the limit accepts nothing), and that `{count}` is how many the file keeps, the same on each of its findings;
+  a test accepts the reported fact by name.
+- `import-into-app` carries `type-only` (the fact `import.type_only`), so `keep: [not type-only]` and
+  `must_not_reach.through_only: [not type-only]` (or `must_reach`'s) are no longer refused on it: a check can skip the
+  imports of the app made only for the type checker, and a closure can follow only those made when the code runs. The
+  bundled profiles find what they found before.
+- `keep: [interface]` and `keep: [immutable]` now hold in the examples `xarch profile check` runs: an example is read
+  with the language's marks of an interface and of an immutable record, as `check` reads the project, so a flagged
+  example declaring a `Protocol` (or a frozen dataclass) is found instead of being told the check finds nothing in it.
+  The same holds of the files `xarch review` hands the checks to read (an eval's examples and the files it asks of).
 - `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
   `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
   there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.

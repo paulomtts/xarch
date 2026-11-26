@@ -439,6 +439,18 @@ or one no bundled profile resembles, else `{"profile", "chosen_by", "match", "lo
 two decimals (`0.8`), `counts` `{"parts",
 "part_keys", "tiers", "guards", "profile"}` each `[comparable, all]`, and `higher` `null` or `{"profile", "match"}`.
 
+### Name patterns
+
+Every pattern of names is written the same way: the name pattern of an `imports.may` target (`parts.store:*Id`), the
+names `holds` gives a kind, the targets `name` and `text`, the filters that take a pattern (`named`, `extends`,
+`has-parameter`, `returns-annotated`, `passes`, ...), the test files a framework names and its `function` forms. A
+pattern matches a name as a whole: `*` stands for any text (none too), `?` for any one character, and `|` parts
+alternatives, any one of which may match; every other character stands for itself (a `|` of the name is matched by
+`?`). So `*Row` matches `UserRow` but not `RowId`, where `*Row*` matches both (and `CredentialRowsPage`);
+`*Row|*Row]|*Row,*` matches a type that ends in `Row` alone or inside a generic (`list[UserRow]`, `dict[UserRow,
+int]`), and `actor|scope|org_id` any of three names. A pattern written as a filter's value is one word, with no space.
+Paths are written apart: a counterpart's path, `review.never` and `review.mask` say their own.
+
 ### Checks of your own
 
 Every check xarch runs from a key (all but `cycles`, `structure`, `test-tree`, `counterpart`, `stand-ins`, `scenario-coverage`,
@@ -450,8 +462,10 @@ file must reach a target (`must_reach`) or a fact be reached from some files (`m
 once for each value of its variables; `per_line` says the findings of one line that differ only in its variables as
 one, each written as its values joined by `, `). An import made only for the type checker, never when the code
 runs, carries the field `type-only` (the fact `import.type_only`; Python's reader sets it on each import in the body of
-an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import` or
-`imported-name` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`). A class carries its
+an `if TYPE_CHECKING:` or `if typing.TYPE_CHECKING:`, not its `else`), so a check that reads `import`,
+`imported-name` or `import-into-app` may keep only those (`keep: [type-only]`) or skip them (`keep: [not type-only]`),
+and a closure may follow only the imports made when the code runs (`must_not_reach: {targets: ..., through:
+import-into-app, through_only: [not type-only]}`). A class carries its
 `bases` (the fact `class.bases`): each base it names, read through the import that binds it (an alias by the name it
 was imported as) or as a class of its own file, then the bases of each class the project defines, in the app or in
 the tests, however far; the filter `extends: <pattern>` holds of a class one of those matches by its name, so
@@ -460,20 +474,25 @@ between, and `except: [{extends: "*Port"}]` excuses a fake that derives from a p
 that only re-exports it is followed no further than its name. Two quantifiers count instead of matching targets,
 in each file of the scope alone: `at_most: <n>` makes each kept fact of a file after the n-th a finding, at its own
 line (`read: class`, `keep: [{named: "*Port"}]`, `at_most: 1`: one port per file), and `at_least: <n>` makes a file
-that keeps fewer a finding, at line 0; `{count}` says how many the file keeps. Written as a map, `{count: <n>, per:
-file | part | instance | all}`, either counts the files of the scope together: `file` each alone (the default),
-`part` the files of each part (a test those of the parts its folder mirrors), `instance` the files of each instance
-of a repeating folder (a file in no instance with the files of its part in none; a file in no part alone), `all`
-every file of the scope. Under `at_most` each kept fact of a group after the n-th, in the order of the files and then
-of the facts, is a finding at its own line in its own file; under `at_least` a group that keeps fewer is one finding,
-at line 0 of the group's first file; `{count}` says how many the group keeps (`at_most: {count: 1, per: instance}`:
-one composition root in each module). `unique: <field>` makes a kept fact whose field (`name`, `path` or `text`)
-a kept fact before it has a finding, at its own line, every file of the scope compared together; written as a map,
-`{field: <field>, per: file | part | instance | all}`, it compares the files of each group as the counts group them
-(`all` the default), in the order of the files and then of the facts, and `{first}` says where the first of the two
-is, as `<file>:<line>`: `read: class`, `in: {part: domain}`, `unique: {field: name, per: instance}` finds each class
-of a module's domain named as one before it in the same module, and `unique: name` each class named as one anywhere
-in the app. Its findings are accepted under `accepted` as any other (`{file, name, why}`). The kind `file` carries `lines` (the fact `file.lines`), which the filter
+that keeps fewer a finding, at line 0; `{count}` says how many the file keeps, the same on each finding of the file,
+so with three ports and `at_most: 1` the second and the third are each a finding that says 3. A finding of `at_most`
+is the fact after the n-th, said by its own variables, and so is what an entry of `accepted` names: with `at_most: 1`
+and `StorePort` before `CachePort`, the entry that accepts the finding is `{file: store/ports.py, name: CachePort,
+why: ...}`, and one that names `StorePort`, which is within the limit, accepts nothing. Written as a map, `{count:
+<n>, per: file | part | instance | all}`, either counts the files of the scope together: `file` each alone (the
+default), `part` the files of each part (a test those of the parts its folder mirrors), `instance` the files of each
+instance of a repeating folder (a file in no instance with the files of its part in none; a file in no part alone),
+`all` every file of the scope. Under `at_most` each kept fact of a group after the n-th, in the order of the files and
+then of the facts, is a finding at its own line in its own file; under `at_least` a group that keeps fewer is one
+finding, at line 0 of the group's first file; `{count}` says how many the group keeps (`at_most: {count: 1, per:
+instance}`: one composition root in each module). `unique: <field>` makes a kept fact whose field (`name`, `path` or
+`text`) a kept fact before it has a finding, at its own line, every file of the scope compared together; written as a
+map, `{field: <field>, per: file | part | instance | all}`, it compares the files of each group as the counts group
+them (`all` the default), in the order of the files and then of the facts, and `{first}` says where the first of the
+two is, as `<file>:<line>`: `read: class`, `in: {part: domain}`, `unique: {field: name, per: instance}` finds each
+class of a module's domain named as one before it in the same module, and `unique: name` each class named as one
+anywhere in the app. Its findings are accepted under `accepted` as any other (`{file, name, why}`). The kind `file`
+carries `lines` (the fact `file.lines`), which the filter
 `longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
 each file over 700 lines. `must_not_reach` is the negation of `must_reach`, written the same way (`targets`, `through`,
 `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the files its links
@@ -481,7 +500,17 @@ lead to however far, is a finding at the line of its first step, and `{chain}` s
 to as a dotted name, then what matched (`app.store -> app.store.sql -> sqlalchemy`), the shortest found. An import of
 a name from a package file reaches that package file (`import-into-app` follows a name to its own file only when the
 name is a file), and the way then goes on through every file the package file imports, so a name the package only
-re-exports is followed, and so is anything else the package file imports. The kind `function` (a method too) carries
+re-exports is followed, and so is anything else the package file imports. The kind `import-to-definition` reads each
+import as `import-into-app` does, but follows a name to the file that defines it: a name taken from a package file
+that takes it by an import of its own (`from .sql import Repo`, or `from .names import Title as Name`, the fact
+`import.aliases`) is followed to that module, and on through each package file that passes it on in turn, each
+followed once (two package files that pass a name to each other stop where the way comes back); it ends at the file
+the name then is, or at the module that defines it. A name the package file defines itself, an import of every name
+(`*`), and any other import are read as `import-into-app` reads them, and a module that is no package file is never
+followed. So `read: import`, `must_not_reach: {targets: [{package: [sqlalchemy]}], through: import-to-definition}`
+finds `from app.store import Repo` by `app.store.sql -> sqlalchemy` when the package only passes `Repo` on, and a
+file that takes another name from the same package reaches nothing through `sql.py`; the may-import rules read
+`import-into-app`, so a package file that is a part's way in keeps standing for its folder there. The kind `function` (a method too) carries
 its `parameters`, in the order its signature declares them, each with its name, its annotation as written and whether
 it has a default, and its `returns`, the return annotation as written (the facts `function.parameters` and
 `function.return_annotation`; an annotation is empty where the code writes none, or in a language that writes none,
@@ -501,8 +530,12 @@ written, up to the first argument the call unpacks (`*rest`), after which no pla
 `<pattern>=<text>` matches the value's text too: `read: method-call`, `keep: [{passes-positional: "0=50"}]` finds
 each `q.limit(50)`, and `passes-positional: "*"` any call passing a positional literal. A `call`
 carries its `name` too, the last name of its callee, so `named` and the target `name` apply to it (`keep: [{named:
-"get_*"}]`). A check carries `examples`: code it
-must find something in and code it must find nothing in, which `xarch profile check` runs.
+"get_*"}]`). A `call`, a `method-call` and a `construction` carry their `function` (the fact `call.function`): the
+name of the function of the top level, or of the method of a class of the top level, the call sits in, however deep
+(a call in a function nested in `claim` is in `claim`), empty at the top level of the file; `{function}` says it. A check carries `examples`: code it
+must find something in and code it must find nothing in, which `xarch profile check` runs, each example read as
+`check` reads a file of the app, with the language's marks of an interface and of an immutable record (so `keep:
+[interface]` and `keep: [immutable]` hold there as they do in the project).
 
 ```yaml
 checks:
@@ -527,7 +560,9 @@ A check may accept findings one by one, each with a reason, under `accepted`: a 
 file by its path below the app (`tests/<path>` for one below the tests root) and, if need be, the finding by the value
 its check prints for one or more variables (`name: InvoiceClock`). An entry that names no variable accepts every
 finding of the check in that file, the grain of an allowlist of files; one may not name a finding by its `line`,
-which moves with every edit above it. A finding an entry accepts is not reported, and the enforcement section names it
+which moves with every edit above it, but may name a call by the `function` it sits in (`{file: store/jobs.py,
+function: fail_expired, why: ...}` accepts the calls in `fail_expired` alone, so a third one elsewhere in the file is
+still a finding). A finding an entry accepts is not reported, and the enforcement section names it
 under `accepted:` instead; an entry that accepts nothing is itself a finding of the check, at its file, so the list,
 a ratchet, can only shrink. A finding said once for several facts (`once_per`, `per_line`) stands for each of them:
 an entry accepts it when it names any one of those facts, so `name: dump` accepts the finding of a line that

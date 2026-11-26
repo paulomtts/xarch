@@ -30,8 +30,8 @@ def explain(given: FakeProfiles):
 
 
 APPLIES = ("syntax-error", "file", "names-mentioned", "import", "imported-name", "use", "method-call", "call",
-           "construction", "function-reference", "import-into-app", "import-into-tests", "comment", "class", "function",
-           "callback")
+           "construction", "function-reference", "import-into-app", "import-to-definition", "import-into-tests", "comment",
+           "class", "function", "callback")
 """Every kind of fact, which a quantifier applies to."""
 WORKED = ("no-todo: reads comment\nno-todo.flagged: documents/notes: ' TODO: split this file\\n'\n"
           "no-todo.clean: documents/notes: ' split by kind\\n'\n")
@@ -91,8 +91,9 @@ def test_a_word_no_rule_of_the_profiles_uses_has_a_check_written_for_the_explana
 
 def test_a_kind_is_explained_with_its_fields_what_it_needs_of_the_language_and_its_verb():
     found = explain(FakeProfiles({}))(ExplainWords("kinds.method-call"))
-    assert [f.name for f in found.fields] == ["line", "method", "name", "on-own-object", "arguments", "positional"]
-    assert (found.needs, found.verb) == (("method_call", "call.keywords", "call.positional"), "call")
+    assert [f.name for f in found.fields] == ["line", "method", "name", "on-own-object", "arguments", "positional",
+                                              "function"]
+    assert (found.needs, found.verb) == (("method_call", "call.keywords", "call.positional", "call.function"), "call")
 
 
 def test_how_a_check_is_written_lists_every_slot_and_every_category_with_its_words():

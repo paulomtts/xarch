@@ -543,8 +543,10 @@ class Fact(NamedTuple):
     it reaches, each step as it is said, and for a function its parameters (name, annotation as written, whether it
     has a default) and its return annotation as written, and for a call the keyword arguments it passes, each with its
     value as written when that is a literal, and the positional arguments it passes that are literals, each by its
-    place from 0 with its value as written. A run holds a fact for every import, name read and call of every file,
-    so a fact is a named tuple, which is made several times faster than a frozen dataclass and is as immutable."""
+    place from 0 with its value as written, and the function it is in (for a call, the function or method of the top
+    level it sits in, "" at the top level; for a callback, the function whose parameter it calls). A run holds a fact
+    for every import, name read and call of every file, so a fact is a named tuple, which is made several times
+    faster than a frozen dataclass and is as immutable."""
     kind: str
     line: int
     path: tuple[str, ...] = ()
@@ -562,6 +564,7 @@ class Fact(NamedTuple):
     returns: str = ""
     arguments: tuple[tuple[str, str], ...] = ()
     literals: tuple[tuple[int, str], ...] = ()
+    function: str = ""
 
 
 @dataclass(frozen=True)
@@ -613,13 +616,16 @@ class Defined:
     name); its classes that are records, by their dotted path (the root first); and the bases of every class the
     project defines at the top level of a file, of the app or of the tests, by its dotted path (its side's root first),
     each base as a dotted path: through the import that binds it, a class of its own file below that root, else its
-    name alone."""
+    name alone; and the names each package file of the app, by its steps below the root, takes by an import of the
+    app and so passes on, each by the name it binds, with the module below the root it takes it from and the name it
+    takes there."""
     root: str
     classes: dict[tuple[str, ...], Place | None]
     functions: dict[tuple[str, ...], frozenset[str]]
     exceptions: frozenset[tuple[tuple[str, ...], str]] = frozenset()
     records: frozenset[tuple[str, ...]] = frozenset()
     bases: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = field(default_factory=dict)
+    passed: dict[tuple[str, ...], dict[str, tuple[tuple[str, ...], str]]] = field(default_factory=dict)
 
 
 class Found(NamedTuple):

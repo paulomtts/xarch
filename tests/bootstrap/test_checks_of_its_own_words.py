@@ -94,6 +94,22 @@ def test_at_most_finds_each_kept_fact_of_a_file_beyond_the_number_at_its_own_lin
         ("app/store/ports.py", 5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
 
 
+def test_at_most_names_the_fact_after_the_limit_and_an_accepted_entry_names_that_fact(tmp_path):
+    """StorePort is within the limit: CachePort, the fact after it, is the finding, and so what an entry names; each
+    finding of the file says the same count, how many the file keeps. An entry naming StorePort accepts nothing."""
+    accepted = {**ONE_PORT, "accepted": [{"file": "store/ports.py", "name": "CachePort", "why": "a cache beside it"}]}
+    assert found(tmp_path, {"one-port-per-file": accepted}, {"store/ports.py": PORTS}) == [
+        ("app/store/ports.py", 5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
+    within = {**ONE_PORT, "accepted": [{"file": "store/ports.py", "name": "StorePort", "why": "the first"}]}
+    project(tmp_path, {"one-port-per-file": within}, {"store/ports.py": PORTS})
+    document = json.loads(runner.invoke(app, ["check", "--format", "json"]).output)
+    assert [(v["line"], v["message"]) for v in document["violations"] if v["rule"] == "one-port-per-file"] == [
+        (None, "checks.one-port-per-file.accepted accepts a finding of store/ports.py with name StorePort, and the check "
+            "finds none (checks.one-port-per-file.accepted)"),
+        (4, "app/store/ports.py declares 3 interfaces, and CachePort at line 4 is one too many"),
+        (5, "app/store/ports.py declares 3 interfaces, and LockPort at line 5 is one too many")]
+
+
 SOME_PORT = {
     "read": "class", "in": {"part": "store"}, "keep": [{"named": "*Port"}], "at_least": 1,
     "message": "{file} declares {count} interfaces, and needs one", "fix": "declare its port, or move the file",
@@ -338,3 +354,127 @@ def test_chain_is_said_only_by_a_check_under_must_not_reach(tmp_path):
     assert checked.exit_code == 1
     assert ("checks.x.message: {chain} is the chain of links a file reaches a target by, which only a check under "
             "must_not_reach follows") in checked.output
+
+
+PORT_IN_UI = {
+    "read": "class", "in": {"part": "ui"}, "keep": ["interface"], "may_not": "exist",
+    "message": "{name} at line {line} is an interface in {where}", "fix": "move {name} to store/",
+    "examples": {"flagged": {"ui/ports.py": "from typing import Protocol\n\nclass ScreenPort(Protocol): ...\n"},
+                 "clean": {"ui/ports.py": "class ScreenPort: ...\n"}}}
+FROZEN_IN_UI = {
+    "read": "class", "in": {"part": "ui"}, "keep": ["immutable"], "may_not": "exist",
+    "message": "{name} at line {line} is an immutable record in {where}", "fix": "move {name} to store/",
+    "examples": {"flagged": {"ui/rows.py": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Row:\n"
+                                          "    a: int\n"},
+                 "clean": {"ui/rows.py": "from dataclasses import dataclass\n\n@dataclass\nclass Row:\n    a: int\n"}}}
+
+
+@pytest.mark.parametrize("check, line", [pytest.param(PORT_IN_UI, 3, id="interface"),
+                                         pytest.param(FROZEN_IN_UI, 4, id="immutable")])
+def test_the_examples_of_a_check_are_read_with_the_language_s_marks_of_an_interface_and_an_immutable_record(
+        tmp_path, check, line):
+    """profile check reads its flagged example's class as an interface (or a record) as check reads the project's."""
+    assert [at for _, at, _ in found(tmp_path, {"x": check}, check["examples"]["flagged"])] == [line]
+
+
+FOR_THE_CHECKER = "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app.ui.page import Page\n"
+WHEN_IT_RUNS = "from app.ui.page import Page\n"
+STORE_BLIND = {
+    "read": "import-into-app", "in": {"part": "store"}, "keep": ["not type-only"], "may_not": {"part": ["ui"]},
+    "message": "{file} imports the ui at line {line} when its code runs", "fix": "import it only for the type checker",
+    "examples": {"flagged": {"store/x.py": WHEN_IT_RUNS, "ui/page.py": "class Page: ...\n"},
+                 "clean": {"store/x.py": FOR_THE_CHECKER, "ui/page.py": "class Page: ...\n"}}}
+STORE_NEVER_SQL = {
+    "read": "import", "in": {"part": "store"}, "must_not_reach": {
+        "targets": [{"package": ["sqlalchemy"]}], "through": "import-into-app", "through_only": ["not type-only"]},
+    "message": "{file} reaches sqlalchemy at line {line}: {chain}", "fix": "take what it needs through a port",
+    "examples": {"flagged": {"store/x.py": WHEN_IT_RUNS, "ui/page.py": "import sqlalchemy\n\nclass Page: ...\n"},
+                 "clean": {"store/x.py": FOR_THE_CHECKER, "ui/page.py": "import sqlalchemy\n\nclass Page: ...\n"}}}
+
+
+def test_an_import_into_the_app_carries_whether_it_is_made_only_for_the_type_checker(tmp_path):
+    """Kept, and as a link of a closure, an import under TYPE_CHECKING is skipped by `not type-only`."""
+    files = {"store/a.py": WHEN_IT_RUNS, "store/b.py": FOR_THE_CHECKER, "ui/page.py": "import sqlalchemy\n\nclass Page: ...\n"}
+    assert found(tmp_path, {"store-blind": STORE_BLIND, "store-never-sql": STORE_NEVER_SQL}, files) == [
+        ("app/store/a.py", 1, "app/store/a.py imports the ui at line 1 when its code runs"),
+        ("app/store/a.py", 1, "app/store/a.py reaches sqlalchemy at line 1: app.ui.page -> sqlalchemy")]
+
+
+STORE_PACKAGE = ("from app.store.sql import Repo\nfrom .names import Title as Name\nfrom .inner import Deep\n"
+                 "Local = 1\n")
+NEVER_SQL_BY_DEFINITION = {
+    "read": "import", "in": {"part": "ui"}, "must_not_reach": {
+        "targets": [{"package": ["sqlalchemy"]}], "through": "import-to-definition"},
+    "message": "{file} reaches sqlalchemy at line {line}: {chain}", "fix": "take what it needs through a port",
+    "examples": {"flagged": {"ui/page.py": "from app.store import Repo\n", "store/__init__.py": STORE_PACKAGE,
+                             "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n"},
+                 "clean": {"ui/page.py": "from app.store import Name\n", "store/__init__.py": STORE_PACKAGE,
+                           "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n",
+                           "store/names.py": "class Title: ...\n"}}}
+
+
+def test_import_to_definition_follows_a_name_a_package_file_passes_on_to_the_file_that_defines_it(tmp_path):
+    """Repo is taken from the package, which takes it from sql.py: the chain skips the package. Name is Title, passed
+    on under another name from names.py, which reaches no sqlalchemy; Deep is passed on by two package files; Local is
+    the package's own, so the package is reached as before, and every file it imports with it."""
+    files = {"ui/page.py": "from app.store import Repo\n", "ui/plain.py": "from app.store import Name\n",
+             "ui/deep.py": "from app.store import Deep\n", "ui/own.py": "from app.store import Local\n",
+             "store/__init__.py": STORE_PACKAGE, "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n",
+             "store/names.py": "class Title: ...\n", "store/inner/__init__.py": "from .deep import Deep\n",
+             "store/inner/deep.py": "class Deep: ...\n"}
+    assert found(tmp_path, {"ui-never-sql": NEVER_SQL_BY_DEFINITION}, files) == [
+        ("app/ui/own.py", 1, "app/ui/own.py reaches sqlalchemy at line 1: app.store -> app.store.sql -> sqlalchemy"),
+        ("app/ui/page.py", 1, "app/ui/page.py reaches sqlalchemy at line 1: app.store.sql -> sqlalchemy")]
+
+
+def test_import_to_definition_stops_where_package_files_pass_a_name_on_to_each_other(tmp_path):
+    files = {"ui/page.py": "from app.store import Repo\n", "store/__init__.py": "from app.ui import Repo\n",
+             "ui/__init__.py": "from app.store import Repo\nimport sqlalchemy\n"}
+    assert [line for _, line, _ in found(tmp_path, {"ui-never-sql": NEVER_SQL_BY_DEFINITION}, files)] == [2, 1]
+
+
+CLAIMING = ("from app.ui.drawer import EditDrawer\n\n"
+            "def fail_expired(q):\n    q.with_for_update()\n    EditDrawer()\n\n"
+            "class Jobs:\n    def claim(self, q):\n        def inner():\n            q.with_for_update()\n"
+            "        return inner\n\n"
+            "q.with_for_update()\n")
+ONE_CLAIM = {
+    "read": "method-call", "in": {"part": "store"}, "keep": [{"named": "with_for_update"}],
+    "may_not": "exist", "message": "{file} claims rows at line {line}, in '{function}'",
+    "fix": "claim them through the shared claim",
+    "examples": {"flagged": {"store/x.py": "def f(q):\n    q.with_for_update()\n"},
+                 "clean": {"store/x.py": "def f(q):\n    q.all()\n"}}}
+DRAWN = {
+    "read": "call", "in": {"part": "store"}, "may_not": {"path": ["app.ui.drawer.EditDrawer"]},
+    "message": "{path} at line {line}, in '{function}'", "fix": "leave the drawer to the ui",
+    "examples": {"flagged": {"store/x.py": "from app.ui.drawer import EditDrawer\n\nEditDrawer()\n"},
+                 "clean": {"store/x.py": "from app.ui.drawer import Other\n\nOther()\n"}}}
+
+
+def test_a_call_carries_the_function_or_method_of_the_top_level_it_sits_in(tmp_path):
+    """A call in a function nested in a method is the method's; one at the top level of the file is in none."""
+    assert found(tmp_path, {"one-claim": ONE_CLAIM, "drawn": DRAWN}, {"store/x.py": CLAIMING}) == [
+        ("app/store/x.py", 4, "app/store/x.py claims rows at line 4, in 'fail_expired'"),
+        ("app/store/x.py", 5, "app.ui.drawer.EditDrawer at line 5, in 'fail_expired'"),
+        ("app/store/x.py", 10, "app/store/x.py claims rows at line 10, in 'claim'"),
+        ("app/store/x.py", 13, "app/store/x.py claims rows at line 13, in ''")]
+
+
+def test_an_accepted_entry_that_names_a_function_accepts_the_calls_in_that_function_alone(tmp_path):
+    accepted = {**ONE_CLAIM, "accepted": [{"file": "store/x.py", "function": "fail_expired",
+                                           "why": "it claims what expired, once"}]}
+    assert [line for _, line, _ in found(tmp_path, {"one-claim": accepted}, {"store/x.py": CLAIMING})] == [10, 13]
+
+
+ROWS_OUT = {
+    "read": "function", "in": {"part": "store"}, "keep": [{"returns-annotated": "*Row|*Row]|*Row,*"}],
+    "may_not": "exist", "message": "{name} returns {returns} at line {line}", "fix": "return a value of the domain",
+    "examples": {"flagged": {"store/x.py": "def load() -> list[UserRow]: ...\n"},
+                 "clean": {"store/x.py": "def load() -> RowId: ...\n"}}}
+
+
+def test_a_pattern_may_write_alternatives_so_a_type_ending_in_a_word_is_told_from_one_holding_it(tmp_path):
+    """`*Row*` would match RowId and CredentialRowsPage too; the alternatives match only a type that ends in Row."""
+    files = {"store/x.py": ("def a() -> UserRow: ...\ndef b() -> list[UserRow]: ...\ndef c() -> dict[UserRow, int]: ...\n"
+                            "def d() -> RowId: ...\ndef e() -> CredentialRowsPage: ...\n")}
+    assert [line for _, line, _ in found(tmp_path, {"rows-out": ROWS_OUT}, files)] == [1, 2, 3]

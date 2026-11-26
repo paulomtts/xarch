@@ -147,7 +147,7 @@ anything else holds no table, and no later `for` is tried.
 Any other form reads no table, and the next form of the list is still tried.
 
 A file read for tests holds a test for each of its functions, a method too, whose name matches the pattern of a
-function form of the framework's `testing.declared`, as fnmatch matches a name: it is a test of the first such form,
+function form of the framework's `testing.declared`, as a name pattern matches a name: it is a test of the first such form,
 tagged with that form's index, untitled, its name the function's and its body that very function, in the order of the
 functions. A call form declares no test this reader reads: Python's reader does not supply `test.call`. A file read
 with no form holds no test. A call holds no type arguments this reader reads: Python's reader does not supply
@@ -172,10 +172,10 @@ import tokenize
 import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from fnmatch import fnmatchcase
 from pathlib import Path
 
 from xarch.kernel.logic.names import is_private_name
+from xarch.kernel.logic.placement import name_matches
 from xarch.kernel.source import Import, Unparsable
 from xarch.modules.rules.domain.parsed import (
     Call,
@@ -299,8 +299,9 @@ class FsSourceTree:
     def text(self, path: Path) -> str | None:
         return self._fs.read_text(path) if self._fs.is_file(path) else None
 
-    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
-        return _parsed("", (), text, (), (), (), standard, private, special)
+    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str,
+               immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> SourceFile:
+        return _parsed("", (), text, (), immutable, interface, standard, private, special)
 
     def resolved(self, folder: Path, path: Path) -> Path:
         return self._fs.real(folder / path)
@@ -381,7 +382,7 @@ def _tests(functions: tuple[Function, ...], declared: tuple[TestForm, ...]) -> t
     found: list[Test] = []
     for function in functions:
         form = next((index for index, held in enumerate(declared)
-                     if held.function and fnmatchcase(function.name, held.function)), None)
+                     if held.function and name_matches(held.function, function.name)), None)
         if form is not None:
             found.append(Test(function.line, function.name, form, False, function))
     return tuple(found)
@@ -461,7 +462,8 @@ def _imports(tree: ast.AST, standard: frozenset[str], private: str, where: _Wher
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
                                 _last(node), _from(node, where) is None,
                                 frozenset(a.name for a in node.names if is_private_name(a.name, private)),
-                                id(node) in typing))
+                                id(node) in typing,
+                                tuple((a.name, a.asname) for a in node.names if a.asname and a.asname != a.name)))
     return found
 
 
@@ -1083,6 +1085,7 @@ class _Calls(ast.NodeVisitor):
         self.callbacks: list[Callback] = []
         self.method_calls: list[MethodCall] = []
         self._subjects: dict[int, tuple[str, ...]] = {}
+        self._function = ""
 
     def visit_Module(self, node: ast.Module) -> None:
         self._within(node, node.body, is_class=False)
@@ -1105,7 +1108,10 @@ class _Calls(ast.NodeVisitor):
         receiver = positional[0].arg if method and positional else ""
         callables = frozenset(x.arg for x in [*positional, *a.kwonlyargs]
                               if x.annotation is not None and self._is_callable(x.annotation))
+        outer = self._function
+        self._function = outer or node.name
         self._within(node, node.body, is_class=False, owner=(node.name, receiver, callables))
+        self._function = outer
 
     visit_AsyncFunctionDef = visit_FunctionDef
 
@@ -1154,14 +1160,15 @@ class _Calls(ast.NodeVisitor):
         literals = _positional_literals(node.args)
         if func is None and isinstance(node.func, ast.Attribute):
             self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed,
-                                                literals))
+                                                literals, self._function))
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
                              if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
-                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed, literals=literals))
+                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed, literals=literals,
+                                       function=self._function))
             else:
                 assert isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name)
                 self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,

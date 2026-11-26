@@ -28,11 +28,13 @@ FILE, FACT, TARGET = "file", "fact", "target"
 
 FOLDER, PATTERN, KIND, KEY, NUMBER = "folder", "pattern", "kind", "key", "whole number"
 """What a filter's value is, for a filter that takes one: a folder below the root of the file (a/b), a name pattern
-with `*` for any text, the name of a kind of fact, a key of a part, or a whole number."""
+(`*` any text, `?` any one character, `|` between alternatives), the name of a kind of fact, a key of a part, or a
+whole number."""
 
 NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "patterns", "parts", "places"
-"""What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns with
-`*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
+"""What the values of a kind of target are: dotted names (or `.<method>()`), top-level names of packages, patterns (`*`
+any text, `?` any one character, `|` between alternatives), names of parts, or places written as an entry of
+`imports.may` writes a target."""
 
 HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED, CHAINED = "hit", "key", "scope part", "values", "counted", "chained"
 FIRST_SITE = "first site"
@@ -170,7 +172,8 @@ FIELDS: dict[str, str] = {
     "reaches": "the file or package of the app or of the tests it leads to",
     "place": "where what it leads to sits: a part, or a folder of the layout",
     "bound": "how many steps of its path the import that binds it names",
-    "function": "the function it is in",
+    "function": "the function it is in: for a call, the function or method of the top level it sits in, empty at the "
+                "top level of the file",
     "forwarded": "the callee a method forwards to",
     "returned": "the attributes it returns of the call's result",
     "relative": "whether an import is named from the importing file's own folder",
@@ -226,18 +229,20 @@ KINDS: tuple[Kind, ...] = (
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
          ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
-         ("line", "method", "name", "on-own-object", "arguments", "positional"), needs=("method_call",),
-         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",)}, verb="call"),
+         ("line", "method", "name", "on-own-object", "arguments", "positional", "function"), needs=("method_call",),
+         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",),
+                      "function": ("call.function",)}, verb="call"),
     Kind("call", "each call whose callee an import binds, as that dotted path, its name the callee's last",
-         ("line", "path", "name", "arguments", "positional"),
+         ("line", "path", "name", "arguments", "positional", "function"),
          {"place": "target-placed"}, needs=("call", "import.resolved"),
-         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",)}, verb="call"),
+         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",),
+                      "function": ("call.function",)}, verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
                          "that binds it",
-         ("line", "path", "name", "place", "exception", "record", "arguments", "positional"),
+         ("line", "path", "name", "place", "exception", "record", "arguments", "positional", "function"),
          needs=("call", "class", "import.resolved"),
          field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",), "arguments": ("call.keywords",),
-                      "positional": ("call.positional",)},
+                      "positional": ("call.positional",), "function": ("call.function",)},
          verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
@@ -246,7 +251,14 @@ KINDS: tuple[Kind, ...] = (
     Kind("import-into-app", "each import of a file or package of the app, as the file or package it reaches (an "
                             "import that takes a name from a file or package reaches the name's own file when it is "
                             "one, else the file or package it takes the name from)",
-         ("line", "reaches"), {"name": "takes-a-name", "place": "target-placed"}, needs=("import", "import.relative"),
+         ("line", "reaches", "type-only"), {"name": "takes-a-name", "place": "target-placed"},
+         needs=("import", "import.relative"), field_needs={"type-only": ("import.type_only",)}, verb="import"),
+    Kind("import-to-definition", "each import of a file or package of the app, as import-into-app reads it, but for a "
+                                 "name a package file only passes on (it takes the name by an import of its own, under "
+                                 "that name or another), the file that defines the name, followed through every "
+                                 "package file that passes it on, each once",
+         ("line", "reaches", "type-only"), {"name": "takes-a-name", "place": "target-placed"},
+         needs=("import", "import.relative", "import.aliases"), field_needs={"type-only": ("import.type_only",)},
          verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",
          ("line", "reaches"), side=TESTS_SIDE, needs=("import", "import.relative"), verb="import"),
@@ -304,15 +316,15 @@ FILTERS: tuple[Filter, ...] = (
     Filter("public", "the name the fact carries is public: the language's reader says it is for other files to use",
            FACT, ("public",)),
     Filter("special", "the name the fact carries is one the language reserves for itself", FACT, ("name",)),
-    Filter("named", "the name the fact carries matches the pattern, `*` standing for any text", FACT, ("name",),
-           value=PATTERN),
+    Filter("named", "the name the fact carries matches the pattern, `*` standing for any text, `?` for any one "
+                    "character, `|` between alternatives", FACT, ("name",), value=PATTERN),
     Filter("fake-named", "the name the fact carries is a fake's: one of the starts `fakes.prefix` gives, followed by "
                          "more", FACT, ("name",)),
     Filter("top-level", "the function is defined at the top level of its file, in no class", FACT, ("top-level",)),
     Filter("forwards", "the method only passes its arguments on to one call on what its object holds", FACT,
            ("forwards",)),
-    Filter("has-parameter", "the function has a parameter whose name matches the pattern, `*` standing for any text",
-           FACT, ("parameters",), value=PATTERN),
+    Filter("has-parameter", "the function has a parameter whose name matches the pattern, `*` standing for any text, "
+                            "`?` for any one character, `|` between alternatives", FACT, ("parameters",), value=PATTERN),
     Filter("parameter-has-default", "the function has a parameter whose name matches the pattern and that has a "
                                     "default", FACT, ("parameters",), value=PATTERN),
     Filter("parameter-annotated", "the function has a parameter whose annotation, as written, matches the pattern; a "
@@ -323,16 +335,17 @@ FILTERS: tuple[Filter, ...] = (
            ("returned",)),
     Filter("exception", "the class is an exception: it derives from one of the language's exceptions, or from a class "
                         "of the app that is one, however far", FACT, ("exception",)),
-    Filter("extends", "the class derives from a class whose name matches the pattern, `*` standing for any text: one of "
-                      "its bases, or a base of a class the project defines that it derives from, however far, each "
-                      "read through the import that binds it", FACT, ("bases",), value=PATTERN),
+    Filter("extends", "the class derives from a class whose name matches the pattern, `*` standing for any text, `?` "
+                      "for any one character, `|` between alternatives: one of its bases, or a base of a class the "
+                      "project defines that it derives from, however far, each read through the import that binds it",
+           FACT, ("bases",), value=PATTERN),
     Filter("record", "the class is a record, as the language's reader decides", FACT, ("record",)),
     Filter("interface", "the class is an interface: the language marks it as one", FACT, ("interface",)),
     Filter("immutable", "the class is an immutable record: one of its bases, or one of its decorators called with the "
                         "keywords written beside it, is a name the language marks immutable records with", FACT,
            ("immutable",)),
-    Filter("passes", "the call passes a keyword argument whose name matches the pattern, `*` standing for any text",
-           FACT, ("arguments",), value=PATTERN),
+    Filter("passes", "the call passes a keyword argument whose name matches the pattern, `*` standing for any text, "
+                     "`?` for any one character, `|` between alternatives", FACT, ("arguments",), value=PATTERN),
     Filter("passes-literal", "the call passes a keyword argument whose name matches the pattern with a literal value; "
                              "written `<name>=<text>`, the value as written must match the text after `=` too", FACT,
            ("arguments",), value=PATTERN),
@@ -409,7 +422,9 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
                                   "however far", True),
     Quantifier("at_most", "a file of the scope may keep at most the number of facts: each kept fact after that many, "
                           "in the order the file says them, is a finding, counted in that file alone (or, with `per`, in the "
-                          "files counted together)"),
+                          "files counted together), and said by its own variables, which an accepted entry names too "
+                          "(one naming a fact within the number accepts nothing); {count} is how many the file (or the "
+                          "files counted together) keeps, the same on each of its findings"),
     Quantifier("at_least", "a file of the scope that keeps fewer facts than the number is a finding, its file fact the "
                            "fact said, counted in that file alone (or, with `per`, a group of files counted together, its "
                            "first file's file fact the fact said)"),
@@ -479,7 +494,9 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("forwarded", "the callee a method forwards to", ("forwarded",)),
     Variable("returned", "the attributes a forwarding method returns of the call's result, dotted", ("returned",)),
     Variable("verb", "what the file does with what the fact names: import, use, call, build or reference"),
-    Variable("function", "the function a parameter called is a parameter of", ("function",)),
+    Variable("function", "the function the fact is in: for a call, the function of the top level, or the method of a "
+                         "class of the top level, it sits in, however deep (empty at the top level of the file); for a "
+                         "callback, the function a parameter called is a parameter of", ("function",)),
     Variable("count", "how many facts the file keeps, for a check that counts them (at_most, at_least); with `per`, "
                       "the files counted with it", needs=COUNTED),
     Variable("lines", "how many lines the file holds", ("lines",)),

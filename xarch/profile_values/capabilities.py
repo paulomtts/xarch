@@ -22,6 +22,7 @@ FACTS: dict[str, str] = {
     "import.relative": "whether an import is named from the importing file's own folder, and how far it climbs",
     "import.standard": "whether an import names the standard library",
     "import.type_only": "whether an import is made only for the type checker, never when the code runs",
+    "import.aliases": "the name an import binds each name it takes to, when it binds it under another name",
     "import.resolved": "every import of the app is followed to the place it names, however written",
     "import.mentioned": "whether a file mentions a name an import takes anywhere else, in code or an annotation",
     "comment": "each comment, its text, its line and where on it it starts and ends, and the marker it opens with, "
@@ -29,6 +30,7 @@ FACTS: dict[str, str] = {
     "use": "each name read, as the dotted path the import binding its first name reaches, and how much it bound",
     "call": "each call whose callee an import binds, as that dotted path, with its arguments",
     "call.type_arguments": "the type arguments a call is given",
+    "call.function": "the function or method of the top level a call or a method call sits in",
     "call.keywords": "the keyword arguments a call or a method call passes, each with its value as written when it is "
                      "a literal",
     "call.positional": "the positional arguments a call or a method call passes that are literals, each by its place "

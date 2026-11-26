@@ -3,6 +3,7 @@ import pytest
 
 from xarch.kernel.logic.placement import (
     module_steps,
+    name_matches,
     place_of,
     reaches,
     repeat_of,
@@ -209,3 +210,21 @@ and beside a named folder that is a part (adapters/<adapter>/ beside adapters/we
 def test_an_instance_of_a_repeating_folder_is_a_folder_the_layout_does_not_name(path, files, place):
     assert place_of(BESIDE, path, MARKS, frozenset(files)) == place
 
+
+
+@pytest.mark.parametrize("pattern, name, matches", [
+    pytest.param("*Row", "UserRow", True, id="* is any text"),
+    pytest.param("*Row", "RowId", False, id="a pattern matches the whole name"),
+    pytest.param("*Row*", "RowId", True, id="* may stand for nothing"),
+    pytest.param("*Row|*Row]|*Row,*", "list[UserRow]", True, id="| writes alternatives, any of which matches"),
+    pytest.param("*Row|*Row]|*Row,*", "dict[UserRow, int]", True, id="another alternative matches"),
+    pytest.param("*Row|*Row]|*Row,*", "CredentialRowsPage", False, id="none of the alternatives matches"),
+    pytest.param("*Row?None", "UserRow|None", True, id="? matches a | of the name"),
+    pytest.param("actor|scope|org_id", "scope", True, id="alternatives of plain names"),
+    pytest.param("get_?", "get_a", True, id="? is any one character"),
+    pytest.param("get_?", "get_", False, id="? is never nothing"),
+    pytest.param("get_?", "get_ab", False, id="? is one character only"),
+    pytest.param("a.b", "axb", False, id="every other character stands for itself"),
+])
+def test_a_name_pattern_writes_any_text_any_one_character_and_alternatives(pattern, name, matches):
+    assert name_matches(pattern, name) is matches

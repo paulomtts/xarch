@@ -24,7 +24,13 @@ turns its language's imports and names into such paths, and a fact into the app 
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
                         root and at where that sits (None when no part and no folder of the layout governs it), name
                         the name it takes when that is no file; a test's relative imports are its own and none is one,
-                        but a test beside the code reads them from its own package in the app
+                        but a test beside the code reads them from its own package in the app; type-only when the
+                        import is made only for the type checker
+    import-to-definition
+                        each import as import-into-app reads it, but a name taken from a package file that passes it
+                        on (takes it by an import of its own) read where it is defined: through each package file
+                        that passes it on in turn, each once, the file it is then, or the module that takes it by no
+                        import, with the name it has there
     import-into-tests   each import of a test file into the tests' own package, the target it reaches below the tests
                         root
     comment             each comment, text as written, name the marker it opens with; doc when it is a doc comment
@@ -66,7 +72,9 @@ from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import replace
 
+from xarch.kernel.logic.source import imported_names
 from xarch.kernel.placement import Place
+from xarch.kernel.source import Import
 from xarch.modules.rules.application.logic.filters import in_scope
 from xarch.modules.rules.application.logic.imports import dotted, named_targets, targets
 from xarch.modules.rules.application.logic.places import place
@@ -115,7 +123,8 @@ def facts_of(app: Iterable[SourceFile], tests: Iterable[SourceFile], profile: Pr
                       frozenset((root, *steps, c.name) for f, steps in parsed for c in f.classes if c.record),
                       _bases([*((f, steps, root) for f, steps in parsed),
                               *((f, steps, root if f.beside else tests_root) for f, steps, _ in tests
-                                if f.error is None)]))
+                                if f.error is None)]),
+                      _passed(app, root))
     covered = {s.part: tier.name for tier in reversed(profile.tiers) for s in tier.subject}
     placed = [_covered(Read(file, steps, package, False, _placed(profile, cache, steps)), covered)
               for file, steps, package in app]
@@ -197,7 +206,8 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(_function(f) for f in file.functions)
         case "callback":
             return tuple(Fact("callback", c.line, (c.function,), c.parameter,
-                              frozenset(n for n, on in ((_RECEIVER, c.receiver), (_ANNOTATED, c.annotated)) if on))
+                              frozenset(n for n, on in ((_RECEIVER, c.receiver), (_ANNOTATED, c.annotated)) if on),
+                              function=c.function)
                          for c in file.callbacks)
         case "import":
             return tuple(Fact("import", i.line, i.module, traits=_TRAITS[i.relative, i.standard, False]
@@ -209,31 +219,90 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(Fact("use", u.line, u.name, bound=u.bound) for u in file.uses)
         case "method-call":
             return tuple(Fact("method-call", m.line, name=m.name, traits=_TRAITS[False, False, m.held],
-                              arguments=m.passed, literals=m.literals) for m in file.method_calls)
+                              arguments=m.passed, literals=m.literals, function=m.function)
+                         for m in file.method_calls)
         case "call":
             return tuple(Fact("call", c.line, c.func, c.func[-1],
                               at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None,
-                              arguments=c.passed, literals=c.literals)
+                              arguments=c.passed, literals=c.literals, function=c.function)
                          for c in file.calls)
         case "construction":
             return tuple(Fact("construction", c.line, c.func, c.func[-1], _built(c.func, defined),
-                              at=defined.classes[c.func], arguments=c.passed, literals=c.literals)
+                              at=defined.classes[c.func], arguments=c.passed, literals=c.literals,
+                              function=c.function)
                          for c in file.calls if c.func in defined.classes)
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))
         case "import-into-app" if read.in_tests:
-            return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target))
-                         for line, target in targets(file.imports if file.beside else
-                                                     (i for i in file.imports if not i.relative),
-                                                     package if file.beside else (), facts.known | facts.beside, root)
+            return tuple(Fact("import-into-app", line, target=target, at=_placed(profile, cache, target),
+                              traits=_TYPE_ONLY if i.type_only else frozenset())
+                         for i in (file.imports if file.beside else tuple(i for i in file.imports if not i.relative))
+                         for line, target in targets((i,), package if file.beside else (),
+                                                     facts.known | facts.beside, root)
                          if target not in facts.beside)
         case "import-into-app":
-            return tuple(Fact("import-into-app", line, name=name, target=target, at=_placed(profile, cache, target))
-                         for line, target, name in named_targets(file.imports, package, facts.known, root))
+            return tuple(Fact("import-into-app", line, name=name, target=target, at=_placed(profile, cache, target),
+                              traits=_TYPE_ONLY if i.type_only else frozenset())
+                         for i in file.imports for line, target, name in named_targets((i,), package, facts.known, root))
+        case "import-to-definition" if read.in_tests:
+            return tuple(Fact("import-to-definition", line, target=target, at=_placed(profile, cache, target),
+                              traits=_TYPE_ONLY if i.type_only else frozenset())
+                         for i in (file.imports if file.beside else tuple(i for i in file.imports if not i.relative))
+                         for line, target in _defined(i, package if file.beside else (), facts.known | facts.beside,
+                                                      defined)
+                         if target not in facts.beside)
+        case "import-to-definition":
+            return tuple(Fact("import-to-definition", line, name=name, target=target,
+                              at=_placed(profile, cache, target), traits=_TYPE_ONLY if i.type_only else frozenset())
+                         for i in file.imports
+                         for line, target, name in _named_definitions(i, package, facts.known, defined))
         case "import-into-tests":
             return tuple(Fact("import-into-tests", line, target=target)
                          for line, target in _into_tests(read, package, facts)) if read.in_tests else ()
     raise ValueError(f"no kind of fact is named {kind!r}")
+
+
+def _passed(app: Iterable[tuple[SourceFile, tuple[str, ...], bool]],
+            root: str) -> dict[tuple[str, ...], dict[str, tuple[tuple[str, ...], str]]]:
+    """The names each package file of the app passes on, by its steps below the root: each name a from-import of the
+    app it makes binds (under the name it takes, or another), with the module below the root it takes it from and the
+    name it takes there; an import of every name a module makes public passes on nothing this reads."""
+    found: dict[tuple[str, ...], dict[str, tuple[tuple[str, ...], str]]] = {}
+    for file, steps, package in app:
+        if not package or file.error is not None:
+            continue
+        passed: dict[str, tuple[tuple[str, ...], str]] = {}
+        for i in file.imports:
+            if i.names is None or i.every:
+                continue
+            bound = dict(i.aliases)
+            for base, name in imported_names(i, steps, root):
+                if name is not None:
+                    passed.setdefault(bound.get(name, name), (base, name))
+        found[steps] = passed
+    return found
+
+
+def _named_definitions(i: Import, package: tuple[str, ...], known: frozenset[tuple[str, ...]],
+                       defined: Defined) -> Iterator[tuple[int, tuple[str, ...], str | None]]:
+    """What named_targets yields of the import, each name taken from a package file that passes it on followed to
+    where it is defined: through each package file that takes it in turn, each once, to the file it is then a file of,
+    or to the module that takes it by no import, with the name it has there."""
+    for line, target, name in named_targets((i,), package, known, defined.root):
+        seen: set[tuple[tuple[str, ...], str]] = set()
+        while name is not None and name in defined.passed.get(target, {}) and (target, name) not in seen:
+            seen.add((target, name))
+            target, name = defined.passed[target][name]
+            if target + (name,) in known:
+                target, name = target + (name,), None
+        yield line, target, name
+
+
+def _defined(i: Import, package: tuple[str, ...], known: frozenset[tuple[str, ...]],
+             defined: Defined) -> Iterator[tuple[int, tuple[str, ...]]]:
+    """What _named_definitions yields, without the names."""
+    for line, target, _ in _named_definitions(i, package, known, defined):
+        yield line, target
 
 
 def _into_tests(read: Read, package: tuple[str, ...], facts: Facts) -> list[tuple[int, tuple[str, ...]]]:

@@ -70,7 +70,8 @@ class FakeSourceTree:
                 return target / whole.relative_to(link)
         return whole
 
-    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str) -> SourceFile:
+    def parsed(self, text: str, standard: frozenset[str], *, private: str, special: str,
+               immutable: tuple[RecordMark, ...] = (), interface: tuple[InterfaceMark, ...] = ()) -> SourceFile:
         self.handed.append(standard)
         self.prefixes.append(private)
         self.specials.append(special)

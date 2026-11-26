@@ -17,7 +17,8 @@ class Import:
     the import names a place of the code being read (relative, or by an alias the project maps) that the reader found
     no file or folder for. withheld: the names it takes that are not for other files to use, as the language's reader
     says (none: every name it takes is public). type_only: the import is made only for the type checker, never when
-    the code runs, as the language's reader says."""
+    the code runs, as the language's reader says. aliases: each name it takes that it binds under another name, with
+    that name (none: it binds every name it takes as it is)."""
     line: int
     module: tuple[str, ...]
     names: tuple[str, ...] | None = None
@@ -30,6 +31,7 @@ class Import:
     unresolved: bool = False
     withheld: frozenset[str] = frozenset()
     type_only: bool = False
+    aliases: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

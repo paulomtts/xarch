@@ -206,7 +206,8 @@ def test_a_function_says_whether_it_is_at_the_top_level_or_a_method_that_forward
 
 
 def test_a_callback_a_comment_the_names_of_a_file_and_the_file_as_a_whole_are_facts():
-    assert DOMAIN.facts["callback"] == (Fact("callback", 7, ("make",), "check", frozenset({"annotated-callable"})),)
+    assert DOMAIN.facts["callback"] == (Fact("callback", 7, ("make",), "check", frozenset({"annotated-callable"}),
+                                             function="make"),)
     assert DOMAIN.facts["comment"] == (Fact("comment", 3, text="# a note"),)
     assert DOMAIN.facts["names-mentioned"] == (Fact("names-mentioned", 0, names=frozenset({"Doc", "make"})),)
     assert DOMAIN.facts["file"] == (Fact("file", 0, traits=frozenset({"no-statements"})),)

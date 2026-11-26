@@ -185,7 +185,7 @@ def test_a_name_imported_relatively_reaches_every_reading_at_its_place_bound_non
     found = read_at(tmp_path, files, SERVICES)
     assert found.classes[0].bases == (("app", "domain", "base", "Base"),)
     assert found.calls == (Call(10, ("unittest", "mock", "Mock"), (), (("spec", ("app", "domain", "ports", "Repo")),),
-                                passed=(("spec", ""),)),)
+                                passed=(("spec", ""),), function="build"),)
     assert Use(9, ("app", "domain", "ports", "Repo"), 0) in found.uses
 
 
@@ -193,7 +193,8 @@ def test_a_relative_import_in_a_function_or_a_class_body_is_followed_there(tmp_p
     text = ("def make():\n    from .order import Order\n    return Order()\n\n\n"
             "class Shop:\n    from .order import Order\n    built = Order()\n")
     found = read_at(tmp_path, {ORDER: "class Order: ...\n", SERVICES: text}, SERVICES)
-    assert found.calls == (Call(3, ("app", "domain", "order", "Order")), Call(8, ("app", "domain", "order", "Order")))
+    assert found.calls == (Call(3, ("app", "domain", "order", "Order"), function="make"),
+                           Call(8, ("app", "domain", "order", "Order")))
 
 
 def test_an_absolute_import_is_resolved_and_read_as_before(tmp_path):
@@ -1062,25 +1063,40 @@ def test_a_file_lists_the_names_its_imports_take_that_nothing_else_in_it_mention
 
 @pytest.mark.parametrize("text, found", [
     pytest.param("def a(path):\n    return path.resolve().absolute()\n",
-                 [MethodCall(2, "absolute"), MethodCall(2, "resolve")], id="a method of a parameter, then of its result"),
-    pytest.param("def a():\n    return make().resolve()\n", [MethodCall(2, "resolve")], id="a method of any expression"),
+                 [MethodCall(2, "absolute", function="a"), MethodCall(2, "resolve", function="a")],
+                 id="a method of a parameter, then of its result"),
+    pytest.param("def a():\n    return make().resolve()\n", [MethodCall(2, "resolve", function="a")],
+                 id="a method of any expression"),
     pytest.param("from pathlib import Path\nimport os\ndef a():\n    return Path.cwd(), os.path.abspath('.')\n", [],
                  id="a callee an import binds is a call, not a method call"),
     pytest.param("class S:\n    def a(self):\n        return self._paths.resolve(), self.resolve()\n",
-                 [MethodCall(3, "resolve", True), MethodCall(3, "resolve", True)],
+                 [MethodCall(3, "resolve", True, function="a"), MethodCall(3, "resolve", True, function="a")],
                  id="a method of what the object holds, or of the object itself, is marked held"),
     pytest.param("class S:\n    def a(self, other):\n        return other.resolve(), self.x(1).resolve()\n",
-                 [MethodCall(3, "resolve"), MethodCall(3, "x", True, literals=((0, "1"),)), MethodCall(3, "resolve")],
+                 [MethodCall(3, "resolve", function="a"), MethodCall(3, "x", True, literals=((0, "1"),), function="a"),
+                  MethodCall(3, "resolve", function="a")],
                  id="another parameter, or a result of a held call, is not held"),
     pytest.param("class S:\n    def a(self):\n        def inner():\n            return self.p.resolve()\n",
-                 [MethodCall(4, "resolve", True)], id="the object is held in a nested function too"),
+                 [MethodCall(4, "resolve", True, function="a")], id="the object is held in a nested function too"),
     pytest.param("class S:\n    @staticmethod\n    def a(self):\n        return self.resolve()\n",
-                 [MethodCall(4, "resolve")], id="a static method has no object"),
+                 [MethodCall(4, "resolve", function="a")], id="a static method has no object"),
     pytest.param("def a(f):\n    return f()\n", [], id="a call of a bare name is no method call"),
 ])
 def test_a_call_of_an_attribute_no_import_binds_is_listed_as_a_method_call(tmp_path, text, found):
     assert sorted(parsed(tmp_path, text).method_calls, key=lambda c: (c.line, c.name, c.held)) == sorted(
         found, key=lambda c: (c.line, c.name, c.held))
+
+
+def test_a_call_names_the_function_or_method_of_the_top_level_it_sits_in(tmp_path):
+    """However deep: a nested function's call, or a lambda's, is its outer function's; a decorator's and a default's
+    are the scope's around the function; at the top level of the file a call is in none."""
+    text = ("import os\n\n"
+            "@os.fspath('x')\ndef load(p=os.getcwd()):\n    def inner():\n        os.sep.join()\n    return lambda: os.stat()\n\n"
+            "class Store:\n    def save(self):\n        os.remove()\n\n"
+            "os.listdir()\n")
+    found = parsed(tmp_path, text)
+    assert sorted((c.line, c.function) for c in (*found.calls, *found.method_calls)) == [
+        (3, ""), (4, ""), (6, "load"), (7, "load"), (11, "save"), (13, "")]
 
 
 def test_a_path_is_resolved_from_the_folder_given_with_its_links_followed(tmp_path):
@@ -1533,28 +1549,28 @@ def test_a_file_read_with_no_form_holds_no_test(tmp_path):
 
 def test_a_name_the_file_does_not_bind_that_a_global_starts_is_read_as_that_global_in_a_call_and_a_use(tmp_path):
     found = declared_in(tmp_path, SKIPPED, bound=(("it",),))
-    assert (found.calls, found.method_calls) == ((Call(2, ("it", "skip")),), ())
+    assert (found.calls, found.method_calls) == ((Call(2, ("it", "skip"), function="test_a"),), ())
     assert Use(2, ("it", "skip"), 0) in found.uses
 
 
 def test_with_no_globals_a_bare_name_the_file_does_not_bind_is_read_as_before(tmp_path):
     found = declared_in(tmp_path, SKIPPED)
-    assert (found.calls, found.uses, found.method_calls) == ((), (), (MethodCall(2, "skip", False),))
+    assert (found.calls, found.uses, found.method_calls) == ((), (), (MethodCall(2, "skip", False, function="test_a"),))
 
 
 def test_a_name_the_file_binds_keeps_its_own_binding_over_a_global(tmp_path):
     imported = declared_in(tmp_path, "from x import it\n\n\ndef test_a():\n    it.skip()\n", bound=(("it",),))
-    assert imported.calls == (Call(5, ("x", "it", "skip")),)
+    assert imported.calls == (Call(5, ("x", "it", "skip"), function="test_a"),)
     local = declared_in(tmp_path, "def test_a():\n    it = make()\n    it.skip()\n", bound=(("it",),))
-    assert (local.calls, local.method_calls) == ((), (MethodCall(3, "skip", False),))
+    assert (local.calls, local.method_calls) == ((), (MethodCall(3, "skip", False, function="test_a"),))
 
 
 def test_a_global_named_as_a_builtin_is_read_as_the_global(tmp_path):
     found = declared_in(tmp_path, "def test_a():\n    print(1)\n", bound=(("print",),))
-    assert found.calls == (Call(2, ("print",), (None,), literals=((0, "1"),)),)
+    assert found.calls == (Call(2, ("print",), (None,), literals=((0, "1"),), function="test_a"),)
     assert [use.name for use in found.uses] == [("print",)]
 
 
 def test_a_file_with_a_star_import_reads_no_global(tmp_path):
     found = declared_in(tmp_path, "from x import *\n\n\ndef test_a():\n    it.skip()\n", bound=(("it",),))
-    assert (found.calls, found.method_calls) == ((), (MethodCall(5, "skip", False),))
+    assert (found.calls, found.method_calls) == ((), (MethodCall(5, "skip", False, function="test_a"),))
