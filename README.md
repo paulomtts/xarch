@@ -512,7 +512,9 @@ its check prints for one or more variables (`name: InvoiceClock`). An entry that
 finding of the check in that file, the grain of an allowlist of files; one may not name a finding by its `line`,
 which moves with every edit above it. A finding an entry accepts is not reported, and the enforcement section names it
 under `accepted:` instead; an entry that accepts nothing is itself a finding of the check, at its file, so the list,
-a ratchet, can only shrink. A finding said once for several facts (`once_per`, `per_line`) is matched on the first.
+a ratchet, can only shrink. A finding said once for several facts (`once_per`, `per_line`) stands for each of them:
+an entry accepts it when it names any one of those facts, so `name: dump` accepts the finding of a line that
+`per_line: [name]` says as `takes load, dump`, and the whole finding is accepted.
 
 ```yaml
     accepted:

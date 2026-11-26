@@ -145,6 +145,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
+- An entry of `checks.<id>.accepted` is held against every fact a finding said once for several stands for
+  (`once_per`, `per_line`), not only the first said: `name: dump` accepts the finding of a line that `per_line: [name]`
+  says as `takes load, dump`, and the whole finding is accepted. An entry that named the first fact accepts what it
+  accepted before.
 - `xarch review` asks the other orders of placement's question of a file near its line together in one second
   request, each a named question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it
   always had, so nothing cached is lost: a file near its line costs two requests instead of three, a file far from it
