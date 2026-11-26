@@ -175,6 +175,12 @@ def _passes_literal(found: Found, facts: Facts, profile: Profile, value: str) ->
                for keyword, literal in found.fact.arguments)
 
 
+def _passes_positional(found: Found, facts: Facts, profile: Profile, value: str) -> bool:
+    place, _, text = value.partition("=")
+    return any(name_matches(place, str(position)) and (not text or name_matches(text, literal))
+               for position, literal in found.fact.literals)
+
+
 def _trait(name: str) -> Asked:
     return lambda found, facts, profile, value: name in found.fact.traits
 
@@ -254,6 +260,7 @@ _FACT: dict[str, Asked] = {
     "has-parameter": _has_parameter, "parameter-has-default": _parameter_has_default,
     "parameter-annotated": _parameter_annotated, "returns-annotated": _returns_annotated, "passes": _passes,
     "passes-literal": _passes_literal,
+    "passes-positional": _passes_positional,
     **{name: _trait(name) for name in ("top-level", "forwards", "exception", "record", "interface", "immutable",
                                        "receiver", "annotated-callable", "no-statements", "exceptions-only",
                                        "unreadable", "doc", "public", "type-only")},

@@ -20,7 +20,8 @@ _IMPORT = re.compile(r"%import (?P<dotted>[^ %]+) (?P<name>[^ %]+)%")
 explanation."""
 _WORKED = {"subclass": ("name", "base"), "function": ("name", "parameter"),
            "defaulted": ("name", "parameter", "value"), "annotated": ("name", "parameter", "annotation"),
-           "returning": ("name", "returns"), "keyword_call": ("callee", "keyword", "value")}
+           "returning": ("name", "returns"), "keyword_call": ("callee", "keyword", "value"),
+           "positional_call": ("callee", "value")}
 """The tokens of the code of a check written for the explanation that the language's `worked` templates fill in, each
 `%<template> <value> ...%`, with the placeholders its values stand for, in order."""
 _VALUED = frozenset(kind.name for kind in TARGETS if kind.values)

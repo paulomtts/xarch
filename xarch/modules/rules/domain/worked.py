@@ -3,8 +3,8 @@ check xarch has is written with. Their code names the language only by the token
 the marker of a line comment, `%extension%`, the ending of a source file, and `%import <dotted> <name>%`, a line that
 imports a name from a file of the app, as its `importing` says, and `%subclass <name> <base>%`, a class that derives
 from a base, `%function <name> <parameter>%`, `%defaulted <name> <parameter> <value>%`, `%annotated <name>
-<parameter> <annotation>%`, `%returning <name> <returns>%` and `%keyword_call <callee> <keyword> <value>%`, as its
-`worked` says), so that they hold for any language;
+<parameter> <annotation>%`, `%returning <name> <returns>%`, `%keyword_call <callee> <keyword> <value>%` and
+`%positional_call <callee> <value>%`, as its `worked` says), so that they hold for any language;
 their parts and tiers are those of the smallest profile with a test tier: a part `documents`, a tier `unit` testing
 it, and test files named check_* (the one beside the code, in a profile that says testing.beside)."""
 from __future__ import annotations
@@ -142,6 +142,12 @@ WORKED: tuple[OwnCheck, ...] = (
                   exempt=(Condition("passes", "guard"),), key="checks.stores-pass-a-guard"),
              (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit 3%\n"),),
              (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store guard 1%\n"),)),
+    OwnCheck(Rule("stores-take-no-literal-size", Scope(APP, where=(Condition("placed"),)), ("call",), MAY_NOT,
+                  EXISTING, (Saying("{path} is given its size as a literal first argument at line {line}",
+                                    "take the size from the settings"),),
+                  keep=(Condition("passes-positional", "0"),), key="checks.stores-take-no-literal-size"),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%positional_call Store 3%\n"),),
+             (("documents/rules%extension%", "%import app.documents.store Store%\n%positional_call Store size%\n"),)),
     OwnCheck(Rule("class-names-once", Scope(APP, where=(Condition("placed"),)), ("class",), UNIQUE, EXISTING,
                   (Saying("{name} is declared again at line {line}, first at {first}",
                           "rename one of the two, or keep the one and import it"),),

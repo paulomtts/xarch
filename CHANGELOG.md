@@ -7,6 +7,12 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The kinds `call`, `method-call` and `construction` carry the new field `positional`, from the new fact
+  `call.positional` (Python's reader: exact): each positional argument a call passes that is a literal, by its place
+  from 0, with its value as written, up to the first argument it unpacks; the new filter
+  `passes-positional: <pattern>[=<text>]` reads it (`{passes-positional: "0=50"}` finds `q.limit(50)`). The language's
+  `worked` templates gain `positional_call`, and `xarch profile explain filters.passes-positional` shows a worked
+  example. The bundled profiles read nothing new.
 - The quantifier `unique: <field> | {field: name | path | text, per: file | part | instance | all}`: a kept fact whose
   field a kept fact before it has, in the files compared together (grouped as `at_most`'s `per` groups them, `all`
   the default), in the order of the files and then of the facts, is a finding at its own line, and the new variable

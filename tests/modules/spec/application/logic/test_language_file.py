@@ -626,7 +626,8 @@ def test_the_spec_templates_a_data_file_writes_are_read_each_under_its_form():
         specs=SpecWriting(**specs))
 
 
-WORKED_MAPPING = ("worked: must be a mapping {subclass, function, defaulted, annotated, returning, keyword_call}: how "
+WORKED_MAPPING = ("worked: must be a mapping {subclass, function, defaulted, annotated, returning, keyword_call, "
+                  "positional_call}: how "
                   "the code of the checks written for the explanation is written")
 SUBCLASS = "worked.subclass: must be a line holding {name} and {base}"
 
@@ -635,7 +636,8 @@ def test_python_writes_how_the_checks_written_for_the_explanation_declare_a_clas
     assert PYTHON_LANGUAGE.checked.worked == Worked(
         subclass="class {name}({base}): ...", function="def {name}({parameter}): ...",
         defaulted="def {name}({parameter}={value}): ...", annotated="def {name}({parameter}: {annotation}): ...",
-        returning="def {name}() -> {returns}: ...", keyword_call="{callee}({keyword}={value})")
+        returning="def {name}() -> {returns}: ...", keyword_call="{callee}({keyword}={value})",
+        positional_call="{callee}({value})")
 
 
 def test_a_language_whose_file_writes_no_worked_templates_loads_with_empty_ones():
@@ -645,7 +647,8 @@ def test_a_language_whose_file_writes_no_worked_templates_loads_with_empty_ones(
 @pytest.mark.parametrize("worked, expected", [
     pytest.param("class {name}({base})", [WORKED_MAPPING], id="a text is no mapping"),
     pytest.param({"klass": "x"},
-                 ["worked: unknown key 'klass': use subclass, function, defaulted, annotated, returning, keyword_call"],
+                 ["worked: unknown key 'klass': use subclass, function, defaulted, annotated, returning, keyword_call, "
+                  "positional_call"],
                  id="an unknown key"),
     pytest.param({"subclass": "class {name}"}, [SUBCLASS], id="a subclass template without its base"),
     pytest.param({"subclass": "class {name}(\n{base})"}, [SUBCLASS], id="a subclass template over two lines"),

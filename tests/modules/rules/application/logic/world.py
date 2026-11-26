@@ -82,7 +82,7 @@ APP = [
            classes=(Class(2, "Repo", bases=(("typing", "Protocol"),), interface=True),)),
     source("modules/docs/application/services/publish.py", imp(1, "app.modules.docs.domain", "doc"),
            imp(2, "app.modules.docs.domain.doc", "Doc"), imp(3, "app.platform", "db"),
-           calls=(Call(4, DOC, passed=(("title", "'x'"), ("size", ""))), Call(5, MAKE),
+           calls=(Call(4, DOC, passed=(("title", "'x'"), ("size", ""))), Call(5, MAKE, literals=((1, "3"),)),
                   Call(6, ("yaml", "dump"), passed=(("sort_keys", "False"),))), uses=(Use(5, MAKE, 2), Use(7, MAKE, 2)),
            named=frozenset({"Doc", "Repo"})),
     source("bootstrap/wiring.py", imp(1, "app.modules.docs.domain.doc", "Doc"), calls=(Call(2, DOC),)),

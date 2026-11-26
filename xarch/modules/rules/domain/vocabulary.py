@@ -195,6 +195,8 @@ FIELDS: dict[str, str] = {
                   "written (empty where it has none, or the language writes none) and whether it has a default",
     "arguments": "the keyword arguments a call passes, each by its name with its value as written when that is a "
                  "literal (a number, a text, a constant the language writes), else empty",
+    "positional": "the positional arguments a call passes that are literals, each by its place from 0 with its value "
+                  "as written, up to the first argument it unpacks",
     "returns": "the return annotation of a function as written, empty where it has none or the language writes none",
     "bases": "the classes a class derives from, however far: each base it names, read through the import that binds "
              "it or as a class of its own file, then the bases of each the project defines, each a dotted name",
@@ -224,16 +226,18 @@ KINDS: tuple[Kind, ...] = (
     Kind("use", "each name read, called or not, as the dotted path the import binding its first name reaches",
          ("line", "path", "bound"), needs=("use", "import.resolved"), verb="use"),
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
-         ("line", "method", "name", "on-own-object", "arguments"), needs=("method_call",),
-         field_needs={"arguments": ("call.keywords",)}, verb="call"),
+         ("line", "method", "name", "on-own-object", "arguments", "positional"), needs=("method_call",),
+         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",)}, verb="call"),
     Kind("call", "each call whose callee an import binds, as that dotted path, its name the callee's last",
-         ("line", "path", "name", "arguments"),
-         {"place": "target-placed"}, needs=("call", "import.resolved"), field_needs={"arguments": ("call.keywords",)},
-         verb="call"),
+         ("line", "path", "name", "arguments", "positional"),
+         {"place": "target-placed"}, needs=("call", "import.resolved"),
+         field_needs={"arguments": ("call.keywords",), "positional": ("call.positional",)}, verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "
-                         "that binds it", ("line", "path", "name", "place", "exception", "record", "arguments"),
+                         "that binds it",
+         ("line", "path", "name", "place", "exception", "record", "arguments", "positional"),
          needs=("call", "class", "import.resolved"),
-         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",), "arguments": ("call.keywords",)},
+         field_needs={"exception": _CLASS_EXCEPTION, "record": ("class.record",), "arguments": ("call.keywords",),
+                      "positional": ("call.positional",)},
          verb="build"),
     Kind("function-reference", "each name read that is a function the app defines at the top level of a file, other "
                                "than as the callee of a call (passed on, stored)",
@@ -332,6 +336,9 @@ FILTERS: tuple[Filter, ...] = (
     Filter("passes-literal", "the call passes a keyword argument whose name matches the pattern with a literal value; "
                              "written `<name>=<text>`, the value as written must match the text after `=` too", FACT,
            ("arguments",), value=PATTERN),
+    Filter("passes-positional", "the call passes a literal as a positional argument at the place the pattern matches, "
+                                "counted from 0; written `<place>=<text>`, the value as written must match the text "
+                                "after `=` too", FACT, ("positional",), value=PATTERN),
     Filter("receiver", "the parameter called is the object or class its method is called on", FACT, ("receiver",)),
     Filter("annotated-callable", "the parameter called is annotated as a callable", FACT, ("annotated-callable",)),
     Filter("unreadable", "the file could not be read as text at all, so it was never parsed", FACT, ("unreadable",)),

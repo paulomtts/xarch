@@ -155,17 +155,19 @@ _SPEC_TEMPLATES = {"keyword": ("{callee}", "{keyword}", "{value}"), "position": 
 _SPEC_HOLDING = {"keyword": "{callee}, {keyword} and {value}", "position": "{callee}, {before} and {value}",
                  "type_argument": "{callee}, {before} and {value}"}
 """What a problem says each template of `writing.specs` must hold."""
-WORKED = ("worked: must be a mapping {subclass, function, defaulted, annotated, returning, keyword_call}: how the code "
+WORKED = ("worked: must be a mapping {subclass, function, defaulted, annotated, returning, keyword_call, "
+          "positional_call}: how the code "
           "of the checks written for the explanation is written")
 """What the loader says of a value of `worked` that is not a mapping, once for the key."""
 _WORKED_TEMPLATES = {"subclass": ("{name}", "{base}"), "function": ("{name}", "{parameter}"),
                      "defaulted": ("{name}", "{parameter}", "{value}"),
                      "annotated": ("{name}", "{parameter}", "{annotation}"), "returning": ("{name}", "{returns}"),
-                     "keyword_call": ("{callee}", "{keyword}", "{value}")}
+                     "keyword_call": ("{callee}", "{keyword}", "{value}"), "positional_call": ("{callee}", "{value}")}
 """The templates of `worked`, in the order a problem lists them, each with the placeholders it must hold."""
 _WORKED_HOLDING = {"subclass": "{name} and {base}", "function": "{name} and {parameter}",
                    "defaulted": "{name}, {parameter} and {value}", "annotated": "{name}, {parameter} and {annotation}",
-                   "returning": "{name} and {returns}", "keyword_call": "{callee}, {keyword} and {value}"}
+                   "returning": "{name} and {returns}", "keyword_call": "{callee}, {keyword} and {value}",
+                   "positional_call": "{callee} and {value}"}
 """What a problem says each template of `worked` must hold."""
 
 

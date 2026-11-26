@@ -209,15 +209,15 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(Fact("use", u.line, u.name, bound=u.bound) for u in file.uses)
         case "method-call":
             return tuple(Fact("method-call", m.line, name=m.name, traits=_TRAITS[False, False, m.held],
-                              arguments=m.passed) for m in file.method_calls)
+                              arguments=m.passed, literals=m.literals) for m in file.method_calls)
         case "call":
             return tuple(Fact("call", c.line, c.func, c.func[-1],
                               at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None,
-                              arguments=c.passed)
+                              arguments=c.passed, literals=c.literals)
                          for c in file.calls)
         case "construction":
             return tuple(Fact("construction", c.line, c.func, c.func[-1], _built(c.func, defined),
-                              at=defined.classes[c.func], arguments=c.passed)
+                              at=defined.classes[c.func], arguments=c.passed, literals=c.literals)
                          for c in file.calls if c.func in defined.classes)
         case "function-reference":
             return tuple(_references(file, profile, cache, defined))

@@ -494,7 +494,12 @@ their `arguments` (the fact `call.keywords`): each keyword argument they pass, b
 it is a literal (`3`, `'x'`, `True`; a name or any other expression is no literal); the filter `passes: <pattern>`
 holds of a call that passes a keyword the pattern names, and `passes-literal: <pattern>` of one that passes it a
 literal, `<pattern>=<text>` matching the value's text too: `read: method-call`, `keep: [{passes-literal:
-skip_locked=True}]` finds each `.with_for_update(skip_locked=True)`. Positional arguments are not read. A `call`
+skip_locked=True}]` finds each `.with_for_update(skip_locked=True)`. They carry their `positional` arguments too
+(the fact `call.positional`): each positional argument that is a literal, by its place from 0, with its value as
+written, up to the first argument the call unpacks (`*rest`), after which no place is known; the filter
+`passes-positional: <pattern>` holds of a call that passes a literal at a place the pattern matches, and
+`<pattern>=<text>` matches the value's text too: `read: method-call`, `keep: [{passes-positional: "0=50"}]` finds
+each `q.limit(50)`, and `passes-positional: "*"` any call passing a positional literal. A `call`
 carries its `name` too, the last name of its callee, so `named` and the target `name` apply to it (`keep: [{named:
 "get_*"}]`). A check carries `examples`: code it
 must find something in and code it must find nothing in, which `xarch profile check` runs.

@@ -1151,15 +1151,17 @@ class _Calls(ast.NodeVisitor):
                 self._subjects[id(node.func)] = subject
         func = _ref(node.func, self._chain, self._bare)
         passed = tuple((k.arg, _literal_text(k.value)) for k in node.keywords if k.arg is not None)
+        literals = _positional_literals(node.args)
         if func is None and isinstance(node.func, ast.Attribute):
-            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed))
+            self.method_calls.append(MethodCall(node.lineno, node.func.attr, self._held(node.func.value), passed,
+                                                literals))
         if func is not None or self._is_parameter_method(node.func):
             args = tuple(_ref(a, self._chain, self._bare) for a in node.args if not isinstance(a, ast.Starred))
             keywords = tuple((k.arg, _ref(k.value, self._chain, self._bare)) for k in node.keywords
                              if k.arg is not None)
             unpacked = any(isinstance(a, ast.Starred) for a in node.args) or any(k.arg is None for k in node.keywords)
             if func is not None:
-                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed))
+                self.found.append(Call(node.lineno, func, args, keywords, unpacked, passed=passed, literals=literals))
             else:
                 assert isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name)
                 self.parameter_calls.append(ParameterCall(node.lineno, node.func.value.id, node.func.attr, args,
@@ -1217,6 +1219,19 @@ class _Calls(ast.NodeVisitor):
         name, bound = _reached(node, self._chain, self._builtins, self._bare)
         if name is not None:
             self.uses.append(Use(node.lineno, name, bound, self._subjects.get(id(node))))
+
+
+def _positional_literals(args: list[ast.expr]) -> tuple[tuple[int, str], ...]:
+    """Each positional argument that is a literal, by its place from 0 and its value as written, up to the first
+    argument unpacked (`*rest`), after which no place is known."""
+    found: list[tuple[int, str]] = []
+    for place, arg in enumerate(args):
+        if isinstance(arg, ast.Starred):
+            break
+        text = _literal_text(arg)
+        if text:
+            found.append((place, text))
+    return tuple(found)
 
 
 def _literal_text(node: ast.expr) -> str:

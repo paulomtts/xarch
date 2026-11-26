@@ -278,6 +278,24 @@ def test_call_argument_filters_read_the_keywords_a_call_passes_and_whether_a_val
         ("app/ui/x.py", 5, "app.ui.drawer.EditDrawer at line 5 guards no form")]
 
 
+LIMITS = {
+    "read": ["call", "method-call"], "keep": [{"passes-positional": "0=50"}], "may_not": "exist",
+    "message": "{file} pages by a literal 50 at line {line}", "fix": "take the page size from the settings",
+    "examples": {"flagged": {"store/x.py": "q.limit(50)\n"}, "clean": {"store/x.py": "q.limit(size)\n"}}}
+ANY_LITERAL = {**LIMITS, "keep": [{"passes-positional": "1"}], "message": "{file} passes a literal second at line {line}",
+               "examples": {"flagged": {"store/x.py": "q.limit(size, 2)\n"}, "clean": {"store/x.py": "q.limit(2)\n"}}}
+
+
+def test_passes_positional_reads_the_literals_a_call_passes_by_their_place_from_0_and_their_text(tmp_path):
+    files = {"store/x.py": ("from app.ui.pages import page\n\nq.limit(50)\nq.limit(size)\npage(50)\n"
+                            "q.limit(*sizes, 50)\nq.limit(10, 50)\n"),
+             "ui/pages.py": "def page(size): ...\n"}
+    assert found(tmp_path, {"no-literal-limit": LIMITS, "second-literal": ANY_LITERAL}, files) == [
+        ("app/store/x.py", 3, "app/store/x.py pages by a literal 50 at line 3"),
+        ("app/store/x.py", 5, "app/store/x.py pages by a literal 50 at line 5"),
+        ("app/store/x.py", 7, "app/store/x.py passes a literal second at line 7")]
+
+
 GETTERS = {
     "read": "call", "in": {"part": "ui"}, "keep": [{"named": "get_*"}], "may_only": {"name": ["get_*_controller"]},
     "message": "{path} at line {line} is no controller's getter", "fix": "depend on a controller's getter",
