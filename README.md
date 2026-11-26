@@ -608,7 +608,8 @@ and rule ids may be added, but an existing one keeps its name and meaning.
 ```
 
 A profile that writes checks of its own also has `"checks"` in `enforcement`: each `{"id", "read", "said"}`, `read`
-how many facts it read in the project. A check of some paths also has `"partial"` (see
+how many facts it read in the project; one that writes counterparts has `"counterparts"`, each the same, `read` how
+many matches of its `for` it read. A check of some paths also has `"partial"` (see
 [Checking some files](#checking-some-files-xarch-check-path-)): `paths` as given, `skipped_checks` (always `[]`:
 every check runs on the whole app) and `elsewhere`, how many violations of other files `violations` leaves out. A
 run in which a part's `imports.accepted` accepts an import also has `"accepted"` in `enforcement`: each
@@ -644,7 +645,7 @@ check's `accepted` accepts a finding also has `"accepted_findings"` in `enforcem
   `{"rule", "file", "line", "message", "fix"}` (`fix` is `null` for a weak check that has none); `approximate` items
   `{"key", "fact", "note"}`; `strict_failures` items `{"key", "detail"}`, `key` one of `guards_off`, `ungoverned`,
   `init_files`, `skipped`, `dynamic`, `unresolved`, `weak`, `approximate`, `vacuous` (a check of the profile's own
-  that read nothing), `litmus` (a part redefined without the litmus its compared profile gives it), `baseline` (a
+  that read nothing, or a counterpart whose `for` matches nothing), `litmus` (a part redefined without the litmus its compared profile gives it), `baseline` (a
   baseline that records more than is found). `strict_failures`
   is filled whether or not `--strict` was given: it is what `--strict` fails on.
 - A refusal (exit 2: an unknown or invalid profile, a missing folder) prints `{"ok": false, "error": "<reason>"}` on

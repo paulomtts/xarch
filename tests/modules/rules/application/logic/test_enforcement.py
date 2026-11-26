@@ -13,6 +13,7 @@ from xarch.modules.rules.application.logic.enforcement import (
     dynamic,
     excluded_folder,
     folders,
+    pairing,
     reading,
     skipped,
     strict_findings,
@@ -188,6 +189,16 @@ def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_tha
     assert reading("store-names", 3) == "checks.store-names read 3 facts"
     assert reading("one", 1) == "checks.one read 1 fact"
     assert reading("no-todo", 0) == said
+
+
+def test_a_counterpart_whose_for_matches_nothing_fails_strict_and_one_that_read_a_source_does_not():
+    said = ("counterparts.sql-has-contract matches nothing in the project, so it passes for want of anything to "
+            "check: widen its for, or drop it")
+    state = Enforcement(counterparts=(("sql-has-contract", 0), ("fakes-name-a-module", 2)))
+    assert strict_findings(state) == (Finding("vacuous", said),)
+    assert pairing("fakes-name-a-module", 2) == "counterparts.fakes-name-a-module read 2 sources"
+    assert pairing("one", 1) == "counterparts.one read 1 source"
+    assert pairing("sql-has-contract", 0) == said
 
 
 def test_a_part_redefined_without_the_litmus_its_base_gives_it_fails_strict_as_said():

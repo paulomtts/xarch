@@ -77,7 +77,9 @@ class Enforcement:
     then does not list; and translated, the pairs of classes no-twins accepts as translations
     (guards.no-twins.translated), which it then does not report; and accepted, the imports a part's imports.accepted
     accepts, which may-import then does not report; and excused, the findings the profile's other entries accept
-    (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted), which are then not reported."""
+    (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted, counterparts.<id>.accepted), which are then not
+    reported; and counterparts, what the profile says lies with what, each by its id with how many matches of its
+    source it read in the project (one that read none passes for want of anything to check, and fails `--strict`)."""
     guards_off: tuple[str, ...] = ()
     baseline_off: tuple[str, ...] = ()
     ungoverned: tuple[str, ...] = ()
@@ -97,6 +99,7 @@ class Enforcement:
     translated: tuple[Translation, ...] = ()
     accepted: tuple[AcceptedEdge, ...] = ()
     excused: tuple[Excused, ...] = ()
+    counterparts: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -134,10 +137,12 @@ class Sifted:
 
 @dataclass(frozen=True)
 class StructureFound:
-    """What the layout finds wrong below an app folder: the violations, and the findings structure.accepted accepts,
-    which it does not report."""
+    """What the layout finds wrong below an app folder: the violations, the findings structure.accepted or a
+    counterpart's accepted accepts, which it does not report, and how many matches of its source each counterpart
+    read, by its id."""
     violations: tuple[Violation, ...]
     excused: tuple[Excused, ...] = ()
+    counterparts: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)

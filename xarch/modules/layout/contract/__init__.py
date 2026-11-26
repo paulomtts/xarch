@@ -24,10 +24,11 @@ class CheckStructure:
 
 @dataclass(frozen=True)
 class StructureChecked:
-    """What the layout finds wrong, and the findings an entry of structure.accepted accepts, which it does not
-    report."""
+    """What the layout finds wrong, the findings an entry of structure.accepted or of a counterpart's accepted
+    accepts, which it does not report, and how many matches of its source each counterpart read, by its id."""
     violations: tuple[Violation, ...]
     waived: tuple[Waived, ...] = ()
+    counterparts: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)

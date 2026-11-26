@@ -3,8 +3,9 @@ of a repeating folder holds, as its leaves; and how the language names a folder.
 from dataclasses import replace
 
 from xarch.modules.layout.adapters.spec_skeleton import SpecSkeleton
-from xarch.modules.layout.domain.structure import Beside, Naming
-from xarch.modules.spec.contract import Entry, Repeating, Skeleton
+from xarch.modules.layout.domain.structure import Allowed, Beside, Naming, Pattern, Word
+from xarch.modules.layout.domain.structure import Counterpart as Layout
+from xarch.modules.spec.contract import AcceptedPath, Counterpart, Entry, PathPattern, Repeating, Skeleton
 
 SKELETON = Skeleton(
     top_level=(Entry(("kernel",), True, True), Entry(("modules",), True, True), Entry(("__main__.py",), False, True)),
@@ -68,3 +69,34 @@ def test_an_optional_part_is_required_nowhere_and_what_it_holds_only_where_it_is
     assert skeleton.each_parts("p", ("modules",)) == [(("domain",), True), (("hooks", "run.py"), False)]
     assert skeleton.when("p") == {("api", "v1"): ("api",)}
     assert skeleton.when("p", ("modules",)) == {("hooks", "run.py"): ("hooks",)}
+
+
+PAIRED = Skeleton(
+    top_level=(Entry(("adapters",), True, False), Entry(("adapters", "sql"), True, False),
+               Entry(("adapters", "sql", "models"), True, True, True), Entry(("adapters", "sql", "engine.py"), False,
+                                                                             True)),
+    repeating=(Repeating("store", ("adapters", "sql"), (Entry(("repo.py",), False, True),)),
+               Repeating("module", ("modules",), ())),
+    counterparts=(Counterpart("x", PathPattern(("adapters", "sql", "<store>"), True),
+                              PathPattern(("tests", "conformance", "<store>"), True),
+                              (PathPattern(("tests", "fakes", "<store>"), True),),
+                              (AcceptedPath(("adapters", "sql", "cart"), "no contract yet"),
+                               AcceptedPath(("tests", "fakes", "old"), "w")), "{source}", "fix {source}"),))
+
+
+class Paired:
+    def skeleton(self, profile: str) -> Skeleton:
+        return PAIRED
+
+
+def test_a_counterpart_reads_a_path_written_tests_path_as_below_the_tests_root():
+    assert SpecSkeleton(Paired()).counterparts("p") == [
+        Layout("x", Pattern(("adapters", "sql", "<store>"), False, True), Pattern(("conformance", "<store>"), True, True),
+               (Pattern(("fakes", "<store>"), True, True),),
+               (Allowed(("adapters", "sql", "cart"), False, "adapters/sql/cart/", "no contract yet"),
+                Allowed(("fakes", "old"), True, "tests/fakes/old/", "w")), "{source}", "fix {source}")]
+
+
+def test_a_repeating_folder_s_word_knows_the_names_the_layout_writes_beside_its_instances():
+    assert SpecSkeleton(Paired()).words("p") == [Word("store", ("adapters", "sql"), frozenset({"models", "engine.py"})),
+                                                  Word("module", ("modules",), frozenset())]

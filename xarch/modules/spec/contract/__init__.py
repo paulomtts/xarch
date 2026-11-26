@@ -23,12 +23,14 @@ from xarch.modules.spec.domain.published import (
     SCORE,
     YES_NO,
     AcceptedPath,
+    Counterpart,
     DocFile,
     Entry,
     Eval,
     Held,
     Loosened,
     Origin,
+    PathPattern,
     ProjectFile,
 )
 from xarch.profile_values.capabilities import Shortfall, Supply
@@ -50,7 +52,7 @@ __all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "Held", "KINDS", "Examp
            "ExplainResult", "Need", "ViewProfile", "ProfileViewed", "ViewResult", "CheckProfile", "LOAD", "EXAMPLES",
            "Problem", "ProfileChecked",
            "CheckResult", "KnownProfiles", "KnownResult", "WriteChecks", "ChecksWritten", "NewProfile", "ProfileCreated",
-           "NewResult", "Supply", "Shortfall"]
+           "NewResult", "Supply", "Shortfall", "Counterpart", "PathPattern"]
 
 
 @dataclass(frozen=True)
@@ -71,7 +73,8 @@ class Skeleton:
     name may be in it (names, a regular expression); "" for any of them: the language does not say; and whether
     every test of a part sits beside the code it tests (beside, testing.beside), the patterns of a test file's name
     (test_files), and the folders below the tests root whose tests stay there under beside (kept: each tier's folder,
-    then the fakes' folder); and the findings of the layout the profile accepts (accepted, structure.accepted)."""
+    then the fakes' folder); and the findings of the layout the profile accepts (accepted, structure.accepted); and
+    what it says lies with what (counterparts)."""
     top_level: tuple[Entry, ...]
     repeating: tuple[Repeating, ...]
     title: str = ""
@@ -83,6 +86,7 @@ class Skeleton:
     test_files: tuple[str, ...] = ()
     kept: tuple[tuple[str, ...], ...] = ()
     accepted: tuple[AcceptedPath, ...] = ()
+    counterparts: tuple[Counterpart, ...] = ()
 
 
 @dataclass(frozen=True)

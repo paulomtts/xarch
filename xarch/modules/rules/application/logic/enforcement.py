@@ -17,8 +17,8 @@ strict_findings lists what `--strict` fails on: what the profile in force leaves
 guard it leaves off but those that the bundled profile in force, or the one a custom profile is compared with, also
 leaves off (with no profile to compare with, every guard left off), the ungoverned files, the init files missing or
 changed, the skips, the dynamic imports, the imports the reader could not follow, the weak checks, the keys whose
-check reads a fact the language supplies only partly (approximate), the checks of the profile's own that read
-nothing (vacuous) and each part a custom profile
+check reads a fact the language supplies only partly (approximate), the checks of the profile's own and the
+counterparts that read nothing (vacuous) and each part a custom profile
 redefines without the litmus the profile it is compared with gives it (litmus), which leaves its code no
 question to be placed by. Every other way a custom profile differs from the profile it is compared with (`origin.looser`) is
 information in the enforcement section and no finding: the profile defines the architecture.
@@ -99,6 +99,7 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
     found += [Finding(WEAK, weak) for weak in enforcement.weak]
     found += [Finding(APPROXIMATE, item) for item in enforcement.approximate]
     found += [Finding(VACUOUS, _vacuous(name)) for name, read in enforcement.checks if not read]
+    found += [Finding(VACUOUS, pairing(name, read)) for name, read in enforcement.counterparts if not read]
     found += [Finding(UNPLACED, sentence) for sentence in enforcement.unplaced]
     return tuple(found)
 
@@ -106,6 +107,14 @@ def strict_findings(enforcement: Enforcement) -> tuple[Finding, ...]:
 def reading(name: str, read: int) -> str:
     """How much a check of the profile's own read, in words."""
     return _vacuous(name) if not read else f"checks.{name} read {read} fact{'' if read == 1 else 's'}"
+
+
+def pairing(name: str, read: int) -> str:
+    """How many matches of its source a counterpart read, in words."""
+    if not read:
+        return (f"counterparts.{name} matches nothing in the project, so it passes for want of anything to check: widen "
+                "its for, or drop it")
+    return f"counterparts.{name} read {read} source{'' if read == 1 else 's'}"
 
 
 def _vacuous(name: str) -> str:

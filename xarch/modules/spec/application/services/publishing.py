@@ -62,7 +62,7 @@ class PublishingService:
                         reserved=language.reserved_names, names=language.names,
                         beside=framework is not None and framework.beside,
                         test_files=framework.files if framework is not None else (), kept=kept,
-                        accepted=architecture.structure_accepted)
+                        accepted=architecture.structure_accepted, counterparts=architecture.counterparts)
 
     def profile(self, location: str) -> ProfileView:
         architecture = self._architectures.load(location)

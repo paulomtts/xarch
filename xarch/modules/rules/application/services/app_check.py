@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from xarch.kernel.violations import Violation
-from xarch.modules.rules.application.logic import baseline
+from xarch.modules.rules.application.logic import baseline, enforcement
 from xarch.modules.rules.application.logic.chosen import chosen
 from xarch.modules.rules.application.logic.ordered import ordered
 from xarch.modules.rules.application.logic.verdict import passed
@@ -89,6 +89,7 @@ class AppCheckService:
         checked = self._source.check(app, package, profile, tested)
         structure = self._structure.checked(app, package, profile, tested)
         violations = list(ordered((*checked.violations, *structure.violations)))
-        view = self._source.view(replace(checked.enforcement,
-                                         excused=(*checked.enforcement.excused, *structure.excused)))
-        return app, tested, dict(checked.profile.hints), violations, view, list(checked.enforcement.strict)
+        state = replace(checked.enforcement, excused=(*checked.enforcement.excused, *structure.excused),
+                        counterparts=structure.counterparts)
+        state = replace(state, strict=enforcement.strict_findings(state))
+        return app, tested, dict(checked.profile.hints), violations, self._source.view(state), list(state.strict)

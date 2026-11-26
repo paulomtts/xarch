@@ -96,8 +96,8 @@ class ApproximateView:
 
 @dataclass(frozen=True)
 class OwnCheckView:
-    """A check the profile writes itself: its id, how many facts it read in the project (none: it passes for want of
-    anything to check), and that in words."""
+    """A check the profile writes itself, or a counterpart: its id, how many facts (matches of its source) it read in
+    the project (none: it passes for want of anything to check), and that in words."""
     id: str
     read: int
     said: str
@@ -120,8 +120,9 @@ class EnforcementView:
     check reads a fact the language supplies only partly, each in words; the checks the profile writes itself,
     each with how many facts it read in the project; the public names only the tests use that the profile
     accepts; the pairs of classes no-twins accepts as translations; the imports of the files read that the
-    reader could not follow, each in words; the imports the parts accept by imports.accepted; and the findings the
-    profile's other entries accept (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted)."""
+    reader could not follow, each in words; the imports the parts accept by imports.accepted; the findings the
+    profile's other entries accept (checks.<id>.accepted, structure.accepted, tiers.<tier>.accepted,
+    counterparts.<id>.accepted); and the counterparts, each with how many matches of its source it read."""
     ungoverned: tuple[str, ...] = ()
     ungoverned_folders: tuple[str, ...] = ()
     init_files: tuple[Drift, ...] = ()
@@ -139,6 +140,7 @@ class EnforcementView:
     accepted: tuple[AcceptedEdge, ...] = ()
     excused: tuple[Excused, ...] = ()
     baseline: BaselineStanding | None = None
+    counterparts: tuple[OwnCheckView, ...] = ()
 
 
 @dataclass(frozen=True)
