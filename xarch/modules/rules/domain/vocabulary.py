@@ -159,8 +159,8 @@ FIELDS: dict[str, str] = {
     "path": "the dotted name it names, from the root it starts at: what an import imports, the name a use reads, the "
             "callee of a call",
     "method": "the name of the method called",
-    "name": "the name it carries: a name an import takes, a class's or a function's name, a method called, a "
-            "parameter",
+    "name": "the name it carries: a name an import takes, a class's or a function's name, a method called, the last "
+            "name of a call's callee, a parameter",
     "written": "what an import names, as the source writes it",
     "text": "what it says: a comment's text, a syntax error's message",
     "marker": "the marker a comment opens with, as its reader writes it",
@@ -224,7 +224,8 @@ KINDS: tuple[Kind, ...] = (
     Kind("method-call", "each call of a method on something no import names (a variable, a parameter, an attribute)",
          ("line", "method", "name", "on-own-object", "arguments"), needs=("method_call",),
          field_needs={"arguments": ("call.keywords",)}, verb="call"),
-    Kind("call", "each call whose callee an import binds, as that dotted path", ("line", "path", "arguments"),
+    Kind("call", "each call whose callee an import binds, as that dotted path, its name the callee's last",
+         ("line", "path", "name", "arguments"),
          {"place": "target-placed"}, needs=("call", "import.resolved"), field_needs={"arguments": ("call.keywords",)},
          verb="call"),
     Kind("construction", "each call of a class the app defines at the top level of a file, read through the import "

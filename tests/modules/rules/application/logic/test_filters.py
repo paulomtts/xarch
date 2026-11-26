@@ -102,6 +102,7 @@ def accepting(name: str) -> object:
                  id="passes-literal: its text matching after ="),
     pytest.param("passes-literal sort_keys=True", SERVICE, "call", [], PROFILE, None,
                  id="passes-literal: never another text"),
+    pytest.param("named dump", SERVICE, "call", [6], PROFILE, None, id="named: a call by its callee's last name"),
     pytest.param("record", DOMAIN, "class", [8], PROFILE, None, id="record"),
     pytest.param("interface", PORTS, "class", [2], PROFILE, None, id="interface"),
     pytest.param("type-only", PORTS, "import", [3], PROFILE, None, id="type-only"),

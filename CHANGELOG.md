@@ -35,6 +35,8 @@ All notable changes to this project are written here. The format follows
   `call.keywords` (Python's reader: exact): each keyword argument a call passes, by name, with its value as written
   when it is a literal; the filters `passes: <pattern>` and `passes-literal: <pattern>[=<text>]` read it. Positional
   arguments are not read. The bundled profiles read nothing new.
+- The kind `call` carries the field `name`, the last name of its callee, so the filter `named` and the target `name`
+  apply to a call (they were refused there before). The bundled profiles read nothing new.
 - `testing.shared: [<folder or file>, ...]` names test code below the tests root (such as `support`, `helpers.py`)
   that a test of any tier may import besides its own folder's; an entry overlapping a tier's `folder` or the fakes'
   folder is refused.

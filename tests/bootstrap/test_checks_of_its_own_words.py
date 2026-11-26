@@ -189,6 +189,20 @@ def test_call_argument_filters_read_the_keywords_a_call_passes_and_whether_a_val
         ("app/ui/x.py", 5, "app.ui.drawer.EditDrawer at line 5 guards no form")]
 
 
+GETTERS = {
+    "read": "call", "in": {"part": "ui"}, "keep": [{"named": "get_*"}], "may_only": {"name": ["get_*_controller"]},
+    "message": "{path} at line {line} is no controller's getter", "fix": "depend on a controller's getter",
+    "examples": {"flagged": {"ui/x.py": "from app.store import get_load\n\nget_load()\n"},
+                 "clean": {"ui/x.py": "from app.store import get_doc_controller\n\nget_doc_controller()\n"}}}
+
+
+def test_a_name_pattern_applies_to_a_call_by_the_last_name_of_its_callee(tmp_path):
+    files = {"ui/x.py": "from app import store\nfrom app.store import get_doc_controller\n\n"
+                        "get_doc_controller()\nstore.get_registry()\nstore.load()\n"}
+    assert found(tmp_path, {"controller-getters": GETTERS}, files) == [
+        ("app/ui/x.py", 5, "app.store.get_registry at line 5 is no controller's getter")]
+
+
 NEVER_SQL = {
     "read": "import", "in": {"part": "ui"}, "must_not_reach": {
         "targets": [{"package": ["sqlalchemy"]}], "through": "import-into-app"},

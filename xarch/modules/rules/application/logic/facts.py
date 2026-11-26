@@ -19,8 +19,8 @@ turns its language's imports and names into such paths, and a fact into the app 
     use                 each name read, path the dotted path it reaches, bound how many steps the binding import bound
     method-call         each call of an attribute no import binds, name the attribute; on-own-object when it is
                         on the object a method is called on
-    call                each call whose callee an import binds, path the callee; at where the callee sits when it is
-                        the app's
+    call                each call whose callee an import binds, path the callee and name its last step; at where the
+                        callee sits when it is the app's
     import-into-app     each import into the app's own package, the target the file or package it reaches below the
                         root and at where that sits (None when no part and no folder of the layout governs it), name
                         the name it takes when that is no file; a test's relative imports are its own and none is one,
@@ -211,7 +211,7 @@ def _facts(kind: str, read: Read, profile: Profile, cache: Placements, defined: 
             return tuple(Fact("method-call", m.line, name=m.name, traits=_TRAITS[False, False, m.held],
                               arguments=m.passed) for m in file.method_calls)
         case "call":
-            return tuple(Fact("call", c.line, c.func,
+            return tuple(Fact("call", c.line, c.func, c.func[-1],
                               at=_placed(profile, cache, c.func[1:]) if c.func[:1] == (root,) else None,
                               arguments=c.passed)
                          for c in file.calls)
