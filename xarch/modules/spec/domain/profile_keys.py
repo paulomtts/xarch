@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 PROFILE = "profile"
 PART = "part"
 PART_USES = "part.uses"
+PART_LITMUS = "part.litmus"
 PART_IMPORTS = "part.imports"
 PART_IMPORTS_MAY = "part.imports.may"
 PART_HOLDS = "part.holds"
@@ -24,6 +25,7 @@ PART_HOLDS_EXCEPTIONS = "part.holds.exceptions"
 LAYER = "layer"
 TIER = "tier"
 TIER_DOCS = "tier.docs"
+TIER_LITMUS = "tier.litmus"
 TIER_USES = "tier.uses"
 TIER_IMPORTS = "tier.imports"
 TESTING = "testing"
@@ -54,6 +56,7 @@ SCOPES = {
     PROFILE: "the file",
     PART: "parts.<part>",
     PART_USES: "parts.<part>.uses",
+    PART_LITMUS: "parts.<part>.litmus[]",
     PART_IMPORTS: "parts.<part>.imports",
     PART_IMPORTS_MAY: "parts.<part>.imports.may",
     PART_HOLDS: "parts.<part>.holds",
@@ -64,6 +67,7 @@ SCOPES = {
     LAYER: "layers.<layer>",
     TIER: "tiers.<tier>",
     TIER_DOCS: "tiers.<tier>.docs",
+    TIER_LITMUS: "tiers.<tier>.litmus[]",
     TIER_USES: "tiers.<tier>.uses",
     TIER_IMPORTS: "tiers.<tier>.imports",
     TESTING: "testing",

@@ -100,6 +100,7 @@ from xarch.modules.spec.application.logic.evals import evals, unlike, unplaced
 from xarch.modules.spec.application.logic.holds_written import holds as held_kinds
 from xarch.modules.spec.application.logic.key_lookup import keys_of, names_of, required_of
 from xarch.modules.spec.application.logic.language_file import first_language
+from xarch.modules.spec.application.logic.litmus_written import litmus
 from xarch.modules.spec.application.logic.sending import sending
 from xarch.modules.spec.application.logic.targets_written import WORD, allowed_targets
 from xarch.modules.spec.domain.errors import InvalidArchitecture
@@ -112,6 +113,7 @@ from xarch.modules.spec.domain.profile_keys import (
     NO_CALLBACKS,
     NO_DUPLICATES,
     NO_TWINS,
+    PART_LITMUS,
     PART_USES,
     PASS_THROUGH,
     PROFILE,
@@ -120,6 +122,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER,
     TIER_DOCS,
     TIER_IMPORTS,
+    TIER_LITMUS,
     TIER_USES,
 )
 from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
@@ -324,10 +327,11 @@ def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
         if not _repeats_alike(entry.name, entry.steps, word, repeats, owners, f"{where}: '{entry.shown}'", problems):
             continue
         _insert(layout, entry.steps, entry.file, entry.name, owners)
-        parts[entry.name] = Part(entry.name, entry.steps, ck.string(entry.keys.get("role")),
-                                 ck.string(entry.keys.get("litmus")), False,
+        text, entries = (litmus(entry.keys["litmus"], f"{where}.litmus", PART_LITMUS, "code belongs to the part",
+                                problems) if "litmus" in entry.keys else ("", ()))
+        parts[entry.name] = Part(entry.name, entry.steps, ck.string(entry.keys.get("role")), text, False,
                                  entry.keys["untested"] if ck.line(entry.keys.get("untested")) else "",
-                                 optional=entry.keys.get("optional") is True)
+                                 optional=entry.keys.get("optional") is True, litmus_list=entries)
     for folder in tree.folders:
         _add_folder(layout, notes, folder)
     return _Layout(parts, layout, notes, tuple(repeats))
@@ -336,9 +340,8 @@ def _layout(tree: pt.PartsTree, problems: list[str]) -> _Layout:
 def _own_problems(entry: pt.TreePart) -> list[str]:
     """What is wrong with the values of the part's own keys that the layout reads."""
     where, spec, problems = f"parts.{entry.name}", entry.keys, []
-    for key in ("role", "litmus"):
-        if key in spec and not isinstance(spec[key], str):
-            problems.append(f"{where}.{key}: must be a string")
+    if "role" in spec and not isinstance(spec["role"], str):
+        problems.append(f"{where}.role: must be a string")
     if "untested" in spec and not ck.line(spec["untested"]):
         problems.append(f"{where}.untested: must be one line of text: why no tier tests the part")
     for key in ("package_only", "optional"):
@@ -696,7 +699,9 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     problems += ck.unknown_keys(spec, names_of(TIER), where, TIER)
     if "proves" in spec and not ck.line(spec["proves"]):
         problems.append(f"{where}.proves: must be one line of text")
-    if "litmus" in spec and not ck.text(spec["litmus"]):
+    text, entries = (litmus(spec["litmus"], f"{where}.litmus", TIER_LITMUS, "a test belongs to the tier", problems)
+                     if "litmus" in spec else ("", ()))
+    if isinstance(spec.get("litmus"), str) and not ck.text(text):
         problems.append(f"{where}.litmus: must be text: the question that tells a test belongs to the tier")
     uses = _group(spec["uses"], TIER_USES, "{apply_never: true}", f"{where}.uses", problems) if "uses" in spec else {}
     held = uses.get("apply_never", False)
@@ -724,10 +729,10 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     accepted = iw.tier_accepted(spec["accepted"], f"{where}.accepted", problems) if "accepted" in spec else ()
     if len(problems) != count:
         return None
-    return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),
+    return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), text.strip("\n"),
                 docs.get("subject", ""), docs.get("one_file_per", ""), docs.get("cases_from", ""), docs.get("data", ""),
                 docs.get("example"), docs.get("helpers", ()), tuple(p for p in types_only if p in parts), held, folder,
-                allowance, tuple(p for p in reach if p in parts), plain, also, accepted)
+                allowance, tuple(p for p in reach if p in parts), plain, also, accepted, entries)
 
 
 def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,

@@ -70,7 +70,7 @@ class PublishingService:
         parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
                                docs_name(architecture, part), part.untested, architecture.uses_never.get(name, ()),
                                part.imports_must, part.holds, part.imports_types_only, part.shared,
-                               part.imports_accepted)
+                               part.imports_accepted, part.litmus_list)
                       for name, part in architecture.parts.items())
         return ProfileView(
             parts=parts, folders=folders(architecture.layout),

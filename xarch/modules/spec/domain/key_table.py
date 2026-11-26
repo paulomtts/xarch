@@ -34,6 +34,7 @@ from xarch.modules.spec.domain.profile_keys import (
     PART_HOLDS_RECORDS,
     PART_IMPORTS,
     PART_IMPORTS_MAY,
+    PART_LITMUS,
     PART_USES,
     PASS_THROUGH,
     PLACEMENT,
@@ -47,6 +48,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER,
     TIER_DOCS,
     TIER_IMPORTS,
+    TIER_LITMUS,
     TIER_USES,
     Key,
 )
@@ -82,7 +84,7 @@ _KEYS: tuple[Key, ...] = (
 
     Key(PART, "name", rules=("structure",)),
     Key(PART, "role", True, False),
-    Key(PART, "litmus", False, False),
+    Key(PART, "litmus", False, False, opens=PART_LITMUS),
     Key(PART, "imports", rules=("may-import", "must-import", "libraries"), opens=PART_IMPORTS),
     Key(PART, "holds", rules=("holds",), opens=PART_HOLDS, when_supplied=("function.top_level",),
         without="holds reads no top-level functions"),
@@ -92,6 +94,10 @@ _KEYS: tuple[Key, ...] = (
     Key(PART, "untested"),
     Key(PART, "package_only", rules=("package-only",)),
     Key(PART, "optional", rules=("structure",)),
+
+    Key(PART_LITMUS, "ask", True, False),
+    Key(PART_LITMUS, "label", False, False),
+    Key(PART_LITMUS, "mode", False, False),
 
     Key(PART_IMPORTS, "may", rules=("may-import",), opens=PART_IMPORTS_MAY),
     Key(PART_IMPORTS, "must", rules=("must-import",)),
@@ -124,13 +130,17 @@ _KEYS: tuple[Key, ...] = (
     Key(LAYER, "types_only"),
 
     Key(TIER, "proves", False, False),
-    Key(TIER, "litmus", False, False),
+    Key(TIER, "litmus", False, False, opens=TIER_LITMUS),
     Key(TIER, "uses", opens=TIER_USES),
     Key(TIER, "plain_tables", rules=("scenario-coverage",)),
     Key(TIER, "folder", rules=("tiers", "test-tree")),
     Key(TIER, "imports", rules=("tiers", "must-import", "types-only"), opens=TIER_IMPORTS),
     Key(TIER, "docs", False, False, opens=TIER_DOCS),
     Key(TIER, "accepted", rules=("tiers",)),
+
+    Key(TIER_LITMUS, "ask", True, False),
+    Key(TIER_LITMUS, "label", False, False),
+    Key(TIER_LITMUS, "mode", False, False),
 
     Key(TIER_DOCS, "subject", False, False),
     Key(TIER_DOCS, "may_touch", False, False),

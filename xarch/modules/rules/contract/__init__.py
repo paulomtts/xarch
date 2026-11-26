@@ -48,8 +48,10 @@ from xarch.modules.rules.domain.published import (
     Unresolved,
     Weak,
 )
+from xarch.profile_values.litmus import ALL, ANY, Litmus
 
-__all__ = ["At", "Weak", "Piece", "AcceptedEdge", "Excused", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS",
+__all__ = ["Litmus", "ANY", "ALL",
+           "At", "Weak", "Piece", "AcceptedEdge", "Excused", "KnownName", "Translation", "Slot", "KeyFacts", "SECTIONS",
            "BASELINE", "Recorded", "RuleCeiling", "BaselineStanding", "WriteBaseline", "BaselineWritten",
            "WriteBaselineResult",
            "GUARDS_OFF", "UNGOVERNED",
@@ -161,24 +163,27 @@ class NearestView:
 
 @dataclass(frozen=True)
 class TierInfoView:
-    """A kind of test: its name, and the profile's words for what it proves, may touch and its litmus test."""
+    """A kind of test: its name, and the profile's words for what it proves, may touch and its litmus test, with the
+    entries of its litmus when it is written as a list (litmus is then "")."""
     name: str
     proves: str = ""
     may_touch: str = ""
     litmus: str = ""
+    litmus_list: tuple[Litmus, ...] = ()
 
 
 @dataclass(frozen=True)
 class PartShown:
     """The part claiming a place, or the one a test mirrors: its name, its name as the docs show it (folder), the
     instance of its repeating folder the place is in ("" for none) and the word one instance is called by, and its
-    role and litmus test."""
+    role and litmus test, with the entries of its litmus when it is written as a list (litmus is then "")."""
     name: str
     folder: str
     instance: str = ""
     singular: str = ""
     role: str = ""
     litmus: str = ""
+    litmus_list: tuple[Litmus, ...] = ()
 
 
 @dataclass(frozen=True)

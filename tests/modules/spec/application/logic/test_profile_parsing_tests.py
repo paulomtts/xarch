@@ -332,8 +332,8 @@ def test_a_tier_name_is_one_line_of_text_and_a_tier_is_a_mapping():
                                           "every table test of the tier holds no branch in its body",
                  id="plain_tables that is no boolean"),
     pytest.param({"proves": "a\nb"}, "layered.yaml: tiers.unit.proves: must be one line of text", id="proves of two lines"),
-    pytest.param({"litmus": 3}, "layered.yaml: tiers.unit.litmus: must be text: the question that tells a test "
-                                "belongs to the tier", id="a litmus that is no text"),
+    pytest.param({"litmus": 3}, "layered.yaml: tiers.unit.litmus: must be a string, or a list of entries, each a "
+                                "text or {ask, label, mode}", id="a litmus that is no text"),
     pytest.param({"uses": {"apply_never": "yes"}}, "layered.yaml: tiers.unit.uses.apply_never: must be true or false: "
                                                    "whether its tests are held to the `uses.never` list of the part "
                                                    "they mirror", id="apply_never that is no boolean"),
