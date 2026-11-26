@@ -152,9 +152,18 @@ All notable changes to this project are written here. The format follows
   refused when the profile loads; each entry the compared profile does not hold is listed as looser
   (`cycles.accepted`, `cycles.left_out`); `xarch profile explain cycles` says each key. A profile without the key
   checks as before.
+- `xarch baseline write --rule <rule>` writes the record of one rule alone: its violations recorded (with no record,
+  or with `--reset`) or its keys lowered, every other rule's keys kept as they are; a rule that is neither one of
+  `check`'s nor a check of the profile's own is refused (exit 2). JSON gains `rule` when it is given.
+- A counterpart's `message` and `fix` may write `{for}`, the match, as they write `{source}`: the variable is named
+  by the key it reads, as `{when}` is.
 
 ### Changed
 
+- A check of the profile's own written under `may_not` that reads nothing is told so in words that fit it: nothing it
+  keeps is there, so the project is clean of what it forbids when what it keeps is only that, else it should widen
+  what it reads. Before, it was told it passes for want of anything to check, to widen what it reads or drop it,
+  which fits a check that must find something. It still fails `--strict` as before.
 - `xarch review` asks the other orders of placement's question of a file near its line together in one second
   request, each a named question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it
   always had, so nothing cached is lost: a file near its line costs two requests instead of three, a file far from it

@@ -191,6 +191,16 @@ def test_a_check_of_the_profile_s_own_that_read_nothing_fails_strict_and_one_tha
     assert reading("no-todo", 0) == said
 
 
+def test_a_check_under_may_not_that_read_nothing_is_said_as_one_whose_point_is_to_find_nothing():
+    said = ("checks.no-print reads nothing in the project: nothing it keeps is there, so nothing it may not find is "
+            "either; if what it keeps is only what may not be there, the project is clean of it and the check guards "
+            "against its return, else widen what it reads")
+    state = Enforcement(checks=(("no-print", 0), ("no-todo", 0)), forbidding=("no-print",))
+    assert strict_findings(state)[0] == Finding("vacuous", said)
+    assert reading("no-print", 0, forbids=True) == said
+    assert reading("no-print", 2, forbids=True) == "checks.no-print read 2 facts"
+
+
 def test_a_counterpart_whose_for_matches_nothing_fails_strict_and_one_that_read_a_source_does_not():
     said = ("counterparts.sql-has-contract matches nothing in the project, so it passes for want of anything to "
             "check: widen its for, or drop it")

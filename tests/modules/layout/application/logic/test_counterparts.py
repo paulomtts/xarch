@@ -149,6 +149,14 @@ def test_a_message_and_a_fix_of_the_profile_s_own_are_said_with_their_variables(
          "write tests/conformance/cart/")]
 
 
+def test_for_in_a_message_or_a_fix_is_the_match_as_source_is():
+    entry = Counterpart("x", at_app("adapters/sql/<store>/"), at_tests("conformance/<store>/"),
+                        message="{for} has no {expected}", fix="give {for} its contract")
+    violations = paired([entry], APP, None, WORDS, PYTHON_NAMING, "app", "tests")[0]
+    assert [(v.message, v.fix) for v in violations][:1] == [
+        ("adapters/sql/cart/ has no tests/conformance/cart/", "give adapters/sql/cart/ its contract")]
+
+
 def test_with_no_tests_a_pattern_below_the_tests_matches_nothing():
     entry = Counterpart("x", at_tests("fakes/<store>/"), at_app("adapters/sql/<store>/"))
     violations, waived, read = paired([entry], APP, None, WORDS, PYTHON_NAMING, "app", None)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
-from xarch.kernel.violations import Violation
+from xarch.kernel.violations import RULES, Violation
 from xarch.modules.rules.application.logic import baseline, enforcement
 from xarch.modules.rules.application.logic.chosen import chosen
 from xarch.modules.rules.application.logic.ordered import ordered
@@ -20,7 +20,7 @@ from xarch.modules.rules.contract import (
     FindingView,
     Partial,
 )
-from xarch.modules.rules.domain.errors import RootMissing, StrictAgainst
+from xarch.modules.rules.domain.errors import RootMissing, StrictAgainst, UnknownRule
 from xarch.modules.rules.domain.outcomes import Finding
 
 RECORD = (".xarch", "baseline.json")
@@ -64,16 +64,21 @@ class AppCheckService:
             partial = Partial(tuple(path.as_posix() for path in paths), elsewhere)
         return AppChecked(tuple(violations), view, hints, passed(violations, found, strict), partial)
 
-    def write_baseline(self, root: Path, profile: str, tests: Path | None, cwd: Path, reset: bool) -> BaselineWritten:
+    def write_baseline(self, root: Path, profile: str, tests: Path | None, cwd: Path, reset: bool,
+                       rule: str = "") -> BaselineWritten:
         """Record what a whole check finds now in the baseline beside the app: with reset, or with no record, every
-        violation; else the record lowered to what is found. Raises RootMissing as check does."""
-        app, _, _, violations, _, _ = self._found(root, profile, tests, cwd)
+        violation; else the record lowered to what is found. With rule, only that rule's violations and keys are
+        written, every other key kept as it was. Raises RootMissing as check does, and UnknownRule for a rule that is
+        neither one of check's nor a check of the profile's own."""
+        app, _, _, violations, view, _ = self._found(root, profile, tests, cwd)
+        if rule and rule not in RULES and rule not in {check.id for check in view.checks}:
+            raise UnknownRule(rule, tuple(check.id for check in view.checks))
         file = app.parent.joinpath(*RECORD)
         before = self._baselines.read(file)
-        findings = baseline.recorded(violations) if reset or before is None else baseline.lowered(before, violations)
+        findings = baseline.written(before, violations, reset, rule)
         self._baselines.write(file, findings)
         return BaselineWritten("/".join(RECORD), sum(f.count for f in findings),
-                               None if before is None else sum(f.count for f in before), reset)
+                               None if before is None else sum(f.count for f in before), reset, rule)
 
     def _found(self, root: Path, profile: str, tests: Path | None,
                cwd: Path) -> tuple[Path, Path | None, dict[str, str], list[Violation], EnforcementView, list[Finding]]:

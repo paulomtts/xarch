@@ -354,22 +354,26 @@ class WriteBaseline:
     """Record the violations a whole check of the app below root finds now in its baseline, under the profile, the
     tests below tests (None: no tests), a relative root or tests folder read from cwd: with reset, every one of them,
     in place of what the record held; else, with a record, only lowering it (a key no longer found dropped, a count
-    lowered), and with none, every one."""
+    lowered), and with none, every one; with rule, only the violations and the record of that rule, the record of
+    every other rule kept as it is."""
     root: Path
     profile: str
     cwd: Path
     tests: Path | None = None
     reset: bool = False
+    rule: str = ""
 
 
 @dataclass(frozen=True)
 class BaselineWritten:
     """The baseline written: the file, from the folder holding the app; how many violations it records now, and how
-    many it recorded before (None: there was no record); and whether it was written afresh (reset)."""
+    many it recorded before (None: there was no record); whether it was written afresh (reset); and the one rule it
+    wrote ("": every rule)."""
     file: str
     recorded: int
     before: int | None
     reset: bool
+    rule: str = ""
 
 
 WriteBaselineResult = BaselineWritten | NotADirectory | ChecksCannotRun | CheckRefused

@@ -95,7 +95,7 @@ class RulesController:
         """The baseline written; a root or tests folder that is no folder is refused, and so are a profile whose own
         checks cannot run, one that cannot be used, and a record that cannot be read or written."""
         try:
-            return self._app.write_baseline(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.reset)
+            return self._app.write_baseline(cmd.root, cmd.profile, cmd.tests, cmd.cwd, cmd.reset, cmd.rule)
         except RootMissing as e:
             return NotADirectory(e.root)
         except ChecksRefused as e:

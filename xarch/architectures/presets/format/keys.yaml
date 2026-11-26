@@ -1928,7 +1928,7 @@ slots:
   counterparts.<id>.message:
     meaning: what is said of a match of `for` with no counterpart
     accepts: >-
-      a sentence, with {source} the match, {expected} the counterpart looked for, {when} the paths of `when`, {key}
+      a sentence, with {source} (or {for}) the match, {expected} the counterpart looked for, {when} the paths of `when`, {key}
       the counterpart's address and each placeholder of `for` as bound; left out, xarch says the first three
     example: |
       <<part>>

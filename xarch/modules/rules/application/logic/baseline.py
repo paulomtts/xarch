@@ -6,7 +6,8 @@ number or a count in a message does not change it; the violations of one key are
 ceiling. A violation whose key the record holds, up to its count, is baselined: not shown, counted. Every other one
 is shown. A key found fewer times than recorded leaves the record above the code: the check passes, says by how much,
 and `--strict` fails until the record is lowered. Lowering drops a key no longer found and lowers a count, never
-raising one and never adding a key.
+raising one and never adding a key. A write of one rule changes only that rule's keys, and keeps every other key
+of the record as it is.
 """
 from __future__ import annotations
 
@@ -42,12 +43,25 @@ def recorded(violations: Iterable[Violation]) -> tuple[Recorded, ...]:
     return tuple(Recorded(first[key].rule, first[key].file, first[key].message, counts[key]) for key in sorted(counts))
 
 
-def lowered(record: Iterable[Recorded], violations: Iterable[Violation]) -> tuple[Recorded, ...]:
+def _lowered(record: Iterable[Recorded], violations: Iterable[Violation]) -> tuple[Recorded, ...]:
     """The record lowered to the violations given: each entry kept at the lower of its count and how many violations
     of its key there are, an entry none has dropped; a key the record does not hold is never added."""
     found = Counter(_key_of(v.rule, v.file, v.message) for v in violations)
     kept = [(entry, min(entry.count, found[_key_of(entry.rule, entry.file, entry.message)])) for entry in record]
     return tuple(Recorded(entry.rule, entry.file, entry.message, count) for entry, count in kept if count)
+
+
+def written(before: Iterable[Recorded] | None, violations: Iterable[Violation], reset: bool,
+            rule: str = "") -> tuple[Recorded, ...]:
+    """The record a write leaves: with reset, or with no record before, every violation recorded; else the record
+    before lowered to them. With rule, only the violations and the keys of that rule are so written, and the record
+    before keeps every key of another rule as it was."""
+    entries = list(before or ())
+    found = [v for v in violations if not rule or v.rule == rule]
+    mine = [entry for entry in entries if not rule or entry.rule == rule]
+    kept = [entry for entry in entries if rule and entry.rule != rule]
+    fresh = recorded(found) if reset or before is None else _lowered(mine, found)
+    return tuple(sorted((*kept, *fresh), key=lambda entry: _key_of(entry.rule, entry.file, entry.message)))
 
 
 def applied(violations: Iterable[Violation], record: Iterable[Recorded], file: str) -> Baselined:

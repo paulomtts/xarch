@@ -38,7 +38,7 @@ xarch check [PATH ...] [--files-from FILE|-] [--app PATH] [--profile NAME|FILE] 
                                                              # report every violation in the app and its tests, each
                                                              # with its fix, then the state of the check's own enforcement;
                                                              # with paths, only those of the files at or below them
-xarch baseline write [--reset] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
+xarch baseline write [--reset] [--rule RULE] [--app PATH] [--profile NAME|FILE] [--tests PATH] [--format text|json]
                                                              # record the violations found now, which check then holds
                                                              # back; the record may only go down
 xarch hook claude [--command TEXT]                           # print Claude Code hooks that run the check after each edit
@@ -219,8 +219,8 @@ below it). `<word>` binds the text of a step, or part of one (`<port>_repo.py`),
 stands for that text in `has` and `when`; the word of a repeating folder at that folder's place binds only its
 instances, never a folder the layout names beside them (`sql/models/` beside `sql/<store>/`); `*` is any text within a
 step, and several matches of `has` satisfy it. Each match of `for` with no counterpart is a `counterpart` finding at it,
-with `message` and `fix` of the profile's own if it writes them (`{source}`, `{expected}`, `{when}`, `{key}` and each
-placeholder). `accepted` lists the matches that need none, each with a reason, as `structure.accepted` writes them; an
+with `message` and `fix` of the profile's own if it writes them (`{source}` or `{for}`, the match; `{expected}`, `{when}`,
+`{key}` and each placeholder). `accepted` lists the matches that need none, each with a reason, as `structure.accepted` writes them; an
 entry that no longer accepts anything (its source gone, or now with its counterpart) is itself a finding. A counterpart
 whose `for` matches nothing is listed as `reads nothing` in the enforcement section and fails `--strict`. A placeholder
 of `has` or `when` that `for` does not bind, or two placeholders side by side in a step, are refused when the profile
@@ -522,7 +522,8 @@ checks:
 
 Its findings carry its id as their `rule`; `hints` may name it. The enforcement section lists each check of your own
 with how many facts it read, and one that read nothing (`reads nothing`), which passes for want of anything to check,
-fails `--strict`. A check whose words do not exist or do not apply where they are written (a filter it keeps, or that
+fails `--strict`; one written under `may_not` is told that this is the clean state when what it keeps is only what may
+not be there, else to widen what it reads. A check whose words do not exist or do not apply where they are written (a filter it keeps, or that
 its links pass, must apply to every kind they read, or it would drop that kind whole), or that needs a fact the
 language's reader does not supply, is refused with every problem at once, each at its address (`checks.<id>.keep`).
 
@@ -849,6 +850,7 @@ back, so that only what is new is reported, and the record may only go down:
 ```
 xarch baseline write            # record every violation a whole check finds now in .xarch/baseline.json
 xarch baseline write --reset    # write it afresh, raising it where it is lower (the diff shows it in review)
+xarch baseline write --rule tiers   # write the record of one rule alone, every other rule kept as it is
 ```
 
 `.xarch/baseline.json` sits in the folder holding the app, beside the record of accepted files: a version, then each
@@ -868,8 +870,12 @@ of one key are counted, and its count is its ceiling. Commit the file.
   violations of the paths given; the `baseline:` line counts the whole app's.
 - `baseline write` with a record only lowers it: a key no longer found is dropped and a count lowered, never raised,
   and a new finding stays a violation; `--reset` writes every violation found now.
+- `baseline write --rule <rule>` writes that rule alone (a rule id `check` reports, or a check of the profile's own;
+  any other is refused): its violations recorded when there is no record, or with `--reset`, else its keys lowered;
+  every other rule's keys are kept as they are. JSON then has `"rule"`.
 - An entry that accepts a finding (`imports.accepted`, `checks.<id>.accepted`, `structure.accepted`,
-  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`, `cycles.accepted`, `cycles.left_out`) is applied first: an accepted finding is no violation, so it
+  `tiers.<tier>.accepted`, `counterparts.<id>.accepted`, `cycles.accepted`, `cycles.left_out`) is applied first: an
+  accepted finding is no violation, so it
   is never recorded, and a stale entry is a violation like any other.
 
 In JSON, `enforcement.baseline` is present only when the record is: `{"file", "recorded", "baselined", "below",

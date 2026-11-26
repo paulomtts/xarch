@@ -7,7 +7,7 @@
         has: <path>        where its counterpart is, written as for, with the placeholders for binds
         when: [<path>, ...]  the paths that must match too for a match of for to need one, written as has
         accepted: [{path, why}, ...]  the matches of for that need none, each with why
-        message: <sentence>  fix: <sentence>   with {source}, {expected}, {when}, {key} and each placeholder of for
+        message: <sentence>  fix: <sentence>   with {source} (or {for}), {expected}, {when}, {key}, each placeholder of for
 
 A placeholder holds a name; two placeholders, or one and `*`, side by side in a step bind text more ways than one, and
 are refused, as is a placeholder of has or when that for does not bind, and a has that is for itself."""
@@ -25,8 +25,9 @@ from xarch.modules.spec.domain.published import DEFAULT_TESTS, AcceptedPath, Cou
 
 KEY = "counterparts"
 """The key the counterparts are written under."""
-VARIABLES = ("source", "expected", "when", "key")
-"""What a message or a fix of a counterpart prints, besides each placeholder of its for."""
+VARIABLES = ("source", "for", "expected", "when", "key")
+"""What a message or a fix of a counterpart prints, besides each placeholder of its for: the variable named as
+the key it matches by is the match, as source is."""
 _PLACEHOLDER = re.compile(r"<([^<>]*)>")
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _TOKEN = re.compile(r"<[^<>]*>|\*")

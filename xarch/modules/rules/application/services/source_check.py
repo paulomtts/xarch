@@ -37,6 +37,7 @@ from xarch.modules.rules.domain.outcomes import Checked, Enforcement
 from xarch.modules.rules.domain.parsed import SourceFile
 from xarch.modules.rules.domain.profile import Profile
 from xarch.modules.rules.domain.published import Weak
+from xarch.modules.rules.domain.rule import MAY_NOT
 
 
 class SourceCheckService:
@@ -56,7 +57,8 @@ class SourceCheckService:
             state.language, tuple(ApproximateView(a.address, a.fact, a.note or "",
                                                   enforcement.approximation(a.address, a.fact, a.note or "", a.unread))
                                   for a in state.approximate),
-            tuple(OwnCheckView(name, read, enforcement.reading(name, read)) for name, read in state.checks),
+            tuple(OwnCheckView(name, read, enforcement.reading(name, read, name in state.forbidding))
+                  for name, read in state.checks),
             state.known, state.translated,
             unresolved=tuple(UnresolvedView(item, enforcement.detail(item)) for item in state.unresolved),
             accepted=state.accepted, excused=state.excused,
@@ -143,6 +145,7 @@ class SourceCheckService:
                                   run(book["untested"], facts, rules),
                                   [*run(book["pass-through"], facts, rules), *only.listed, *written])
         state = replace(state, checks=tuple((rule.id, read(rule, facts, rules)) for rule in own), known=only.known,
+                        forbidding=tuple(rule.id for rule in own if rule.quantifier == MAY_NOT),
                         translated=twinned.translated, accepted=ratchet.accepted,
                         excused=(*looped.excused, *tiered.excused, *sifted.excused))
         return Checked(tuple(found), replace(state, strict=enforcement.strict_findings(state)), rules)

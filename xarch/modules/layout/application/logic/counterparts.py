@@ -159,7 +159,7 @@ def _said(entry: Counterpart, path: Path, bound: Bound) -> dict[str, str]:
     """What a message or a fix of a source with no counterpart prints, by variable."""
     source = Pattern(path, entry.source.tests, entry.source.folder).written
     when = ", ".join(_bind(item, bound).written for item in entry.when)
-    return {**bound, "source": source, "expected": _bind(entry.has, bound).written, "when": when,
+    return {**bound, "source": source, "for": source, "expected": _bind(entry.has, bound).written, "when": when,
             "key": f"counterparts.{entry.id}"}
 
 
