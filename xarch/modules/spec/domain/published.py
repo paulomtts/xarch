@@ -51,8 +51,8 @@ plainly misplaced files and doubted about one well-placed file in ten."""
 
 YES_LINE = 0.5
 """The line at or above which review reads the yes of one entry of a litmus written as a list as yes, the profile
-writing none under `evals.placement.yes_line`: a placeholder, half way, never measured; it must be measured before a
-reading of the entries is relied on."""
+writing none under `evals.placement.yes_line`: a placeholder, half way, never measured; what the entries read is an
+advisory note on the file, which never makes it doubtful."""
 
 
 KINDS = ("classes", "functions", "records", "exceptions")

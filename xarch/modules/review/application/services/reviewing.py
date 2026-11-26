@@ -13,7 +13,8 @@ from xarch.modules.review.application.logic.doubt import (
     ranks,
     reading,
 )
-from xarch.modules.review.application.logic.evaluation import orders
+from xarch.modules.review.application.logic.evaluation import named as eval_named
+from xarch.modules.review.application.logic.evaluation import near, orders
 from xarch.modules.review.application.logic.judging import asked_of, below_app, in_order, standing, unasked_of, went
 from xarch.modules.review.application.logic.litmus_reading import with_litmus
 from xarch.modules.review.application.logic.masking import masked
@@ -98,16 +99,19 @@ class ReviewService:
         asking = tuple(item for _, items, _ in pieced if ranks(items) for item in items)
         held = tuple(answering.kept(going, item.text, piece) for item in asking)
         evals, idle = self._evals(cmd, words, judging, sends.model)
-        each = tuple((item, order) for asked, _, items in evals for item in items for order in orders(asked.question))
-        later = tuple(answering.kept(going, item.text, order) for item, order in each)
+        each = tuple(item for _, _, items in evals for item in items)
+        sought = tuple(self._eval_wanted(going, item, asked, stood.line) for asked, stood, items in evals
+                       for item in items)
+        later = tuple(answering.kept(going, item.text, asked) for item, groups_of in zip(each, sought, strict=True)
+                      for named_of in groups_of for _, asked in named_of)
         total, by = len(found.read) + len(found.unread), ways(cmd.paths, cmd.listed, cmd.every)
         if cmd.dry_run:
             shown = (self._carrying(going, requests, wanted)
                      + self._shown(asking, held, (piece,) * len(asking))
-                     + self._shown(tuple(item for item, _ in each), later, tuple(order for _, order in each)))
+                     + self._carrying(going, each, sought))
             sent = (sum(carried(item, tuple(asked for _, asked in named)) for item in self._carrying(going, requests, wanted)
                         for named in (self._named(item, wanted, requests),))
-                    + characters(asking, piece) + sum(characters((item,), order) for item, order in each))
+                    + characters(asking, piece) + self._cost(going, each, sought))
             return ReviewPlanned(by, total, shown, left_out(files), question, role_only(words.parts), sent,
                                  tokens(sent), words.mask, sends, len(reordered(question)),
                                  piece.ask if cmd.pieces else "", cmd.context,
@@ -152,8 +156,11 @@ class ReviewService:
         for asked, stood, items in evals:
             answered: list[tuple[Answer, ...] | None] = []
             for item in items:
-                found_answers, going = answering.all(going, item.text, orders(asked.question))
-                answered.append(found_answers)
+                got, going = answering.batch(going, item.text, eval_named(asked)[:1])
+                if got[0] is not None and near(asked, stood.line, got[0]):
+                    again, going = answering.batch(going, item.text, eval_named(asked)[1:])
+                    got += again
+                answered.append(None if any(answer is None for answer in got) else tuple(a for a in got if a))
             unasked += unasked_of(asked, items, tuple(answered), bool(going.failure),
                                   tuple(answering.refusal(going, item.text, orders(asked.question)) for item in items))
             ran.append(went(asked, stood, items, tuple(answered)))
@@ -178,6 +185,23 @@ class ReviewService:
         first = self._answering.kept(going, item.text, question)
         near = first is not None and asked_again(first, part, breaks)
         return ((FIRST, question), *entry_questions(part)), named_orders(others) if near else ()
+
+    def _eval_wanted(self, going: Run, item: Request, asked: EvalText, line: float) -> Wanted:
+        """The questions an eval asks of what it reads, each under its name, in two requests: the first, its question
+        in its first order; the second, its other orders, asked only when the first answer reads near the eval's line,
+        so known here only when that answer is kept (none else)."""
+        first = self._answering.kept(going, item.text, eval_named(asked)[0][1])
+        return eval_named(asked)[:1], eval_named(asked)[1:] if first is not None and near(asked, line, first) else ()
+
+    def _cost(self, going: Run, requests: tuple[Request, ...], wanted: tuple[Wanted, ...]) -> int:
+        """How many characters the requests a dry run shows of the evals send: each request with the questions it
+        would send; one whose answers are all kept with its first questions."""
+        total = 0
+        for item, (first, again) in zip(requests, wanted, strict=True):
+            sending = [named_of for named_of in (self._missing(going, item, first), self._missing(going, item, again))
+                       if named_of]
+            total += sum(carried(item, tuple(asked for _, asked in named_of)) for named_of in sending or [first])
+        return total
 
     def _carrying(self, going: Run, requests: tuple[Request, ...], wanted: tuple[Wanted, ...]) -> tuple[Request, ...]:
         """The requests about the files as a dry run shows them: for each file, each of its two requests that would

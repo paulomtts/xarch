@@ -572,15 +572,15 @@ def test_a_reading_says_the_requests_sent_and_the_answers_asked_apart():
 ENTRIES = (LitmusRead("save", "any", 0.2, False), LitmusRead("session", "all", 0.9, True))
 
 
-def test_a_file_of_a_part_whose_litmus_is_a_list_says_each_entry_and_whether_it_holds_against_the_unmeasured_line():
-    entered = replace(READ, readings=(replace(PLACED, doubtful=True, litmus=ENTRIES, litmus_holds=False,
-                                              yes_line=0.5),))
+def test_a_file_of_a_part_whose_litmus_is_a_list_says_each_entry_and_whether_it_holds_as_an_advisory_note():
+    entered = replace(READ, readings=(replace(PLACED, litmus=ENTRIES, litmus_holds=False, yes_line=0.5),))
     lines = reading_lines(entered)
     at = next(i for i, line in enumerate(lines) if line.startswith(f"  {PLACED.file}"))
-    assert lines[at + 1] == ("      litmus: does not hold (an entry answers yes at 0.50 or above, a line not yet "
-                             "measured): save (any) 0.20 no, session (all) 0.90 yes")
+    assert lines[at + 1] == ("      litmus note (advisory, never makes a file doubtful): does not hold (an entry "
+                             "answers yes at 0.50 or above, a line not yet measured): save (any) 0.20 no, "
+                             "session (all) 0.90 yes")
     assert json.loads(reading_document("cli", entered))["placement"]["files"][0]["litmus"] == {
-        "holds": False, "yes_line": 0.5, "measured": False,
+        "holds": False, "advisory": True, "yes_line": 0.5, "measured": False,
         "entries": [{"label": "save", "mode": "any", "yes": 0.2, "answered_yes": False},
                     {"label": "session", "mode": "all", "yes": 0.9, "answered_yes": True}]}
 
@@ -596,10 +596,10 @@ def test_a_dry_run_lists_the_yes_or_no_question_of_each_entry_and_its_yes_line()
     lines = plan_lines(asked)
     at = lines.index("the yes-or-no questions of the parts whose litmus is a list, each asked of a file of its part in "
                      "the request of placement's question, an entry answering yes at 0.50 or above (a line not yet "
-                     "measured):")
+                     "measured); advisory: their answers are a note on the file and never make it doubtful:")
     assert lines[at + 1:at + 3] == ["  litmus.store.save (any): Does it save?", "  litmus.store.pure (all): Is it pure?"]
     assert json.loads(plan_document("cli", asked))["question"]["litmus"] == {
-        "yes_line": 0.5, "measured": False, "questions": [
+        "advisory": True, "yes_line": 0.5, "measured": False, "questions": [
             {"name": "litmus.store.save", "part": "store", "label": "save", "mode": "any", "ask": "Does it save?"},
             {"name": "litmus.store.pure", "part": "store", "label": "pure", "mode": "all", "ask": "Is it pure?"}]}
     assert "yes-or-no questions" not in "\n".join(plan_lines(PLANNED))

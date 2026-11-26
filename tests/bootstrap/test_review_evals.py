@@ -152,7 +152,9 @@ def test_calibrate_holds_each_eval_to_its_examples_records_the_verdicts_and_revi
     assert lines[-1] == "recorded in .xarch/calibration.json: commit it, so that every review reads the same verdicts"
     record = (tmp_path / ".xarch" / "calibration.json").read_text()
     assert "PublishingService" not in record and "Does this method" not in record and KEY not in record
-    assert {body["questions"]["placement"]["type"] for body in served.received} == {"noul", "score", "choice"}
+    assert {question["type"] for body in served.received for question in body["questions"].values()} == {
+        "noul", "score", "choice"}
+    assert ("document-sender", "document-sender.order-2") in {tuple(body["questions"]) for body in served.received}
     sent = xarch("review", SERVICE, url=served.url)
     assert sent.exit_code == 0 and "PublishingService.publish may decide a rule of a document itself (0.90)" in sent.output
     read = xarch("review", SERVICE, "--offline", "--format", "json", key=None)
@@ -336,7 +338,7 @@ def test_a_part_whose_litmus_is_a_list_has_each_entry_asked_as_a_yes_or_no_in_th
     assert len(named) == 4
     assert bodies[0]["questions"]["litmus.services.publish"]["type"] == "noul"
     (read,) = json.loads(result.output)["placement"]["files"]
-    assert read["litmus"] == {"holds": True, "yes_line": 0.5, "measured": False, "entries": [
+    assert read["litmus"] == {"holds": True, "advisory": True, "yes_line": 0.5, "measured": False, "entries": [
         {"label": "1", "mode": "any", "yes": 0.9, "answered_yes": True},
         {"label": "publish", "mode": "any", "yes": 0.9, "answered_yes": True},
         {"label": "title", "mode": "all", "yes": 0.9, "answered_yes": True}]}

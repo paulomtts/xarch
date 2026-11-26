@@ -31,9 +31,10 @@ All notable changes to this project are written here. The format follows
 - `xarch review` asks a file of a part whose litmus is a list of two entries or more each entry as a yes-or-no
   question of its own, `litmus.<part>.<label>`, in the same request as placement's question, the text sent once, each
   answer kept under its own key. An entry answers yes at `evals.placement.yes_line` (0.5 unless written: a
-  placeholder, not measured; measure it before relying on it); a file whose part's litmus does not hold reads as
-  doubtful. Placement's question describes such a part by its entries joined; a part of one text, or of a list of
-  one entry, is asked and read as before, so the answers kept stay valid. The reading and the dry run say each entry;
+  placeholder, not measured); what the entries say is advisory, a note on the file (`litmus note`, JSON
+  `litmus.advisory` true): it never makes a file doubtful, which placement's question alone decides, since entries
+  asked one by one were measured not to tell a part's files from the other parts'. Placement's question describes
+  such a part by its entries joined; a part of one text, or of a list of one entry, is asked and read as before, so the answers kept stay valid. The reading and the dry run say each entry;
   JSON gains `placement.files[].litmus`, `question.litmus` and `requests[].questions`.
 - `xarch baseline write [--reset]` records the violations a whole check finds now in `.xarch/baseline.json`, each
   keyed by rule, file and message (digits read alike) with a count; `check` then holds them back and reports only
@@ -175,6 +176,11 @@ All notable changes to this project are written here. The format follows
 
 ### Fixed
 
+- An eval of the profile's own whose answer is a choice no longer sends each order of its options as a request of
+  its own: calibration asks an example both orders in one request, and a review asks what it reads the first order
+  alone and the reversed one, in one more request, only when the first answer reads within 0.15 of the eval's line,
+  as placement does; each answer is kept under the key it had, and a dry run names the orders each request carries
+  (JSON `requests[].questions`).
 - `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
   `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
   there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.

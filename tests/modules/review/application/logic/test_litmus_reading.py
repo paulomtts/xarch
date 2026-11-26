@@ -1,6 +1,9 @@
 """What the yes-or-no answers to the entries of a part's litmus list say of a file: each entry's yes against the yes
 line, and whether the litmus holds: at least one alternative (when there is any) and every condition; a file whose
-litmus does not hold reads as doubtful."""
+litmus does not hold is told so in a note, advisory: the entries never make a file doubtful, which placement's
+choice alone decides."""
+from dataclasses import replace
+
 import pytest
 
 from xarch.modules.review.application.logic.litmus_reading import holds, with_litmus
@@ -39,9 +42,14 @@ def test_each_entry_reads_yes_at_or_above_the_yes_line_and_a_litmus_that_holds_l
     assert (read.litmus_holds, read.yes_line, read.doubtful) == (True, 0.5, False)
 
 
-def test_a_litmus_that_does_not_hold_makes_the_file_doubtful_whatever_its_probability():
+def test_a_litmus_that_does_not_hold_is_a_note_and_leaves_the_file_as_placement_reads_it():
     read = with_litmus(PLACED, (A, C), (yes(0.9), yes(0.4)), 0.5)
-    assert (read.litmus_holds, read.doubtful, read.probability) == (False, True, 0.8)
+    assert (read.litmus_holds, read.doubtful, read.probability) == (False, False, 0.8)
+
+
+def test_a_litmus_that_holds_does_not_clear_a_file_placement_reads_as_doubtful():
+    read = with_litmus(replace(PLACED, doubtful=True), (A, B), (yes(0.9), yes(0.9)), 0.5)
+    assert (read.litmus_holds, read.doubtful) == (True, True)
 
 
 def test_a_part_with_no_entries_of_its_own_reads_as_before():

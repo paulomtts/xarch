@@ -137,7 +137,23 @@ def test_an_example_refused_alone_is_unanswered_with_the_words_its_eval_is_not_h
                               Unasked("domain/a.py", REFUSED, "", "sending", FLAGGED,
                                       "TypeSafe answered 413: too large"))
     assert [item.complete for item in result.held] == [False, False] and held.kept.get(RECORD, {}) == {}
-    assert model.asked.count(WORSE) == 3 and model.asked.count(FINE) == 3
+    assert model.asked.count(WORSE) == 2 and model.asked.count(FINE) == 2
+
+
+CHOSEN = {(t, o): pick(0.9 if t in (BAD, WORSE) else 0.1) for t in (BAD, WORSE, GOOD, FINE) for o in ("reads", "sends")}
+
+
+def test_a_choice_eval_s_example_is_asked_both_orders_in_one_request():
+    result, _, model = calibrate(Given(evals=(SENDING,), answers={}, by_order=CHOSEN), Calibrate(CWD, APP, "cli"))
+    assert isinstance(result, Calibrated) and result.passed and result.sent == 8
+    assert model.requests == [(text, ("sending", "sending.order-2")) for text in (BAD, WORSE, GOOD, FINE)]
+
+
+def test_a_dry_run_shows_one_request_per_example_of_a_choice_eval_carrying_both_orders():
+    found, _, _ = calibrate(Given(evals=(SENDING,), answers={}, keyed=False), Calibrate(CWD, APP, "cli", dry_run=True))
+    assert isinstance(found, CalibrationPlanned)
+    assert [item.questions for item in found.requests] == [("sending", "sending.order-2")] * 4
+    assert found.requests[0].body == f"sending,sending.order-2 {PICK.ask} 3 {BAD}"
 
 
 def test_a_placement_example_refused_alone_leaves_placement_unheld_and_the_next_example_is_asked():

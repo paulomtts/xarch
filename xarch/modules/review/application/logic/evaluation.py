@@ -1,10 +1,12 @@
 """How an eval of the profile's own reads an answer, and when it may run. The value of an answer is in 0 to 1, higher
 meaning more like the fault: for a yes or no, the probability of yes; for a score, the expected level over 4; for a
-choice, the probability of the options flagged, the mean of two orders of the options (as written, and reversed).
-An eval runs only when it was held to its examples (calibrated) as it is written now, by the model review asks, and
-passed: its flagged examples all read above its clean ones, by GAP at least on the mean, and on the right side of its
-line (the one the profile writes, else midway between the lowest flagged and the highest clean value, never below
-LOWEST_LINE, nor, for a score, below the first level flagged)."""
+choice, the probability of the options flagged, the mean over the orders of the options it was asked in (as written,
+and reversed: both for an example, held to them in one request; in a review the reversed order only when the first
+answer reads within BAND of the eval's line, in a second request). An eval runs only when it was held to its
+examples (calibrated) as it is written now, by the model review asks, and passed: its flagged examples all read
+above its clean ones, by GAP at least on the mean, and on the right side of its line (the one the profile writes,
+else midway between the lowest flagged and the highest clean value, never below LOWEST_LINE, nor, for a score, below
+the first level flagged)."""
 from __future__ import annotations
 
 import hashlib
@@ -13,6 +15,7 @@ import json
 from xarch.modules.review.application.logic.lines import lines as split
 from xarch.modules.review.domain.published import (
     ALWAYS_MASKED,
+    BAND,
     CALIBRATED,
     CHOOSE,
     FAILED_EXAMPLES,
@@ -37,6 +40,19 @@ def orders(question: Choice) -> tuple[Choice, ...]:
     if question.form != CHOOSE:
         return (question,)
     return question, Choice(question.ask, tuple(reversed(question.options)), question.form)
+
+
+def named(asked: EvalText) -> tuple[tuple[str, Choice], ...]:
+    """Each order of an eval's question under its name in a request: the eval's id for the first, then the id,
+    `.order-` and its number counted from 2."""
+    return tuple((asked.asked if number == 1 else f"{asked.asked}.order-{number}", order)
+                 for number, order in enumerate(orders(asked.question), 1))
+
+
+def near(asked: EvalText, line: float, first: Answer) -> bool:
+    """Whether the first answer to an eval's question asked in more than one order reads within BAND of the eval's
+    line, where the order of the options can move it across: its other orders are then asked, in one more request."""
+    return len(orders(asked.question)) > 1 and round(abs(value((first,), asked.question, asked.flagged) - line), 9) <= BAND
 
 
 def value(answers: tuple[Answer, ...], question: Choice, flagged: tuple[str, ...]) -> float:

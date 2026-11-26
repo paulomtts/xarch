@@ -742,11 +742,11 @@ def test_a_file_of_a_part_whose_litmus_is_a_list_is_asked_each_entry_as_a_yes_or
     assert (read.litmus_holds, read.yes_line, read.doubtful, read.probability) == (True, 0.5, False, 0.8)
 
 
-def test_a_condition_of_the_list_that_does_not_hold_makes_the_file_doubtful_though_placement_puts_it_there():
+def test_a_condition_of_the_list_that_does_not_hold_is_a_note_and_the_file_placement_puts_there_is_not_doubtful():
     found = listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.9, 0.9, 0.1)), FakeAnswers())
     assert isinstance(found, ReviewReading)
     (read,) = found.readings
-    assert (read.litmus_holds, read.doubtful, read.probability) == (False, True, 0.8)
+    assert (read.litmus_holds, read.doubtful, read.probability) == (False, False, 0.8)
 
 
 def test_the_answer_of_each_entry_is_kept_under_its_own_key_and_read_offline():

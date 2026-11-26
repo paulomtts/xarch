@@ -1699,9 +1699,9 @@ keys:
       a number above 0 and below 1, 0.5 unless written. A file of a part whose litmus is a list of two entries or more
       is asked each entry as a yes-or-no question of its own, in the same request as placement's question; an entry
       answers yes when its probability of yes is at or above this line, and the part's litmus holds when at least one
-      `any` entry (when there is any) and every `all` entry answers yes; a file whose part's litmus does not hold reads
-      as doubtful there. The default is a placeholder, never measured: measure it before relying on what the entries
-      say
+      `any` entry (when there is any) and every `all` entry answers yes. What the entries say is advisory, a note on
+      the file: it never makes a file doubtful, which placement's question alone decides. The default is a
+      placeholder, never measured
     example: |
       evals:
         placement:
@@ -1759,7 +1759,9 @@ slots:
       levels each saying what it means, the worst last, read as the expected level over 4, `flagged_from` the level
       (1 to 4) from which a reading counts as flagged, so the line is never below it; or `{choice: {<option>:
       <description>, ...}, flagged: [<option>, ...]}`, three options or more, read as the probability of the flagged
-      ones, the mean of two orders of the options. Two options are refused: write yes-no
+      ones, the mean of two orders of the options (as written and reversed: calibration asks an example both in
+      one request; a review asks the reversed order, in a second request, only when the first answer reads near
+      the eval's line). Two options are refused: write yes-no
     example: |
       <<part>>
       evals:

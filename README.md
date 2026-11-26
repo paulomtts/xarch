@@ -1171,9 +1171,13 @@ once; the entries are never merged into one question). Each answer is kept in th
 a file whose entries are not all kept is unanswered.
 
 An entry answers yes when its probability of yes is at or above the yes line, and the part's litmus holds by the rule
-above: at least one `any` entry (when there is any) and every `all` entry answers yes. A file whose litmus does not
-hold reads as doubtful here, whatever placement's question puts on its part; the reading says each entry, its mode,
-its probability of yes and whether it answered yes.
+above: at least one `any` entry (when there is any) and every `all` entry answers yes. **What the entries say is
+advisory: a note on the file, never a reason for doubt.** Whether a file reads as doubtful is decided by placement's
+question alone, exactly as for a part of one text; a file whose litmus does not hold is not doubtful for that, and one
+whose litmus holds is not cleared by it. The reading gives the note under the file (`litmus note`): whether the litmus
+holds, and each entry, its mode, its probability of yes and whether it answered yes. The entries are advisory because,
+measured, yes-or-no questions asked one by one did not tell a part's files from the other parts' files: no yes line
+separated them.
 
 ```yaml
 evals:
@@ -1181,11 +1185,11 @@ evals:
     yes_line: 0.5
 ```
 
-**The yes line is a placeholder, not calibrated.** 0.5 is half way, chosen without any measure; nothing has held the
-entries' answers to labelled files yet, so how often a well-placed file fails its litmus at this line, or a misplaced
-one passes it, is unknown. Measure it before relying on what the entries say; until then read a file doubtful only by
-its entries as a prompt to read it against them. `xarch review calibrate` holds placement's question to its examples,
-not the entries. A value is a number above 0 and below 1; `xarch profile explain evals.placement.yes_line` says it in
+**The yes line is a placeholder, not calibrated, and the note it draws is advisory.** 0.5 is half way, chosen without
+any measure; `yes_line` only sets where an entry's yes is read for the note, and no value of it makes a file doubtful.
+How often a well-placed file fails its litmus at this line, or a misplaced one passes it, is unknown; read a note that
+the litmus does not hold as a prompt to read the file against its entries, nothing more. `xarch review calibrate`
+holds placement's question to its examples, not the entries. A value is a number above 0 and below 1; `xarch profile explain evals.placement.yes_line` says it in
 full.
 
 ### A part's line: `evals.placement.lines`
@@ -1316,7 +1320,11 @@ evals:
 - `answer`: `yes-no` (read as the probability of yes; `yes` and `no` say what each means, sent with the question);
   `{score: [<level 0>, ..., <level 4>], flagged_from: <1 to 4>}` (five levels, the worst last, read as the expected
   level over 4); or `{choice: {<option>: <description>, ...}, flagged: [<option>, ...]}` (three options or more, read
-  as the probability of those flagged, the mean of two orders of the options; two options are refused: write yes-no).
+  as the probability of those flagged, the mean of two orders of the options, as written and reversed; two options
+  are refused: write yes-no). Calibration asks an example both orders in one request; a review asks what it reads
+  the first order alone, and the reversed one, in a second request, only when the first answer reads within 0.15 of
+  the eval's line (as placement asks a file near its line again), reading on the mean of the orders asked. Each
+  answer is kept under the key it had before, so a cache kept before is read as it was.
 - `reads`: `file`, `class` (each at the top level) or `function` (a method included), as the check vocabulary's kinds;
   `in`: `{part, where}` as a check's (the app's files only); `keep`: filters of the vocabulary, such as `[public]`.
 - `line`: the value from which a reading is listed (above 0, below 1); left out, calibration sets it.
@@ -1369,7 +1377,7 @@ and when it was not, what to run.
 
 `--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
-"role_only", "options": [{"name", "description"}], "litmus": {"yes_line", "measured", "questions": [{"name", "part",
+"role_only", "options": [{"name", "description"}], "litmus": {"advisory", "yes_line", "measured", "questions": [{"name", "part",
 "label", "mode", "ask"}]}}, "requests": [{"file", "part", "chars", "cached", "text", "body",
 "piece", "kind", "first", "last", "eval", "questions"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
 "masked", "mask", "never": [{"path", "matched"}], "alike", "ruled_out_by", "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
@@ -1378,8 +1386,10 @@ many characters the text sent holds, masked; `piece`, `kind`, `first` and `last`
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
 without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders of the question a file near
 its line is asked again in, in one more request; `questions` of a request of placement the names of the questions it would send (those whose
-answers are not kept; null for a piece or an eval); `question.litmus` the yes-or-no question of each entry of a part's
-litmus list, by its name, with `yes_line` and `measured` (always false: the line is a placeholder), null when no part
+answers are not kept; null for a piece), and of a request of an eval the names of the orders it carries (the
+eval's id for the first, `<id>.order-2` for the reversed one); `question.litmus` the yes-or-no question of each entry of a part's
+litmus list, by its name, with `advisory` (always true: the answers are a note and never make a file doubtful),
+`yes_line` and `measured` (always false: the line is a placeholder), null when no part
 writes a list of two entries or more; `sends.key` the name of the variable the key is read from (never the key), `keyed` whether it is set, and
 `unusable` why the key set cannot be used (null when it can, or none is set).
 
@@ -1387,7 +1397,7 @@ A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", 
 {"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",
 "examples"}]}}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand", "doubtful", "chars",
 "small", "orders", "model", "alike", "distribution", "ruled_out": [{"part", "by", "probability"}], "accepted":
-{"why", "reads_as"}, "accepted_before": {"why", "reads_as"}, "litmus": {"holds", "yes_line", "measured", "entries":
+{"why", "reads_as"}, "accepted_before": {"why", "reads_as"}, "litmus": {"holds", "advisory", "yes_line", "measured", "entries":
 [{"label", "mode", "yes", "answered_yes"}]}}], "accepted": {"recorded", "stale": [{"file", "part",
 "why", "now"}]}, "parts": [{"part", "read", "doubtful", "line", "line_by_hand",
 "summed", "litmus_note", "examples"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered", "alike", "lowest":
@@ -1403,7 +1413,8 @@ with its own (empty when its part is in no group; also for a file's pieces), and
 `distribution` the probability on each part by name, as answered (also for a piece); `ruled_out` each part ruled out
 of the file's answer, `by` the rule that rules it out (`holds`) and `probability` what the answer put on it (empty
 when none), `probability` being read on what remains; a dry run's `ruled_out_by` the rules that rule parts out;
-`litmus` of a file, for a part whose litmus is a list of two entries or more, whether it `holds`, the `yes_line` each
+`litmus` of a file, for a part whose litmus is a list of two entries or more, a note (`advisory` always true:
+`doubtful` never follows from it): whether it `holds`, the `yes_line` each
 entry was read against (`measured` false: a placeholder) and each entry's probability of `yes` and whether it
 `answered_yes` (null for a file of any other part); `sent.calls` the requests sent and `sent.answers` the answers
 asked, one request carrying several questions; `accepted` of a file what was said when it was accepted, its code as it was then (null otherwise), `accepted_before`
