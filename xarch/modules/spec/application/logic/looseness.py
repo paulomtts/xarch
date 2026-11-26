@@ -531,8 +531,9 @@ def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Archite
     """The origin of a profile compared with the profile file its based_on names, as --strict rests on its anchor:
     the bundled profile the last file of the chain says it is based on, else the one of highest match with that file.
     A guard left off is excused only when the anchor and every file of the chain leave it off too, none with no
-    anchor; each part with no litmus that pairs with a part the anchor gives one, and that the comparison with the file
-    does not list already, is listed after the ways it is looser than the file."""
+    anchor; each part that does not keep the litmus the part it pairs with in the anchor gives it, as the comparison
+    with the file reads keeping one (see _keeps), and that the comparison with the file does not list already, is
+    listed after the ways it is looser than the file."""
     last = chain[-1]
     anchor = last.based_on if last.based_on in bundled else _closest(last, bundled)[0]
     if anchor is None:
@@ -541,12 +542,22 @@ def _resting(origin: Origin, architecture: Architecture, chain: Sequence[Archite
     excused = set(_guards_off(base)).intersection(*(_guards_off(file) for file in chain))
     listed = {item.part for item in origin.looser if item.key == LITMUS}
     pairs = _paired_parts(architecture, base)
-    demanded = tuple(Loosened(LITMUS, name, anchor, _sentence(LITMUS, name, anchor))
+    demanded = tuple(_demanded(name, part, base.parts[pairs[name]], anchor)
                      for name, part in architecture.parts.items()
-                     if not _has_litmus(part) and name in pairs and _has_litmus(base.parts[pairs[name]])
-                     and name not in listed)
+                     if name in pairs and not _keeps(part, base.parts[pairs[name]]) and name not in listed)
     return replace(origin, baseline_off=tuple(g for g in origin.guards_off if g in excused),
                    looser=origin.looser + demanded, anchor=anchor)
+
+
+def _demanded(name: str, part: Part, base: Part, anchor: str) -> Loosened:
+    """A part that does not keep the litmus the anchor gives the part it pairs with: with none, said by the anchor;
+    with one that keeps no entry of the anchor's list, by the labels of its entries, as the anchor's."""
+    if not _has_litmus(part):
+        return Loosened(LITMUS, name, anchor, _sentence(LITMUS, name, anchor))
+    what = _dropped(base, part)
+    return Loosened(LITMUS, name, what, f"{name} keeps no entry of the litmus {anchor}, which --strict rests on, gives "
+                                        f"the part it pairs with ({what.removeprefix(ENTRIES)}), each known by its "
+                                        f"label (parts.{name}.litmus)")
 
 
 def _compared(location: str, architecture: Architecture, bundled: bool, base: Architecture, name: str,

@@ -767,6 +767,26 @@ def test_a_part_the_anchor_gives_a_litmus_is_listed_once_after_the_ways_it_is_lo
                  "(parts.service.litmus)"))
 
 
+def test_a_part_that_keeps_no_entry_of_the_litmus_list_the_anchor_gives_it_is_listed_as_the_direct_comparison_does():
+    anchor = layered()
+    part_of(anchor, "service")["litmus"] = [{"ask": "Does it decide?", "label": "decides"},
+                                            {"ask": "Does it run pure?", "label": "pure", "mode": "all"}]
+    team = layered(based_on="cli")
+    part_of(team, "service")["litmus"] = "Does it hold a rule?"
+    mine = replace(parsed(layered()), based_on="team.yaml")
+    part_of_mine = replace(mine.parts["service"], litmus="Does it hold a rule?")
+    mine = replace(mine, parts={**mine.parts, "service": part_of_mine})
+    origin = origin_of("mine.yaml", mine, False, {"cli": parsed(anchor)}, chain=(parsed(team),))
+    assert origin.looser == (
+        Loosened("litmus", "service", "entries: decides, pure",
+                 "service keeps no entry of the litmus cli, which --strict rests on, gives the part it pairs with "
+                 "(decides, pure), each known by its label (parts.service.litmus)"),)
+    kept = replace(mine, parts={**mine.parts, "service": replace(part_of_mine, litmus="",
+                                                                    litmus_list=parsed(anchor).parts["service"]
+                                                                    .litmus_list[:1])})
+    assert origin_of("mine.yaml", kept, False, {"cli": parsed(anchor)}, chain=(parsed(team),)).looser == ()
+
+
 def test_the_profile_file_based_on_names_is_never_said_to_match_higher_and_a_bundled_one_of_higher_match_is():
     mine = replace(bare(a="a", b="b", c="c"), based_on="team.yaml")
     low = origin_of("mine.yaml", mine, False, {"near": bare(a="a", b="b", c="c")}, chain=(bare(a="a"),))

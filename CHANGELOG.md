@@ -238,6 +238,11 @@ All notable changes to this project are written here. The format follows
   there once that name is taken off (or, for `structure.accepted`, is a `structure` finding). Before, its fix only said
   to drop the entry. A path is still written one way: the prefixed form is not accepted (under `imports.accepted`,
   such a file usually lies in no part, and the profile is refused when it loads, as before).
+- `--strict` on a profile based on a profile file held a part to the litmus of the bundled profile the chain rests
+  on only when the part had no litmus at all: a part whose litmus kept none of the entries of the anchor's litmus
+  list passed. It is now held to keep it the way the comparison with the file holds it, and such a part is listed
+  under `litmus` (`keeps no entry of the litmus cli, which --strict rests on, gives the part it pairs with`) and
+  fails `--strict`.
 - An entry of `imports.accepted` whose file lies in no part because it writes the app folder's name first is refused
   with what to write: `'app/core/ports.py' lies in no part: write it below the app (core/ports.py, not
   app/core/ports.py)`, instead of being told to list it under the part it lies in. The loader does not know the app
