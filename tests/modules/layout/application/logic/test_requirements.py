@@ -111,3 +111,9 @@ def test_what_lies_in_an_optional_part_is_required_only_where_that_part_is_there
 def test_missing_reports_what_an_optional_part_holds_only_where_the_part_is_there(present, found):
     required = [Requirement("app", ("api", "routes.py"), False, "api/routes.py", ("api",))]
     assert [str(v) for v in missing(required, present)] == found
+
+
+def test_a_folder_the_layout_names_beside_the_instances_is_no_instance():
+    repeated = [Repeated(("modules",), PARTS, ["docs", "wiring"], named=frozenset({"wiring"}))]
+    assert requirements("app", [("modules",), ("modules", "wiring")], repeated, (), PYTHON_NAMING) == [
+        MODULES, Requirement("app", ("modules", "wiring"), True, "modules/wiring/"), *parts_of("docs")]

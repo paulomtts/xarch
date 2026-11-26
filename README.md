@@ -381,9 +381,10 @@ The symbols:
   instance is a folder the layout does not name: a file lying beside the instances (`sql/engine.py` beside
   `sql/<store>/`) belongs to the part of the folder holding them, or is its own part when the layout names it, and a
   folder the layout names beside them (`adapters/web/` beside `adapters/<adapter>/`) is never an instance, for the
-  import rules and `where` alike. `cycles` still holds such a folder in one graph with the instances, so a loop
-  through it (`adapters/mail` → `adapters/web` → `adapters/factories` → `adapters/mail`) is found; a file lying beside
-  them is no node, nor is a part the layout names anywhere else.
+  import rules, `where` and `structure` alike (`structure` does not ask it for what every instance holds). `cycles`
+  still holds such a folder in one graph with the instances, so a loop through it (`adapters/mail` → `adapters/web`
+  → `adapters/factories` → `adapters/mail`) is found; a file lying beside them is no node, nor is a part the layout
+  names anywhere else.
 - `optional: true` on a part, a folder or a file, says it may be left out: `structure` does not ask for it, in the app
   or in any instance of its repeating folder (a `config.py` only some modules hold, a controller only one module has),
   and `new` and `init` do not make it. Where it is there, its code is checked as any part's, and what the layout puts

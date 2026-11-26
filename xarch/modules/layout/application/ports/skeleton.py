@@ -44,7 +44,8 @@ class Skeleton(Protocol):
         ...
 
     def words(self, profile: str) -> list[Word]:
-        """Each repeating folder of the layout as a counterpart's placeholder reads it, in the order of the profile."""
+        """Each repeating folder of the layout as a counterpart's placeholder reads it, in the order of the profile:
+        with the names the layout writes beside its instances, which structure does not count as instances either."""
         ...
 
     def beside(self, profile: str) -> Beside | None:

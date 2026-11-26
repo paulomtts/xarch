@@ -25,8 +25,9 @@ class StructureCheckService:
         what the counterparts find (see counterparts), the files of the app and of the tests read only when the
         profile writes one."""
         roots = self._skeleton.each_roots(profile)
-        repeated = [Repeated(each, self._skeleton.each_parts(profile, each),
-                             self._disk.instances(root, each), self._skeleton.when(profile, each)) for each in roots]
+        named = {word.root: word.named for word in self._skeleton.words(profile)}
+        repeated = [Repeated(each, self._skeleton.each_parts(profile, each), self._disk.instances(root, each),
+                             self._skeleton.when(profile, each), named.get(each, frozenset())) for each in roots]
         naming = self._skeleton.naming(profile)
         required = requirements(package, self._skeleton.top_level(profile), repeated,
                                 self._skeleton.top_level_files(profile), naming, self._skeleton.when(profile))

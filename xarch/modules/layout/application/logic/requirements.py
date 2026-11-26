@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Collection, Iterable, Mapping
 
 from xarch.kernel.violations import Violation
-from xarch.modules.layout.application.logic.instances import is_instance_name
+from xarch.modules.layout.application.logic.instances import is_instance
 from xarch.modules.layout.domain.structure import Naming, Repeated, Requirement
 
 
@@ -16,15 +16,16 @@ def requirements(root: str, top_level: Iterable[tuple[str, ...]], repeated: Iter
                  top_files: Iterable[tuple[str, ...]], naming: Naming,
                  when: Mapping[tuple[str, ...], tuple[str, ...]] | None = None) -> list[Requirement]:
     """What must exist: every folder the layout declares outside the repeating folders, at any depth, then every file
-    it declares there, and every part of every instance found in each repeating folder's parent; when gives, for a
-    path outside the repeating folders that lies in an optional part, that part's path, so that it is required only
-    where that part is there (each repeating folder says the same of its parts)."""
+    it declares there, and every part of every instance found in each repeating folder's own folder (a folder the
+    layout names there beside the instances is none); when gives, for a path outside the repeating folders that lies
+    in an optional part, that part's path, so that it is required only where that part is there (each repeating folder
+    says the same of its parts)."""
     when = when or {}
     required = [Requirement(root, path, True, "/".join(path) + "/", when.get(path, ())) for path in top_level]
     required += [Requirement(root, path, False, "/".join(path), when.get(path, ())) for path in top_files]
     for each in repeated:
         parts = list(each.parts)
-        for name in sorted(n for n in each.instances if is_instance_name(n, naming)):
+        for name in sorted(n for n in each.instances if is_instance(n, naming, each.named)):
             owner = "/".join((root, *each.root, name))
             for path, is_dir in parts:
                 shown = "/".join(path) + ("/" if is_dir else "")

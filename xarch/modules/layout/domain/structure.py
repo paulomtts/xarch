@@ -23,11 +23,13 @@ class Requirement:
 class Repeated:
     """A repeating folder: root, the folder holding its instances; parts, (path below an instance, is_dir) for what
     every instance holds; instances, the folders found in root; when, for each part path that lies in an optional part,
-    that part's path below an instance, the deepest: it is required only in an instance that holds that part."""
+    that part's path below an instance, the deepest: it is required only in an instance that holds that part; named,
+    the names the layout writes beside the instances in root (see Word), which are no instance."""
     root: tuple[str, ...]
     parts: Iterable[tuple[tuple[str, ...], bool]]
     instances: Iterable[str]
     when: Mapping[tuple[str, ...], tuple[str, ...]] = field(default_factory=dict)
+    named: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -80,7 +82,8 @@ class Counterpart:
 @dataclass(frozen=True)
 class Word:
     """A repeating folder as a counterpart's placeholder reads it: the word of its instances, the folder holding them
-    below the app root, and the names the layout writes beside them there, which are no instance."""
+    below the app root, and the names the layout writes beside them there, which are no instance (for structure
+    either)."""
     word: str
     root: tuple[str, ...]
     named: frozenset[str] = frozenset()

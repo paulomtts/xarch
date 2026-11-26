@@ -11,8 +11,8 @@ class FakeSkeleton:
     a folder (the language says nothing unless given); where the tests sit under testing.beside (None: they mirror the
     app); when, by None for the top level or the folder of a repeating folder, the optional part each path required
     there lies in (none unless given); the findings structure.accepted accepts (none unless given); the counterparts,
-    and the repeating folders as their placeholders read them (none unless given); a profile refused raises
-    ProfileUnusable with its reason."""
+    and the repeating folders as their placeholders and structure read them, with the names beside their instances
+    (none unless given); a profile refused raises ProfileUnusable with its reason."""
 
     def __init__(self, top_level: list[tuple[str, ...]],
                  repeats: dict[tuple[str, ...], list[tuple[tuple[str, ...], bool]]] | None = None,

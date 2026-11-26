@@ -246,3 +246,13 @@ def test_a_profile_with_no_counterparts_reads_no_counterpart():
     checked = LayoutController(StructureCheckService(FakeDisk(TOP | MODULE, {CONTROLLER}), SKELETON)).check(
         CheckStructure(ROOT, "app", "cli", TESTS))
     assert checked.counterparts == ()
+
+
+BESIDE_SKELETON = FakeSkeleton([("adapters",), ("adapters", "sql"), ("adapters", "sql", "models")],
+                               {("adapters", "sql"): [(("domain",), True)]}, naming=PYTHON_NAMING, words=[STORE])
+
+
+def test_a_folder_the_layout_names_beside_the_instances_is_not_held_to_their_parts():
+    disk = FakeDisk({ROOT / "adapters", ROOT / "adapters/sql", ROOT / "adapters/sql/models", ROOT / "adapters/sql/docs"})
+    assert [str(v) for v in LayoutController(StructureCheckService(disk, BESIDE_SKELETON)).check(
+        CheckStructure(ROOT, "app", "cli")).violations] == ["app/adapters/sql/docs: missing domain/"]

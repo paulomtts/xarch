@@ -292,6 +292,11 @@ All notable changes to this project are written here. The format follows
   graph with them, though it is no instance, so a loop through it (`adapters/mail` → `adapters/web` →
   `adapters/factories` → `adapters/mail`) is one finding with them; a file lying beside the instances is no node of
   that graph, and a loop between parts the layout names anywhere else is still left to `layers` and `may-import`.
+- `structure` held a folder the layout names beside the instances of a repeating folder (`modules/wiring/` beside
+  `modules/<module>/`) to what every instance holds, and reported it missing their parts
+  (`app/modules/wiring: missing application/`), though the import rules, `where` and `cycles` read it as no instance.
+  It now reads an instance the same way: a folder the layout names there is none, and is asked only for what the
+  layout puts in it. The bundled profiles write no such folder, and their output is unchanged.
 - `xarch check` no longer stops when a source file holds a string xarch cannot parse as code, such as a lone
   surrogate or a null byte; the string is ignored. A file nested too deep for Python's parser is reported as
   unparsable instead of stopping the run.
