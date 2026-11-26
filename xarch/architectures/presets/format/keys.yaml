@@ -706,6 +706,24 @@ keys:
           imports:
             must: [parts.documents]
       <<tiered-part>>
+  tiers.<tier>.accepted:
+    meaning: the tiers findings the tier accepts one by one
+    accepts: >-
+      a list of {file, import, why}: `file` a test of the tier, or one in no tier, by its path below the app
+      (`tests/<path>` below the tests root); `import`, optional, what it imports, a file or folder below the app or
+      `tests/<path>`, optionally followed by `:<name>`; `why` one line, the reason. With `import`, the `tiers` findings
+      of that import in that file are accepted; without it, every `tiers` finding of the file, that it lies in no tier
+      included. Such a finding is not reported: every `xarch check` names it in its enforcement section, with its
+      reason, instead. An entry that accepts nothing is itself a `tiers` finding, so the list can only shrink. `profile
+      check` lists each entry the profile compared with does not hold as looser
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          proves: a rule of the documents
+          accepted:
+            - {file: tests/documents/test_legacy%extension%, why: the legacy tests move with the legacy reader}
+      <<tiered-part>>
   tiers.<tier>.docs:
     meaning: what only fills the generated docs
     accepts: a map {subject, may_touch, one_file_per, cases_from, data, example, helpers}

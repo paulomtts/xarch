@@ -222,6 +222,8 @@ class Tier:
     imports_also: what each of its tests may import of the app besides what the part it mirrors may (or its own
         folder's allowance), as targets; `<word>.<part>`, a part in the repeating folder, is the instance the test
         mirrors
+    accepted: the tiers findings it accepts, each a test file, what it imports (none: every finding of the file) and
+        why, in the order written
     """
     name: str
     subject: tuple[Subject, ...]
@@ -241,6 +243,7 @@ class Tier:
     imports_must: tuple[str, ...] = ()
     plain_tables: bool = False
     imports_also: tuple[Target, ...] = ()
+    accepted: tuple[AcceptedImport, ...] = ()
 
 
 @dataclass(frozen=True)

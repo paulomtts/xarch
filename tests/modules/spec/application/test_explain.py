@@ -78,6 +78,7 @@ SHAPE = (
     Shown('tiers.folder', 1, 'a folder of tests that mirror no part', False, True),
     Shown('tiers.imports', 1, 'what its tests may, may also, must import, or import only as types', False, True),
     Shown('tiers.docs', 1, 'what only fills the generated docs', False, False),
+    Shown('tiers.accepted', 1, 'the tiers findings the tier accepts one by one', False, True),
     Shown('fakes', 0, 'the folder of the test fakes, and what they stand in for', False, True),
     Shown('fakes.folder', 1, 'the folder of the fakes', True, True),
     Shown('fakes.for', 1, 'the parts whose Protocols the fakes stand in for', True, True),

@@ -160,12 +160,27 @@ def accepted(written: Mapping[Any, Any], owner: Part, parts: Mapping[str, Part],
     where = f"parts.{owner.name}.imports.accepted"
     if "accepted" not in written:
         return ()
-    value = written["accepted"]
+    patterns = {name: part.path for name, part in parts.items()}
+    return _entries(written["accepted"], where, problems, ACCEPTED, "why the part may import it",
+                    (owner.name, patterns, marks))
+
+
+def tier_accepted(value: Any, where: str, problems: list[str]) -> tuple[AcceptedImport, ...]:
+    """The tiers findings a tier accepts, in the order written: each entry a map of a test file, by its path below the
+    app (tests/<path> below the tests root), optionally what it imports, written as a part's `imports.accepted` writes
+    it (a file or folder below the app, or tests/<path>, then `:<name>` if need be; none: every tiers finding of the
+    file), and why, one line. An entry refused adds its problem, addressed by its index, and is not read."""
+    return _entries(value, where, problems, ("file", "why"), "why the tier accepts it", None)
+
+
+def _entries(value: Any, where: str, problems: list[str], required: tuple[str, ...], reason: str,
+             owner: tuple[str, Mapping[str, tuple[str, ...]], Marks] | None) -> tuple[AcceptedImport, ...]:
+    """The entries of a list of accepted imports, each {file, import, why} with the keys required; owner, when given,
+    the part each file must lie in, with the patterns of the parts and the language's marks it is placed by."""
     if not isinstance(value, list) or not value:
         problems.append(f"{where}: must be a list of {{file, import, why}}, such as [{{file: <file of the part>, "
                         "import: <file or folder below the app>, why: <the reason>}]")
         return ()
-    patterns = {name: part.path for name, part in parts.items()}
     found: list[AcceptedImport] = []
     for index, entry in enumerate(value):
         at = f"{where}.{index}"
@@ -174,22 +189,23 @@ def accepted(written: Mapping[Any, Any], owner: Part, parts: Mapping[str, Part],
             continue
         count = len(problems)
         problems += ck.unknown_keys(entry, ACCEPTED, at)
-        problems += [f"{at}: missing `{key}`" for key in ACCEPTED if key not in entry]
+        problems += [f"{at}: missing `{key}`" for key in required if key not in entry]
         file, target, why = (entry.get(key) for key in ACCEPTED)
         steps = ck.below_app(file, f"{at}.file", problems) if "file" in entry else None
-        if steps is not None:
+        if steps is not None and owner is not None:
+            name_of, patterns, marks = owner
             lies = place_of(patterns, steps, marks).part
-            if lies != owner.name:
+            if lies != name_of:
                 problems.append(f"{at}.file: {file!r} lies in {f'part {lies}' if lies else 'no part'}, not in "
-                                f"{owner.name}: list it under the part it lies in")
+                                f"{name_of}: list it under the part it lies in")
         path, _, name = target.rpartition(":") if isinstance(target, str) and ":" in target else (target, "", "")
-        aimed = ck.below_app(path, f"{at}.import", problems) if "import" in entry else None
+        aimed = ck.below_app(path, f"{at}.import", problems) if "import" in entry else ()
         if "import" in entry and isinstance(target, str) and ":" in target and not name.strip():
             problems.append(f"{at}.import: {target!r}: write a name after `:`, or drop the `:`")
         if "why" in entry and not ck.line(why):
-            problems.append(f"{at}.why: must be one line of text: why the part may import it")
+            problems.append(f"{at}.why: must be one line of text: {reason}")
         if len(problems) == count and steps is not None and aimed is not None:
-            found.append(AcceptedImport(steps, aimed, name, why, target))
+            found.append(AcceptedImport(steps, aimed, name, why, target or ""))
     return tuple(found)
 
 

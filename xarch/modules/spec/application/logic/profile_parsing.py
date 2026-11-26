@@ -721,12 +721,13 @@ def _tier(name: str, spec: Any, subject: tuple[Subject, ...], parts: dict[str, P
     docs = _tier_docs(spec["docs"], folder, examples, f"{where}.docs", problems, language) if "docs" in spec else {}
     reach = (iw.tier_parts(imports["must"], declared, f"{where}.imports.must", problems)
              if "must" in imports else [])
+    accepted = iw.tier_accepted(spec["accepted"], f"{where}.accepted", problems) if "accepted" in spec else ()
     if len(problems) != count:
         return None
     return Tier(name, subject, spec.get("proves", ""), docs.get("may_touch", ""), spec.get("litmus", "").strip("\n"),
                 docs.get("subject", ""), docs.get("one_file_per", ""), docs.get("cases_from", ""), docs.get("data", ""),
                 docs.get("example"), docs.get("helpers", ()), tuple(p for p in types_only if p in parts), held, folder,
-                allowance, tuple(p for p in reach if p in parts), plain, also)
+                allowance, tuple(p for p in reach if p in parts), plain, also, accepted)
 
 
 def _tier_docs(value: Any, folder: tuple[str, ...] | None, examples: ex.Examples, where: str,

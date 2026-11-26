@@ -180,7 +180,7 @@ def test_a_tier_s_imports_opens_a_scope_of_may_also_must_and_types_only():
                                   ("types_only", ("types-only",))]
     assert SCOPES[TIER_IMPORTS] == "tiers.<tier>.imports"
     assert [key.name for key in KEYS if key.scope == TIER] == ["proves", "litmus", "uses", "plain_tables", "folder",
-                                                               "imports", "docs"]
+                                                               "imports", "docs", "accepted"]
 
 
 def test_the_tier_import_keys_need_what_the_keys_they_replace_needed():

@@ -130,6 +130,7 @@ _KEYS: tuple[Key, ...] = (
     Key(TIER, "folder", rules=("tiers", "test-tree")),
     Key(TIER, "imports", rules=("tiers", "must-import", "types-only"), opens=TIER_IMPORTS),
     Key(TIER, "docs", False, False, opens=TIER_DOCS),
+    Key(TIER, "accepted", rules=("tiers",)),
 
     Key(TIER_DOCS, "subject", False, False),
     Key(TIER_DOCS, "may_touch", False, False),

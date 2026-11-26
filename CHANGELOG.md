@@ -7,6 +7,12 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- `tiers.<tier>.accepted: [{file, import, why}, ...]` accepts `tiers` findings one by one: a test of the tier, or one
+  in no tier, and, if need be, what it imports (written as `imports.accepted` writes it); without `import`, every
+  `tiers` finding of the file, that it lies in no tier included. A finding accepted is not reported, every `check`
+  names it under `accepted:` (JSON `enforcement.accepted_findings`), and an entry that accepts nothing is a `tiers`
+  finding, so the list can only shrink; each entry the compared tier does not hold is listed as looser
+  (`tiers.accepted`).
 - `structure: {accepted: [{path, why}, ...]}` accepts findings of the layout one by one: a folder or file a
   `structure` finding says is missing, by its path below the app, or `tests/<path>`, a folder below the tests a
   `test-tree` finding says mirrors nothing. A finding accepted is not reported, every `check` names it under

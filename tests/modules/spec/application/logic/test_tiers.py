@@ -61,7 +61,7 @@ def with_docs(**docs) -> dict:
     return document
 
 
-TIER_USE = "use docs, folder, imports, litmus, plain_tables, proves, uses"
+TIER_USE = "use accepted, docs, folder, imports, litmus, plain_tables, proves, uses"
 """What every unknown-key problem of a tier ends with."""
 REMOVED = "was removed in 0.3.0: write"
 NO_MAP = "must be a map of may, also, must and types_only, such as {must: [parts.<part>]}"

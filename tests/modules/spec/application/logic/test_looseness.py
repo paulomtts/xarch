@@ -205,6 +205,7 @@ def test_every_key_a_profile_is_looser_under_has_a_sentence_of_its_own():
         (accepting(ENTRY), parsed(layered())),
         (checking(AcceptedFinding(("src", "x.py"), (), "w")), parsed(layered())),
         (replace(parsed(layered()), structure_accepted=(AcceptedPath(("src", "x"), "w"),)), parsed(layered())),
+        (accepting_tests({"file": "tests/x/test_y.py", "why": "w"}), parsed(covered())),
     ]
     found = [item for custom, base in pairs for item in loosened(custom, base)]
     assert sorted({item.key for item in found}) == sorted(LOOSER)
@@ -868,3 +869,19 @@ def test_each_finding_of_the_layout_accepted_that_the_compared_profile_does_not_
         Loosened("structure.accepted", "", "src/docs/api",
                  "the layout accepts the finding of src/docs/api (structure.accepted)"),)
     assert loosened(accepting_paths("tests/old"), accepting_paths("tests/old", "src/docs/api")) == ()
+
+
+def accepting_tests(*entries: dict) -> Architecture:
+    """covered(), its unit tier accepting the entries given."""
+    document = covered()
+    document["tiers"]["unit"]["accepted"] = list(entries)
+    return parsed(document)
+
+
+def test_each_tiers_finding_a_tier_accepts_that_the_compared_tier_does_not_is_looser():
+    whole, one = ({"file": "tests/x/test_y.py", "why": "w"},
+                  {"file": "tests/x/test_z.py", "import": "src/docs/store/", "why": "w"})
+    assert loosened(accepting_tests(whole, one), accepting_tests(whole)) == (
+        Loosened("tiers.accepted", "unit", "tests/x/test_z.py: src/docs/store/",
+                 "the unit tier accepts the tiers findings of tests/x/test_z.py: src/docs/store/ (tiers.unit.accepted)"),)
+    assert loosened(accepting_tests(whole), accepting_tests(whole, one)) == ()

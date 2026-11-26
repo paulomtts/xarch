@@ -12,4 +12,4 @@ def checked_tier(architecture: Architecture, tier: Tier) -> CheckedTier:
                     for s in tier.subject)
     return CheckedTier(tier.name, subject, tier.folder, tier.imports_types_only, tier.apply_never, tier.proves, tier.may_touch,
                        tier.litmus, tier.one_file_per, tier.imports_may, tier.imports_must, tier.plain_tables,
-                       tier.imports_also)
+                       tier.imports_also, tier.accepted)

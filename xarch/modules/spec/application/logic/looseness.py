@@ -44,8 +44,9 @@ never for an exception): `names` dropped, or a pattern added that no bundled pat
 profile leaves it out; an entry of `testing.shared` the bundled profile does not share; a tier `fakes.tiers` lists
 that the bundled profile's does not; an entry of a check's `accepted` (a file, and the variables it names) that the
 bundled profile's check of the same id does not hold; an entry of `structure.accepted` (a path) the bundled profile
-does not hold. Anything stricter, and what is compared in no way above (the layout, new parts,
-the guards' other parameters, `fakes`), is not listed.
+does not hold; an entry of a tier's `accepted` (a file, and what it imports) the bundled tier does not hold. Anything
+stricter, and what is compared in no way above (the layout, new parts, the guards' other parameters, `fakes`), is not
+listed.
 
 A custom profile whose `based_on` is the path of a profile file is compared with that file, called by its path as
 written, and is handed the files of its chain in order: that one, the one it names in turn, and so on; no file of the
@@ -80,7 +81,7 @@ HELD = ("holds.classes.names", "holds.classes.immutable", "holds.classes.built_b
 LOOSER = ("imports.may", "imports.may.types_only", "imports.libraries", "uses.never", "imports.must", "untested",
           "optional", "imports.accepted", LITMUS, "holds", *HELD, "shared", "imports.types_only", "imports.also", "uses.apply_never",
           "tiers.imports.must", "plain_tables", "testing.skips", "testing.beside", "testing.shared", "fakes.tiers",
-          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted",
+          "files.pinned", "reserved", "known", "checks.accepted", "structure.accepted", "tiers.accepted",
           "translated", "review.never", "review.mask", "evals.placement.lines")
 """Every key a way a profile is looser is listed under, each said by a sentence of its own."""
 LOW = 0.75
@@ -317,6 +318,12 @@ def _looser(custom: Architecture, base: Architecture) -> list[Looser]:
                       if part not in marked]
             found += [("imports.also", mine.name, _shown(t, words)) for t in mine.imports_also
                       if not any(_covers(b, _into(t, pairs)) for b in tier.imports_also)]
+    for tier in base.tiers:
+        mine = tiers.get(tier.name)
+        if mine is not None:
+            held = {(entry.file, entry.written) for entry in tier.accepted}
+            found += [("tiers.accepted", mine.name, f"{'/'.join(entry.file)}: {entry.written}" if entry.written
+                       else "/".join(entry.file)) for entry in mine.accepted if (entry.file, entry.written) not in held]
     found += [("uses.apply_never", tiers[tier.name].name, "") for tier in base.tiers
               if tier.apply_never and tier.name in tiers and not tiers[tier.name].apply_never]
     for tier in base.tiers:
@@ -571,6 +578,8 @@ def _sentence(key: str, part: str, what: str = "") -> str:
             return f"the {part} tests may also import the fakes (fakes.tiers)"
         case "files.pinned":
             return f"{what} is no longer pinned (files.{what}.pinned)"
+        case "tiers.accepted":
+            return f"the {part} tier accepts the tiers findings of {what} (tiers.{part}.accepted)"
         case "structure.accepted":
             return f"the layout accepts the finding of {what} (structure.accepted)"
         case "checks.accepted":

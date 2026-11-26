@@ -5,6 +5,7 @@ import pytest
 
 from tests.modules.spec.profiles import layered, parsed, part_of, problems
 from xarch.kernel.placement import EVERYTHING
+from xarch.modules.spec.application.logic.imports_written import tier_accepted
 from xarch.profile_values.placement import AcceptedImport, Target
 
 NOT_A_REFERENCE = ("is not a reference: write parts.<part> or <word>.<part>, optionally followed by /<path> and "
@@ -213,3 +214,26 @@ AT = "layered.yaml: parts.store.imports.accepted"
 ])
 def test_an_entry_of_accepted_is_refused_with_why(accepted, found):
     assert problems(with_imports("store", {"may": ["parts.shared"], "accepted": accepted})) == found
+
+
+def test_a_tier_reads_its_accepted_entries_with_or_without_an_import():
+    found: list[str] = []
+    entries = [{"file": "tests/x/test_a.py", "import": "store/db.py:connect", "why": "w"},
+               {"file": "tests/x/test_b.py", "why": "v"}]
+    assert tier_accepted(entries, "tiers.unit.accepted", found) == (
+        AcceptedImport(("tests", "x", "test_a.py"), ("store", "db.py"), "connect", "w", "store/db.py:connect"),
+        AcceptedImport(("tests", "x", "test_b.py"), (), "", "v", ""))
+    assert found == []
+
+
+@pytest.mark.parametrize("entries, problem", [
+    pytest.param([], "tiers.unit.accepted: must be a list of {file, import, why}, such as [{file: <file of the part>, "
+                     "import: <file or folder below the app>, why: <the reason>}]", id="empty"),
+    pytest.param([{"why": "w"}], "tiers.unit.accepted.0: missing `file`", id="no file"),
+    pytest.param([{"file": "tests/a.py", "why": "a\nb"}],
+                 "tiers.unit.accepted.0.why: must be one line of text: why the tier accepts it", id="no line"),
+])
+def test_a_tier_accepted_entry_written_wrong_is_refused(entries, problem):
+    found: list[str] = []
+    assert tier_accepted(entries, "tiers.unit.accepted", found) == ()
+    assert found == [problem]
