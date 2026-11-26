@@ -1109,8 +1109,15 @@ doubtful. Since 0.1.1 the litmus texts of eight parts say more exactly what deci
 show it in their code, and every comment is cut from what is sent, so no comment can tell the model the answer;
 measured again with the same model, placement passes for all 12 parts of both profiles, in each of five runs that asked every
 example afresh. Across them the weakest example read 0.43 on its own part and none read above 0.27 on another, against
-a line of 0.30. That is a sanity check of the litmus texts against 27 short examples, not a measure of how often a reading of
-your code is right.
+a line of 0.30. A later measurement (26 Nov 2026, jev-1.14.0, the bundled `cli` profile) no longer holds that last claim:
+the model's answers vary between runs, the example `modules/documents/domain/values.py` reads between 0.25 and 0.38 on
+`kernel` and so sometimes crosses the line (`cli` reads 11 of 12 parts; `web` stays at 12 of 12, at most 0.27), and the
+adapter example `modules/documents/adapters/moderation_content_review.py` reads 0.21 to 0.33 on `controller`. This is a
+known limit of the bundled `cli` profile's placement example set, not a defect of the checks: four rewordings of the
+kernel litmus did not pass twice, and a hand-set `lines: {kernel: 0.5}` fixes `kernel` but then `controller` crosses in
+2 of 3 runs. A part's own line under `evals.placement.lines` is the documented knob, and a part that reads low usually
+means its litmus does not describe its files. That is a sanity check of the litmus texts against 27 short examples, not a
+measure of how often a reading of your code is right.
 
 `review` is a second, advisory command, apart from `check`: it never runs inside `check`, never changes what `check`
 finds or its exit code, and a review of files never exits 1 (`review calibrate` exits 1 when an eval fails its

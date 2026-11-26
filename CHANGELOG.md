@@ -265,6 +265,10 @@ All notable changes to this project are written here. The format follows
 - The README's list of weak findings names every kind the enforcement section lists as `weak` (it left out `holds`,
   `immutable`, `dead-code`'s `untested` and `tests_only` findings, stale `known` entries and the `list` findings of a
   profile's own checks); the code was right.
+- Known limit: the bundled `cli` profile's placement example set is not stable on every part (measured 26 Nov 2026:
+  `modules/documents/domain/values.py` reads 0.25 to 0.38 on `kernel` against a line of 0.30, and the adapter example
+  0.21 to 0.33 on `controller`), a limit of the examples and not of the checks; a part's own line under
+  `evals.placement.lines` is the knob, and a part that reads low usually means its litmus does not describe its files.
 
 ### Fixed
 
