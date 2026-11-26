@@ -1,5 +1,5 @@
 """What the structure rules work on: something that must exist below the root, and a repeating folder with what each
-of its instances holds."""
+of its instances holds; and what the counterpart rule works on: what the profile says lies with what."""
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
@@ -47,6 +47,43 @@ class Allowed:
     written: str
     why: str
 
+
+@dataclass(frozen=True)
+class Pattern:
+    """A path a counterpart names: its steps below the app root, or below the tests root when tests, each a name in
+    which `<word>` is a placeholder and `*` any text within the step; and whether it is a folder."""
+    steps: tuple[str, ...]
+    tests: bool
+    folder: bool
+
+    @property
+    def written(self) -> str:
+        """The path as the profile writes it: tests/<path> for one below the tests root, ending in / for a folder."""
+        return "/".join(("tests", *self.steps) if self.tests else self.steps) + ("/" if self.folder else "")
+
+
+@dataclass(frozen=True)
+class Counterpart:
+    """What the profile says lies with what (counterparts.<id>): its id; source, the path each match of which must
+    have a counterpart; has, where the counterpart is, the placeholders of source put back as bound; when, the paths
+    that must match too, so bound, for a match of source to need one; the matches of source it accepts with none; and
+    its message and fix, "" for xarch's own."""
+    id: str
+    source: Pattern
+    has: Pattern
+    when: tuple[Pattern, ...] = ()
+    accepted: tuple[Allowed, ...] = ()
+    message: str = ""
+    fix: str = ""
+
+
+@dataclass(frozen=True)
+class Word:
+    """A repeating folder as a counterpart's placeholder reads it: the word of its instances, the folder holding them
+    below the app root, and the names the layout writes beside them there, which are no instance."""
+    word: str
+    root: tuple[str, ...]
+    named: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)

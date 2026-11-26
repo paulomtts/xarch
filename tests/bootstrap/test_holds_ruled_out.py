@@ -63,6 +63,8 @@ RULED_OUT = {
         "kernel/logic/targets.py",
         "modules/layout/application/logic/allowed.py",
         "modules/layout/application/logic/beside.py",
+        "modules/layout/application/logic/counterparts.py",
+        "modules/layout/application/logic/instances.py",
         "modules/layout/application/logic/requirements.py",
         "modules/layout/application/logic/unmirrored.py",
         "modules/review/application/logic/accepting.py",

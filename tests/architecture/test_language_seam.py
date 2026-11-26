@@ -503,7 +503,7 @@ PRIVACY: dict[str, str] = {
     "modules/scaffold/application/logic/names.py": "scaffold refuses a new part or module of a private name",
     "modules/scaffold/application/services/scaffolding.py": "scaffold says the prefix in that refusal",
     "modules/scaffold/adapters/spec_skeleton.py": "hands scaffold the prefix spec publishes",
-    "modules/layout/application/logic/requirements.py": "layout requires no private file or folder",
+    "modules/layout/application/logic/instances.py": "a private folder is no instance, and binds no placeholder",
     "modules/layout/application/logic/unmirrored.py": "layout leaves a private folder unmirrored",
     "modules/layout/application/logic/beside.py": "layout leaves a test in a private folder unreported",
     "modules/layout/adapters/spec_skeleton.py": "hands layout the prefix spec publishes",
