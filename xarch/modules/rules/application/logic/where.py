@@ -18,18 +18,19 @@ would hold, then what the project would; a path that is in none of them is not p
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Collection, Iterable
 from pathlib import Path
 
 from xarch.kernel.logic.imports import shown_target, targets_phrase
 from xarch.kernel.logic.names import outside_text
-from xarch.kernel.logic.placement import repeat_of, stands_for_folder, stem
+from xarch.kernel.logic.placement import named_beside, repeat_of, stands_for_folder, stem
 from xarch.kernel.placement import EACH, Place
 from xarch.modules.rules.application.logic.places import excluded_by, matches, place, targets_of
 from xarch.modules.rules.application.logic.tier_of import NO_TIER, Tested, allowance, may_use_fakes, tested
 from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Placed, Resolved, StructurePlace, SuitePlace, UngovernedPlace
-from xarch.modules.rules.domain.profile import PartInfo, Profile
-from xarch.profile_values.placement import Target
+from xarch.modules.rules.domain.profile import Paired, PartInfo, Profile
+from xarch.profile_values.placement import AcceptedImport, Target
 from xarch.profile_values.tiers import CheckedTier
 
 SAMPLE = "x"
@@ -220,3 +221,71 @@ def _shared(profile: Profile, tests: str) -> tuple[str, ...]:
 
 def _fakes(profile: Profile, tests: str) -> str:
     return f"{tests}/{'/'.join(profile.fakes.folder)}/" if profile.fakes is not None else ""
+
+
+_TOKEN = re.compile(r"<([^<>]*)>|\*")
+"""A placeholder of a counterpart's path, `<word>`, or `*`, any text within a step."""
+
+
+def applying(profile: Profile, found: Resolved) -> tuple[tuple[Paired, str], ...]:
+    """The counterparts that apply to a path, each with what the path needs (the counterpart's path, its words bound
+    by the match): those whose path of matches the path is, or lies below when it is a folder. A path is written as
+    the profile writes one, below the app, or `tests/<path>` below the tests; one outside both matches none."""
+    if found.within == "project":
+        return ()
+    steps = (profile.default_tests, *found.steps) if found.within == "tests" else found.steps
+    out: list[tuple[Paired, str]] = []
+    for paired in profile.counterparts:
+        wants = paired.wants
+        if len(steps) < len(wants) or (not paired.wants_folder and len(steps) != len(wants)):
+            continue
+        bound = _matched(wants, steps, profile)
+        if bound is not None:
+            needs = [_TOKEN.sub(lambda token: bound.get(token.group(1) or "", token.group(0)), step)
+                     for step in paired.at]
+            out.append((paired, "/".join(needs) + ("/" if paired.at_folder else "")))
+    return tuple(out)
+
+
+def _matched(wants: tuple[str, ...], steps: tuple[str, ...], profile: Profile) -> dict[str, str] | None:
+    """The words a counterpart's path binds where its steps match the first steps of the path; None when one does
+    not match."""
+    bound: dict[str, str] = {}
+    for at, (want, step) in enumerate(zip(wants, steps)):
+        found = _bound(want, step, bound, profile, wants[:at])
+        if found is None:
+            return None
+        bound = found
+    return bound
+
+
+def _bound(want: str, step: str, bound: dict[str, str], profile: Profile,
+           folder: tuple[str, ...]) -> dict[str, str] | None:
+    """The words bound once a step of a counterpart's path matches a step of the path, those bound before kept; None
+    when it does not match. The word of a repeating folder written as the whole step at that folder's place binds
+    only its instances, never a folder or file the layout names beside them."""
+    if any(want == f"<{repeat.word}>" and repeat.root == folder for repeat in profile.repeats) and \
+            step in named_beside(profile.parts.values(), folder):
+        return None
+    words: list[str] = []
+    pattern, at = "", 0
+    for token in _TOKEN.finditer(want):
+        pattern += re.escape(want[at:token.start()])
+        name = token.group(1)
+        if name is None:
+            pattern += ".*"
+        elif name in bound:
+            pattern += re.escape(bound[name])
+        else:
+            pattern += "(.+)"
+            words.append(name)
+        at = token.end()
+    matched = re.fullmatch(pattern + re.escape(want[at:]), step)
+    if matched is None:
+        return None
+    return {**bound, **dict(zip(words, matched.groups()))}
+
+
+def accepted_in(profile: Profile, part: str, steps: tuple[str, ...]) -> tuple[AcceptedImport, ...]:
+    """The imports the part's imports.accepted accepts in the file at steps below the app, in the order written."""
+    return tuple(entry for entry in profile.imports_accepted.get(part, ()) if entry.file == steps)

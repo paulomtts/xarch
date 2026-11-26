@@ -180,13 +180,27 @@ def _shown(shown: Shown) -> dict[str, Any]:
 
 def view_lines(seen: ProfileViewed) -> list[str]:
     where = "bundled" if seen.bundled else f"custom, named {seen.name}"
-    return [f"{seen.location} ({where})", "folders", *(f"  {line}" for line in seen.tree.splitlines()), "imports",
-            *(f"  {line}" for line in seen.imports.splitlines())]
+    lines = [f"{seen.location} ({where})", "folders", *(f"  {line}" for line in seen.tree.splitlines()), "imports",
+             *(f"  {line}" for line in seen.imports.splitlines())]
+    if seen.optional:
+        lines += ["optional", *(f"  {name}" for name in seen.optional)]
+    if seen.counterparts:
+        lines += ["counterparts", *(f"  {item.id}: {item.source.written} has {item.has.written}"
+                                    for item in seen.counterparts)]
+    if seen.accepted:
+        lines += ["accepted imports", *(f"  {'/'.join(entry.file)} imports {entry.written}: {entry.why}"
+                                        for _, entry in seen.accepted)]
+    return lines
 
 
 def view_document(seen: ProfileViewed) -> str:
     return document({"ok": True, "profile": seen.location, "name": seen.name, "tree": seen.tree,
-                  "imports": seen.imports})
+                  "imports": seen.imports, **({"optional": list(seen.optional)} if seen.optional else {}),
+                  **({"counterparts": [{"id": item.id, "for": item.source.written, "has": item.has.written}
+                                       for item in seen.counterparts]} if seen.counterparts else {}),
+                  **({"accepted_imports": [{"part": part, "file": "/".join(entry.file), "import": entry.written,
+                                            "why": entry.why} for part, entry in seen.accepted]}
+                     if seen.accepted else {})})
 
 
 NAMED = 5

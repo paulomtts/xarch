@@ -22,12 +22,26 @@ if TYPE_CHECKING:
 class PartInfo:
     """What the profile says of a part in words: its role and litmus test, its name as the docs show it (a path below
     the instance for an instance's part, ending in `/` for a folder), for a part no tier tests, why, and the entries
-    of its litmus when it is written as a list (litmus is then "")."""
+    of its litmus when it is written as a list (litmus is then ""); and whether it is optional."""
     role: str = ""
     litmus: str = ""
     shown: str = ""
     untested: str = ""
     litmus_list: tuple[Litmus, ...] = ()
+    optional: bool = False
+
+
+@dataclass(frozen=True)
+class Paired:
+    """A counterpart of the profile (`counterparts.<id>`) as `where` names it: its id; the steps of the path each of
+    whose matches needs one (wants, `tests/<path>` below the tests, `<word>` binding the text of a step or part of one
+    and `*` any text in a step), and whether that is a folder; and the steps of the path the counterpart is at, the
+    words of wants put back, and whether that is a folder."""
+    id: str
+    wants: tuple[str, ...]
+    wants_folder: bool
+    at: tuple[str, ...]
+    at_folder: bool
 
 
 @dataclass(frozen=True)
@@ -81,7 +95,8 @@ class Profile:
     profile writes itself, by id, as rules reads them (see Asked), which no check runs. imports_accepted holds, by
     part, the imports its imports.may does not allow that it accepts, each with why (see accepted). cycles_accepted
     holds the groups of the cycles graph the profile accepts (`cycles.accepted`), cycles_left_out the nodes it leaves
-    out of that graph (`cycles.left_out`), each with why, in the order written (see cycles).
+    out of that graph (`cycles.left_out`), each with why, in the order written (see cycles). counterparts are what
+    the profile says lies with what, which `where` names for a path (the layout module checks them).
     """
     parts: dict[str, tuple[str, ...]]
     rules: dict[str, tuple[Target, ...]]
@@ -129,6 +144,7 @@ class Profile:
     imports_accepted: dict[str, tuple[AcceptedImport, ...]] = field(default_factory=dict)
     cycles_accepted: tuple[AcceptedCycle, ...] = ()
     cycles_left_out: tuple[LeftOut, ...] = ()
+    counterparts: tuple[Paired, ...] = ()
 
     def words(self) -> dict[str, str]:
         """The word of the repeating folder each part lies in; a part outside every one has none."""

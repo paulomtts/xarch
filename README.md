@@ -1027,6 +1027,13 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   may import the fakes, where they live, the parts it may use as types and never call, and the folder it may import test
   code from; a profile with `testing.shared` adds `"shared"` to a tiered test's object, the shared folders (ending in
   `/`) and files below the project root. `note`: one line where the kind alone does not say it.
+- Only when the profile writes them: `counterparts`, each counterpart whose `for` the path matches or lies below,
+  `{"id", "for", "has", "needs"}`, `needs` being `has` with the words of `for` bound (the text says `counterparts:
+  <id>: needs <path> (for <for>)`); `"optional": true` in `part` for a part marked `optional` (text `optional:`); and,
+  for a file of a part, `accepted_imports`, each import its part's `imports.accepted` accepts in it, `{"import",
+  "why"}` (text `accepted:`). The view of a profile (`xarch profile explain --profile`) lists the same under
+  `optional`, `counterparts` and `accepted imports`, and its JSON adds `optional`, `counterparts` (`{"id", "for",
+  "has"}`) and `accepted_imports` (`{"part", "file", "import", "why"}`) only when there is any.
 
 ## xarch review: an advisory reading
 

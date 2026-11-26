@@ -58,7 +58,8 @@ __all__ = ["Litmus", "ANY", "ALL",
            "INIT_FILES", "SKIPPED", "DYNAMIC", "UNRESOLVED", "Unresolved",
            "WEAK", "APPROXIMATE", "VACUOUS", "UNPLACED", "ChecksCannotRun", "CheckRefused", "OwnCheckView",
            "Drift", "FindingView", "ExcludedView", "UnresolvedView", "EnforcementView", "ReachView", "NearestView", "TierInfoView",
-           "PartShown", "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
+           "PartShown", "CounterpartView", "AcceptedImportView",
+           "CoveringTest", "Untested", "InPart", "InStructure", "Ungoverned", "InTests", "Support", "Fake",
            "WhereAnswer", "NotADirectory", "CheckApp", "Partial", "AppChecked",
            "CheckAppResult", "Locate", "Located", "Outside", "LocateResult", "ExplainWords", "NoWords",
            "WordLine", "CategoryShown", "ChecksShown", "WordsShown", "FieldShown", "WordShown", "UnknownWords",
@@ -178,7 +179,8 @@ class TierInfoView:
 class PartShown:
     """The part claiming a place, or the one a test mirrors: its name, its name as the docs show it (folder), the
     instance of its repeating folder the place is in ("" for none) and the word one instance is called by, and its
-    role and litmus test, with the entries of its litmus when it is written as a list (litmus is then "")."""
+    role and litmus test, with the entries of its litmus when it is written as a list (litmus is then ""), and
+    whether it is optional."""
     name: str
     folder: str
     instance: str = ""
@@ -186,6 +188,24 @@ class PartShown:
     role: str = ""
     litmus: str = ""
     litmus_list: tuple[Litmus, ...] = ()
+    optional: bool = False
+
+
+@dataclass(frozen=True)
+class CounterpartView:
+    """A counterpart that applies to a place: its id, the path its matches are written by (for) and the path of what
+    each needs (has), as the profile writes them, and what the place needs, has with the words of for bound."""
+    id: str
+    source: str
+    has: str
+    needs: str
+
+
+@dataclass(frozen=True)
+class AcceptedImportView:
+    """An import a part's imports.accepted accepts in a file: what it imports, as the entry writes it, and why."""
+    written: str
+    why: str
 
 
 @dataclass(frozen=True)
@@ -219,6 +239,8 @@ class InPart:
     libraries: tuple[str, ...] | None
     uses_never: tuple[str, ...]
     tested: CoveringTest | Untested | None
+    counterparts: tuple[CounterpartView, ...] = ()
+    accepted: tuple[AcceptedImportView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -228,6 +250,7 @@ class InStructure:
     path: str
     exists: bool
     nearest: tuple[NearestView, ...]
+    counterparts: tuple[CounterpartView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -241,6 +264,7 @@ class Ungoverned:
     nearest: tuple[NearestView, ...]
     closed_tree: bool | None
     note: str
+    counterparts: tuple[CounterpartView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -264,6 +288,7 @@ class InTests:
     code_from: str
     note: str
     shared: tuple[str, ...] = ()
+    counterparts: tuple[CounterpartView, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -282,6 +307,7 @@ class Fake:
     fakes_path: str
     code_from: str
     note: str
+    counterparts: tuple[CounterpartView, ...] = ()
 
 
 WhereAnswer = InPart | InStructure | Ungoverned | InTests | Fake

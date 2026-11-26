@@ -157,6 +157,12 @@ All notable changes to this project are written here. The format follows
   `check`'s nor a check of the profile's own is refused (exit 2). JSON gains `rule` when it is given.
 - A counterpart's `message` and `fix` may write `{for}`, the match, as they write `{source}`: the variable is named
   by the key it reads, as `{when}` is.
+- `xarch where` says, in its text and its JSON, the counterparts that apply to a path (each with what the path
+  needs there: `counterparts`, `{"id", "for", "has", "needs"}`), that a part is `optional` (`"optional": true` in
+  `part`), and the imports a part's `imports.accepted` accepts in a file (`accepted_imports`, `{"import", "why"}`);
+  `xarch profile explain --profile` lists the optional parts, the counterparts and the accepted imports, its JSON
+  adding `optional`, `counterparts` and `accepted_imports`. Each is said only when the profile writes it, so the
+  answers under the bundled profiles are as before.
 
 ### Changed
 

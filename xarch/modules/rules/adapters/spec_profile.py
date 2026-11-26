@@ -6,7 +6,7 @@ from typing import Protocol
 
 from xarch.modules.rules.domain.errors import NoProfile, ProfileUnusable, Unloaded
 from xarch.modules.rules.domain.outcomes import InitFile, Known, Standing
-from xarch.modules.rules.domain.profile import Asked, PartInfo, Profile
+from xarch.modules.rules.domain.profile import Asked, Paired, PartInfo, Profile
 from xarch.modules.rules.domain.published import KeyFacts, Loosened, Resemblance, Reviewed
 from xarch.modules.spec.contract import (
     DEFAULT_TESTS,
@@ -88,7 +88,10 @@ class SpecProfiles:
                        private_imports=guards.private_imports,
                        framework=view.framework,
                        uses_never={p.name: p.uses_never for p in parts if p.uses_never},
-                       info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested, p.litmus_list) for p in parts},
+                       info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested, p.litmus_list, p.optional)
+                             for p in parts},
+                       counterparts=tuple(Paired(c.id, c.source.steps, c.source.folder, c.has.steps, c.has.folder)
+                                          for c in view.counterparts),
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),
                        approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS,

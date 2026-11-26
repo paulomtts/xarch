@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from xarch.modules.spec.application.logic.layout_walk import docs_name
 from xarch.modules.spec.application.logic.profile_file import source_of
 from xarch.modules.spec.application.logic.profile_view import view
 from xarch.modules.spec.application.ports.architecture_files import ArchitectureFiles
@@ -38,4 +39,8 @@ class ProfileReviewService:
         location = self._selection.location(app, target)
         architecture = self._architectures.load(location)
         tree, imports = view(architecture)
-        return ProfileViewed(location, architecture.name, tree, imports, source_of(location, self._files.bundled()).bundled)
+        return ProfileViewed(location, architecture.name, tree, imports, source_of(location, self._files.bundled()).bundled,
+                             tuple(docs_name(architecture, part) for part in architecture.parts.values() if part.optional),
+                             architecture.counterparts,
+                             tuple((name, entry) for name, part in architecture.parts.items()
+                                   for entry in part.imports_accepted))

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from xarch.kernel.placement import Place
 from xarch.modules.rules.application.logic.own_checks import resolved
-from xarch.modules.rules.application.logic.where import candidates, describe, resolve
+from xarch.modules.rules.application.logic.where import accepted_in, applying, candidates, describe, resolve
 from xarch.modules.rules.application.ports.profile import Profiles
 from xarch.modules.rules.application.ports.source_tree import SourceTree
 from xarch.modules.rules.contract import (
+    AcceptedImportView,
+    CounterpartView,
     CoveringTest,
     Fake,
     InPart,
@@ -24,7 +28,7 @@ from xarch.modules.rules.contract import (
 )
 from xarch.modules.rules.domain.errors import OutsideProject
 from xarch.modules.rules.domain.places import FakePlace, PartAt, PartPlace, Placed, StructurePlace, SuitePlace, UngovernedPlace
-from xarch.modules.rules.domain.profile import PartInfo
+from xarch.modules.rules.domain.profile import PartInfo, Profile
 from xarch.profile_values.tiers import CheckedTier
 
 
@@ -42,7 +46,22 @@ class LocateService:
         found = resolve(cmd.path, cmd.cwd, app, tests, existing)
         if found is None:
             raise OutsideProject(cmd.path, app.parent)
-        return Located(_where(describe(resolved(self._profiles.profile(cmd.profile)), found, app, tests)))
+        profile = resolved(self._profiles.profile(cmd.profile))
+        placed = describe(profile, found, app, tests)
+        return Located(_extras(_where(placed), placed, profile))
+
+
+def _extras(answer: WhereAnswer, placed: Placed, profile: Profile) -> WhereAnswer:
+    """The answer with the counterparts that apply to its path and, for a file of a part, the imports its part
+    accepts there."""
+    pairs = tuple(CounterpartView(paired.id, "/".join(paired.wants) + ("/" if paired.wants_folder else ""),
+                                  "/".join(paired.at) + ("/" if paired.at_folder else ""), needs)
+                  for paired, needs in applying(profile, placed.found))
+    answer = replace(answer, counterparts=pairs)
+    if isinstance(answer, InPart) and isinstance(placed, PartPlace) and placed.place.part is not None:
+        answer = replace(answer, accepted=tuple(AcceptedImportView(entry.written, entry.why) for entry in
+                                                accepted_in(profile, placed.place.part, placed.found.steps)))
+    return answer
 
 
 def _where(found: Placed) -> WhereAnswer:
@@ -71,7 +90,7 @@ def _where(found: Placed) -> WhereAnswer:
 
 def _part(place: Place, info: PartInfo, singular: str) -> PartShown:
     return PartShown(place.part or "", info.shown, place.instance or "", singular, info.role, info.litmus,
-                     info.litmus_list)
+                     info.litmus_list, info.optional)
 
 
 def _reaches(reaches: tuple[PartAt, ...]) -> tuple[ReachView, ...]:
