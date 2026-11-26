@@ -51,6 +51,8 @@ from xarch.modules.review.contract import (
     Choice,
     FileAccepted,
     LeftOut,
+    Litmus,
+    LitmusRead,
     Option,
     PartHeld,
     PartRead,
@@ -125,7 +127,7 @@ def test_the_json_of_a_dry_run_holds_every_request_in_full_and_the_question_once
                                    {"file": "app/c.py", "why": "missing", "chars": 0, "pattern": None}]},
         "question": {"ask": "Which part?", "role_only": ["main"],
                      "options": [{"name": "domain", "description": "Is it an invariant?"},
-                                 {"name": "main", "description": "starts the app"}]},
+                                 {"name": "main", "description": "starts the app"}], "litmus": None},
         "requests": [{"file": "app/a.py", "part": "domain", "chars": 1200, "cached": False,
                       "text": "from <masked> import A\n\nx = 1\n", "body": '{"state": "..."}', "piece": None,
                       "kind": None, "first": None, "last": None, "eval": None, "questions": None}],
@@ -289,11 +291,11 @@ def test_the_json_of_a_reading_holds_each_file_with_the_probability_of_each_part
                       "files": [{"file": DOUBTFUL.file, "part": "adapters", "probability": 0.0812, "line": 0.3,
                                  "line_by_hand": False, "doubtful": True, "chars": 2140, "small": False, "orders": 1, "model": "m-1.0.1",
                                  "alike": [], "distribution": {"adapters": 0.0812, "logic": 0.9188}, "ruled_out": [],
-                                 "accepted": None, "accepted_before": None},
+                                 "accepted": None, "accepted_before": None, "litmus": None},
                                 {"file": PLACED.file, "part": "domain", "probability": 0.71, "line": 0.3,
                                  "line_by_hand": False, "doubtful": False, "chars": 1200, "small": False, "orders": 1, "model": "m-1.0.1",
                                  "alike": [], "distribution": {"domain": 0.71, "logic": 0.29}, "ruled_out": [],
-                                 "accepted": None, "accepted_before": None}],
+                                 "accepted": None, "accepted_before": None, "litmus": None}],
                       "parts": [], "accepted": {"recorded": 0, "stale": []}},
         "pieces": [],
         "evals": [],
@@ -565,3 +567,39 @@ def test_a_reading_says_the_requests_sent_and_the_answers_asked_apart():
     assert json.loads(reading_document("cli", batched))["sent"]["calls"] == 1
     assert json.loads(reading_document("cli", batched))["sent"]["answers"] == 3
     assert any(line.startswith("Sent 1 request(s) to") for line in reading_lines(batched))
+
+
+ENTRIES = (LitmusRead("save", "any", 0.2, False), LitmusRead("session", "all", 0.9, True))
+
+
+def test_a_file_of_a_part_whose_litmus_is_a_list_says_each_entry_and_whether_it_holds_against_the_unmeasured_line():
+    entered = replace(READ, readings=(replace(PLACED, doubtful=True, litmus=ENTRIES, litmus_holds=False,
+                                              yes_line=0.5),))
+    lines = reading_lines(entered)
+    at = next(i for i, line in enumerate(lines) if line.startswith(f"  {PLACED.file}"))
+    assert lines[at + 1] == ("      litmus: does not hold (an entry answers yes at 0.50 or above, a line not yet "
+                             "measured): save (any) 0.20 no, session (all) 0.90 yes")
+    assert json.loads(reading_document("cli", entered))["placement"]["files"][0]["litmus"] == {
+        "holds": False, "yes_line": 0.5, "measured": False,
+        "entries": [{"label": "save", "mode": "any", "yes": 0.2, "answered_yes": False},
+                    {"label": "session", "mode": "all", "yes": 0.9, "answered_yes": True}]}
+
+
+def test_a_file_of_any_other_part_has_no_litmus_in_its_reading():
+    assert json.loads(reading_document("cli", READ))["placement"]["files"][0]["litmus"] is None
+    assert not any("litmus: " in line and "holds" in line for line in reading_lines(READ))
+
+
+def test_a_dry_run_lists_the_yes_or_no_question_of_each_entry_and_its_yes_line():
+    asked = replace(PLANNED, litmus=(("litmus.store.save", "store", Litmus("Does it save?", "save")),
+                                     ("litmus.store.pure", "store", Litmus("Is it pure?", "pure", "all"))))
+    lines = plan_lines(asked)
+    at = lines.index("the yes-or-no questions of the parts whose litmus is a list, each asked of a file of its part in "
+                     "the request of placement's question, an entry answering yes at 0.50 or above (a line not yet "
+                     "measured):")
+    assert lines[at + 1:at + 3] == ["  litmus.store.save (any): Does it save?", "  litmus.store.pure (all): Is it pure?"]
+    assert json.loads(plan_document("cli", asked))["question"]["litmus"] == {
+        "yes_line": 0.5, "measured": False, "questions": [
+            {"name": "litmus.store.save", "part": "store", "label": "save", "mode": "any", "ask": "Does it save?"},
+            {"name": "litmus.store.pure", "part": "store", "label": "pure", "mode": "all", "ask": "Is it pure?"}]}
+    assert "yes-or-no questions" not in "\n".join(plan_lines(PLANNED))

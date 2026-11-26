@@ -30,6 +30,7 @@ from xarch.modules.review.contract import (
     Choice,
     KeyMissing,
     LeftOut,
+    LitmusRead,
     NothingChosen,
     Option,
     PartRead,
@@ -48,6 +49,7 @@ from xarch.modules.review.contract import (
 )
 from xarch.modules.review.contract import GONE as GONE_FILE
 from xarch.modules.review.domain.values import AcceptedFile, Answer, CodeFile, Found, PartText, Span, Words
+from xarch.profile_values.litmus import ALL, Litmus
 
 CWD, APP = Path("/src"), Path("/src/app")
 FOLDER = Path("/src/.xarch/cache/review")
@@ -716,3 +718,82 @@ def test_a_record_of_accepted_files_that_cannot_be_read_refuses_the_review_befor
     found = controller(FakeCode(FOUND), FakeProfile(WORDS), model, FakeAnswers(), acceptances=acceptances).review(
         review("app/x.py"))
     assert found == ReviewRefused("the record of accepted files cannot be read") and model.asked == []
+
+
+SAVES = Litmus("Does it save a record?", "save")
+LOADS = Litmus("Does it load a record?", "load")
+KEEPS = Litmus("Does it reach the store's own session?", "session", ALL)
+LISTED_PARTS = (replace(PARTS[0], litmus="", entries=(SAVES, LOADS, KEEPS)), PARTS[1])
+LISTED_WORDS = {"listed": Words(LISTED_PARTS)}
+ENTRY_NAMES = ("litmus.domain.save", "litmus.domain.load", "litmus.domain.session")
+"""The names of the yes-or-no questions a file of domain is asked, its litmus being a list of three entries."""
+
+
+def yes(probability: float) -> Answer:
+    return Answer("m-1.0.1", (("yes", probability), ("no", round(1 - probability, 9))), 0, 0)
+
+
+def listed(model: FakeDecisionModel, answers: FakeAnswers, **changes):
+    return controller(FakeCode(FOUND), FakeProfile(LISTED_WORDS), model, answers).review(
+        review("app/x.py", profile="listed", **changes))
+
+
+def entries(save: float, load: float, session: float) -> dict:
+    return {(SENT, SAVES.ask): yes(save), (SENT, LOADS.ask): yes(load), (SENT, KEEPS.ask): yes(session)}
+
+
+def test_a_file_of_a_part_whose_litmus_is_a_list_is_asked_each_entry_as_a_yes_or_no_in_the_one_request():
+    model = FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.7, 0.9))
+    found = listed(model, FakeAnswers())
+    assert isinstance(found, ReviewReading)
+    assert model.requests == [(SENT, ("placement", *ENTRY_NAMES, "placement.order-2"))]
+    (read,) = found.readings
+    assert read.litmus == (LitmusRead("save", "any", 0.2, False), LitmusRead("load", "any", 0.7, True),
+                           LitmusRead("session", "all", 0.9, True))
+    assert (read.litmus_holds, read.yes_line, read.doubtful, read.probability) == (True, 0.5, False, 0.8)
+
+
+def test_a_condition_of_the_list_that_does_not_hold_makes_the_file_doubtful_though_placement_puts_it_there():
+    found = listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.9, 0.9, 0.1)), FakeAnswers())
+    assert isinstance(found, ReviewReading)
+    (read,) = found.readings
+    assert (read.litmus_holds, read.doubtful, read.probability) == (False, True, 0.8)
+
+
+def test_the_answer_of_each_entry_is_kept_under_its_own_key_and_read_offline():
+    answers = FakeAnswers()
+    listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.7, 0.9)), answers)
+    assert len(answers.kept) == 5
+    again = FakeDecisionModel({}, keyed=False)
+    found = listed(again, answers, offline=True)
+    assert isinstance(found, ReviewReading) and again.requests == [] and found.readings[0].litmus_holds is True
+
+
+def test_offline_a_file_whose_entries_are_not_kept_is_unanswered():
+    answers = FakeAnswers()
+    listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.2, 0.2)), answers)
+    answers.kept = {key: answer for key, answer in answers.kept.items() if "yes" not in dict(answer.probabilities)}
+    found = listed(FakeDecisionModel({}, keyed=False), answers, offline=True)
+    assert isinstance(found, ReviewReading)
+    assert (found.readings, found.unasked) == ((), (Unasked(DOCUMENT.file, NOT_CACHED),))
+
+
+def test_with_the_choice_kept_only_the_entries_not_kept_are_sent_in_one_request():
+    answers = FakeAnswers()
+    listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.2, 0.2)), answers)
+    answers.kept = {key: answer for key, answer in answers.kept.items() if "yes" not in dict(answer.probabilities)}
+    model = FakeDecisionModel({}, by_ask=entries(0.9, 0.1, 0.9))
+    found = listed(model, answers)
+    assert model.requests == [(SENT, ENTRY_NAMES)]
+    assert isinstance(found, ReviewReading) and found.readings[0].litmus_holds is True
+
+
+def test_a_dry_run_names_the_entry_questions_each_request_carries_and_says_each_entry_s_question():
+    planned = listed(FakeDecisionModel({}), FakeAnswers(), dry_run=True)
+    assert isinstance(planned, ReviewPlanned)
+    assert planned.requests[0].questions == ("placement", *ENTRY_NAMES, "placement.order-2")
+    assert planned.litmus == tuple((name, "domain", entry) for name, entry in zip(ENTRY_NAMES, (SAVES, LOADS, KEEPS),
+                                                                                  strict=True))
+    assert planned.yes_line == 0.5
+    assert planned.question.options[0].description == (
+        "Does it save a record? Or: Does it load a record? And in every case: Does it reach the store's own session?")

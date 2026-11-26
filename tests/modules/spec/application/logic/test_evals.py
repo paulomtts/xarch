@@ -7,7 +7,7 @@ import pytest
 
 from tests.modules.spec.languages import BRACE, PYTHON
 from tests.modules.spec.profiles import layered, parsed, part_of, problems
-from xarch.modules.spec.domain.published import CHOICE, SCORE, YES_NO, Eval
+from xarch.modules.spec.domain.published import CHOICE, SCORE, YES_LINE, YES_NO, Eval
 from xarch.profile_values.checks import Condition, Scope
 
 
@@ -38,9 +38,9 @@ NOT_A_LINE = "is not a line: write a number above 0 and below 1, such as 0.2"
                                       "each part, below which a file reads as doubtful there, the groups of parts one "
                                       "file cannot tell apart, and the examples it is held to besides the docs'",
                  id="placement not a mapping"),
-    pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use alike, examples, lines",
+    pytest.param({"placement": {"line": 0.2}}, "evals.placement: unknown key 'line': use alike, examples, lines, yes_line",
                  id="an unknown slot"),
-    pytest.param({"placement": {True: "x"}}, "evals.placement: unknown key 'yes': use alike, examples, lines",
+    pytest.param({"placement": {True: "x"}}, "evals.placement: unknown key 'yes': use alike, examples, lines, yes_line",
                  id="a slot of an eval of your own, which YAML reads yes as true, written under placement"),
     pytest.param({"placement": {"examples": {"clean": {"store/a.txt": "x"}}}},
                  "evals.placement.examples.clean: 'store/a.txt' is not a path of a source file below the app, ending in "
@@ -279,3 +279,16 @@ def test_an_eval_s_example_of_any_ending_of_the_language_is_read_and_a_refusal_p
     braced = {"flagged": {"store/a.tsx": CODE, "store/b.mts": CODE}, "clean": {"store/c.ts": CODE, "store/d.js": CODE}}
     assert problems(layered(evals=own(examples=braced), language="brace"), languages={"python": PYTHON, "brace": BRACE}) == [
         "layered.yaml: evals.rule.examples.clean: 'store/d.js' is not a path of a source file below the app, ending in .ts"]
+
+
+def test_the_yes_line_of_a_litmus_entry_is_the_placeholder_unless_written():
+    assert parsed(layered()).yes_line == YES_LINE == 0.5
+    assert parsed(layered(evals={"placement": {"yes_line": 0.7}})).yes_line == 0.7
+
+
+@pytest.mark.parametrize("value", [pytest.param(0, id="0"), pytest.param(1, id="1"), pytest.param("high", id="text"),
+                                   pytest.param(True, id="true")])
+def test_a_yes_line_that_is_no_number_above_0_and_below_1_is_refused(value):
+    assert problems(layered(evals={"placement": {"yes_line": value}})) == [
+        f"layered.yaml: evals.placement.yes_line: {value!r} is not a line: write a number above 0 and below 1, such as "
+        "0.5"]

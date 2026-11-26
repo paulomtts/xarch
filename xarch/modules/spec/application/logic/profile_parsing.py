@@ -126,7 +126,7 @@ from xarch.modules.spec.domain.profile_keys import (
     TIER_USES,
 )
 from xarch.modules.spec.domain.profile_keys import GUARD as GUARD_SCOPE
-from xarch.modules.spec.domain.published import DEFAULT_TESTS
+from xarch.modules.spec.domain.published import DEFAULT_TESTS, YES_LINE
 from xarch.modules.spec.domain.values import (
     Architecture,
     ArchitectureSource,
@@ -252,8 +252,8 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
            if "checks" in document else {})
     hints = ck.rule_hints(document["hints"], problems, own) if "hints" in document else {}
     never, mask = sending(document["review"], problems) if "review" in document else ((), ())
-    placement, placed, own_evals, alike = (evals(document["evals"], declared, language, problems, words=words)
-                                           if "evals" in document else ({}, ((), ()), {}, ()))
+    placement, placed, own_evals, alike, yes_line = (evals(document["evals"], declared, language, problems, words=words)
+                                                     if "evals" in document else ({}, ((), ()), {}, (), YES_LINE))
     problems += unplaced(placed, {name: part.path for name, part in parts.items()}, language)
     problems += unlike(alike, {name: (frozenset(uses_never.get(name, ())),
                                       tuple((held.kind, held.immutable) for held in part.holds))
@@ -265,7 +265,7 @@ def parse_profile(document: Any, source: str, files: Collection[str] = (), prese
     return Architecture(name, built.tree, parts, rules, pages, shown, built.notes, layers, tuple(parts), naming, tiers,
                         libraries, guards, fakes, built.repeats, written, framework, uses_never, excluded, hints, based_on, language,
                         reserved, needs.approximate(shortfalls), own, never, mask, placement, own_evals, placed, alike,
-                        structure_accepted=accepted)
+                        structure_accepted=accepted, yes_line=yes_line)
 
 
 def _keys(document: Mapping[Any, Any]) -> list[str]:

@@ -21,6 +21,7 @@ from xarch.modules.spec.domain.published import (
     LITMUS,
     READS,
     SCORE,
+    YES_LINE,
     YES_NO,
     AcceptedPath,
     DocFile,
@@ -41,7 +42,7 @@ from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, Sta
 from xarch.profile_values.tiers import CheckedTier
 
 __all__ = ["CHOICE", "READS", "SCORE", "YES_NO", "Eval", "Held", "KINDS", "ExampleFile", "ExamplesRead", "ExamplesResult",
-           "DEFAULT_APP", "DEFAULT_TESTS", "EXAMPLE_APP", "LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs",
+           "DEFAULT_APP", "DEFAULT_TESTS", "EXAMPLE_APP", "LINE", "YES_LINE", "Entry", "Repeating", "Skeleton", "DocFile", "Docs",
            "ProjectFile", "ProjectFiles",
            "FilesResult", "SkeletonResult", "ProfileResult", "DocsResult", "OriginResult", "PartView",
            "GuardsView", "ProfileView", "ChooseApp", "AppChosen", "ChooseAppResult",
@@ -167,7 +168,8 @@ class ProfileView:
     (`review.mask`), each as written; and the line of each part the profile writes one for under
     `evals.placement.lines`, by part (any other part's is LINE); the evals of its own, by id, which review asks
     and rules holds to their examples; and the groups of parts one file cannot tell apart (`evals.placement.alike`),
-    each its parts by name, which review reads a file of on the sum of the group's probabilities."""
+    each its parts by name, which review reads a file of on the sum of the group's probabilities; and the line at or
+    above which review reads an entry of a litmus list as answering yes (YES_LINE unless written: not measured)."""
     parts: tuple[PartView, ...]
     folders: tuple[tuple[str, ...], ...] = ()
     tiers: tuple[CheckedTier, ...] = ()
@@ -187,6 +189,7 @@ class ProfileView:
     lines: dict[str, float] = field(default_factory=dict)
     evals: dict[str, Eval] = field(default_factory=dict)
     alike: tuple[tuple[str, ...], ...] = ()
+    yes_line: float = YES_LINE
 
 
 @dataclass(frozen=True)

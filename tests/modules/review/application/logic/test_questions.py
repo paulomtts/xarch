@@ -1,5 +1,7 @@
 """The question placement asks, from the profile's own words, the other orders it is asked again in, and what each
 request sends."""
+from dataclasses import replace
+
 import pytest
 
 from tests.modules.review.builders import BODY, PARTS, found
@@ -8,6 +10,7 @@ from xarch.modules.review.application.logic.questions import (
     OF_A_PIECE,
     PLACEMENT,
     characters,
+    entry_questions,
     of_piece,
     piece_requests,
     placement,
@@ -16,8 +19,9 @@ from xarch.modules.review.application.logic.questions import (
     role_only,
     tokens,
 )
-from xarch.modules.review.domain.published import Choice, Option, Request
-from xarch.modules.review.domain.values import CodeFile, Span
+from xarch.modules.review.domain.published import YES_NO, Choice, Option, Request
+from xarch.modules.review.domain.values import CodeFile, PartText, Span
+from xarch.profile_values.litmus import ALL, Litmus
 
 
 def test_each_part_is_an_option_in_the_profile_s_order_described_by_its_litmus_else_its_role():
@@ -97,3 +101,26 @@ def test_a_piece_under_1000_characters_is_not_judged_but_counted():
                      spans=(Span("function", "a", "", (1, 60)), Span("function", "b", "", (61, 181))))
     requests, too_small = piece_requests(small, "app", (), "none")
     assert ([r.piece for r in requests], too_small) == (["b"], 1)
+
+
+SAVE, LOAD = Litmus("Does it save?", "save"), Litmus("Does it load?", "load")
+PURE = Litmus("Is it pure?", "pure", ALL)
+LISTED = PartText("store", "store/", "", "keeps records", 0.3, entries=(SAVE, LOAD, PURE))
+
+
+def test_a_part_whose_litmus_is_a_list_of_one_entry_reads_as_one_text_and_asks_nothing_of_its_own():
+    single = replace(LISTED, entries=(PURE,))
+    assert placement((single,)).options == (Option("store", "Is it pure?"),)
+    assert entry_questions(single) == () and role_only((single,)) == ()
+
+
+def test_a_part_whose_litmus_is_a_list_is_described_by_its_alternatives_then_its_conditions():
+    assert placement((LISTED,)).options == (
+        Option("store", "Does it save? Or: Does it load? And in every case: Is it pure?"),)
+    assert role_only((LISTED,)) == ()
+
+
+def test_each_entry_of_a_list_is_a_yes_or_no_question_of_its_own_named_after_its_part_and_its_label():
+    assert entry_questions(LISTED) == tuple(
+        (f"litmus.store.{entry.label}", Choice(entry.ask, (Option("yes", ""), Option("no", "")), YES_NO))
+        for entry in (SAVE, LOAD, PURE))

@@ -65,6 +65,7 @@ from xarch.modules.review.domain.published import (
     ExampleRead,
     HeldExample,
     LeftOut,
+    LitmusRead,
     Option,
     PartHeld,
     PartRead,
@@ -79,11 +80,13 @@ from xarch.modules.review.domain.published import (
     StaleAcceptance,
     Unasked,
 )
+from xarch.profile_values.litmus import Litmus
 
 __all__ = ["A_TEST", "ALWAYS_MASKED", "BAND", "BY_ALL", "BY_LIST", "BY_PATHS", "EXCLUDED", "FAILED", "FEWEST_SUMMED", "IMPORTS",
            "LARGE", "LINK",
            "MARKED_SMALL", "MAX_CHARS", "MAX_FILES", "MAX_PIECED", "MIN_CHARS", "MISSING", "NEVER", "NO_CONTEXT", "NOT_CACHED",
            "NOT_SOURCE", "OUTSIDE", "PIECE_CHARS", "REFUSED", "SHOWN", "SMALL", "UNPARSABLE", "UNPLACED", "Choice", "LeftOut",
+           "LitmusRead", "Litmus",
            "Option", "PartRead", "PieceReading", "PiecesRead", "Reading", "Request", "Sender", "Unasked", "Review",
            "ReviewPlanned", "ReviewReading", "NothingChosen", "AllAndOthers", "AllInPieces", "TooManyFiles",
            "KeyMissing", "ReviewRefused", "ReviewResult", "CALIBRATED", "CHOOSE", "FAILED_EXAMPLES", "GAP", "SCORE",
@@ -130,8 +133,10 @@ class ReviewPlanned:
     when the pieces of the files are asked of too (each request of a piece says which), what the question of a piece
     asks ("" when they are not) and what is sent before each piece; how each eval of the profile's own stands (the
     requests of each that runs say which); the paths of review.never in force, in the profile's order, and those of
-    them that matched no file found this run; and the groups of parts read alike, a file of each read on the sum of
-    the group's probabilities, each its parts in the profile's order."""
+    them that matched no file found this run; the groups of parts read alike, a file of each read on the sum of
+    the group's probabilities, each its parts in the profile's order; how many files the record of accepted files
+    names; each yes-or-no question a file of a part whose litmus is a list of two entries or more is asked in its
+    request, by its name, with the part and the entry it asks; and the line at or above which an entry answers yes."""
     by: tuple[str, ...]
     found: int
     requests: tuple[Request, ...]
@@ -150,6 +155,8 @@ class ReviewPlanned:
     unmatched: tuple[str, ...] = ()
     alike: tuple[tuple[str, ...], ...] = ()
     accepted: int = 0
+    litmus: tuple[tuple[str, str, Litmus], ...] = ()
+    yes_line: float = 0.5
 
 
 @dataclass(frozen=True)

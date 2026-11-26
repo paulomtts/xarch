@@ -70,6 +70,7 @@ RULED_OUT = {
         "modules/review/application/logic/doubt.py",
         "modules/review/application/logic/evaluation.py",
         "modules/review/application/logic/judging.py",
+        "modules/review/application/logic/litmus_reading.py",
         "modules/review/application/logic/lines.py",
         "modules/review/application/logic/masking.py",
         "modules/review/application/logic/pieces.py",

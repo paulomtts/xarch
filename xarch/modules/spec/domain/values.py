@@ -7,7 +7,7 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
-from xarch.modules.spec.domain.published import AcceptedPath, Eval, Held
+from xarch.modules.spec.domain.published import YES_LINE, AcceptedPath, Eval, Held
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
@@ -411,6 +411,8 @@ class Architecture:
     alike: the groups of parts one file cannot tell apart (`evals.placement.alike`), in the order of the file, each its
         parts by name in the order written: review reads a file of one on the sum of the group's probabilities
     structure_accepted: the findings of the layout the profile accepts (`structure.accepted`), in the order written
+    yes_line: the line at or above which review reads an entry of a litmus list as answering yes
+        (`evals.placement.yes_line`, else YES_LINE: a placeholder, not measured)
     """
     name: str
     layout: Layout
@@ -444,6 +446,7 @@ class Architecture:
     placed: tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]] = ((), ())
     alike: tuple[tuple[str, ...], ...] = ()
     structure_accepted: tuple[AcceptedPath, ...] = ()
+    yes_line: float = YES_LINE
 
     @property
     def entry(self) -> Part | None:

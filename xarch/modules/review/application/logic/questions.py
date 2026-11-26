@@ -5,13 +5,21 @@ from __future__ import annotations
 
 from xarch.modules.review.application.logic.masking import masked
 from xarch.modules.review.application.logic.pieces import large, opening, sections, sent
-from xarch.modules.review.domain.published import IMPORTS, Choice, Option, Request
+from xarch.modules.review.domain.published import IMPORTS, YES_NO, Choice, Option, Request
 from xarch.modules.review.domain.values import CodeFile, PartText
+from xarch.profile_values.litmus import ALL, ANY
 
 PLACEMENT = ("Which part of this architecture does this code belong in? Each option is a part and the test that "
              "decides whether code belongs in it.")
 """What placement asks, the wording the trials measured."""
 OF_A_PIECE = "This text is one piece of a larger file."
+OR, AND, IN_EVERY_CASE = " Or: ", " And: ", " And in every case: "
+"""How placement's question joins the questions of a litmus list into one description of its part: the alternatives,
+then the conditions."""
+LITMUS = "litmus"
+"""What the name of the question of an entry of a litmus list starts with, before its part and its label."""
+YES, NO = "yes", "no"
+"""The options of the question of an entry of a litmus list."""
 FIRST = "placement"
 """The name placement's question travels under in a request, in its first order."""
 """What placement adds when it asks of a piece of a file, the wording the trials measured."""
@@ -20,7 +28,30 @@ FIRST = "placement"
 def placement(parts: tuple[PartText, ...]) -> Choice:
     """The question placement asks: one option per part, in the profile's order, described by its litmus test, else
     by its role."""
-    return Choice(PLACEMENT, tuple(Option(part.name, part.litmus or part.role) for part in parts))
+    return Choice(PLACEMENT, tuple(Option(part.name, _described(part)) for part in parts))
+
+
+def _described(part: PartText) -> str:
+    """How placement's question describes a part: by its litmus of one text, or of a list of one entry, that entry's
+    question; by a list of several, its `any` questions joined by OR, then its `all` questions after IN_EVERY_CASE,
+    joined by AND; by its role when it has no litmus."""
+    if not part.entries:
+        return part.litmus or part.role
+    if len(part.entries) == 1:
+        return part.entries[0].ask
+    alternatives = OR.join(entry.ask for entry in part.entries if entry.mode == ANY)
+    conditions = AND.join(entry.ask for entry in part.entries if entry.mode == ALL)
+    return f"{alternatives}{IN_EVERY_CASE}{conditions}" if alternatives and conditions else alternatives or conditions
+
+
+def entry_questions(part: PartText) -> tuple[tuple[str, Choice], ...]:
+    """The yes-or-no questions a file of the part is asked besides placement's, in the same request: one for each
+    entry of its litmus list when it has two or more (none else), named `litmus.<part>.<label>`, asking the entry's
+    question as written."""
+    if len(part.entries) < 2:
+        return ()
+    return tuple((f"{LITMUS}.{part.name}.{entry.label}", Choice(entry.ask, (Option(YES, ""), Option(NO, "")), YES_NO))
+                 for entry in part.entries)
 
 
 def reordered(question: Choice) -> tuple[Choice, ...]:
@@ -61,7 +92,7 @@ def piece_requests(file: CodeFile, root: str, mask: tuple[str, ...], context: st
 
 def role_only(parts: tuple[PartText, ...]) -> tuple[str, ...]:
     """The parts that have no litmus test, which placement describes by their role alone."""
-    return tuple(part.name for part in parts if not part.litmus)
+    return tuple(part.name for part in parts if not part.litmus and not part.entries)
 
 
 def request(file: CodeFile, root: str, mask: tuple[str, ...] = (), also: tuple[str, ...] = ()) -> Request:

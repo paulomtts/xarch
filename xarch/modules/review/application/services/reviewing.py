@@ -15,6 +15,7 @@ from xarch.modules.review.application.logic.doubt import (
 )
 from xarch.modules.review.application.logic.evaluation import orders
 from xarch.modules.review.application.logic.judging import asked_of, below_app, in_order, standing, unasked_of, went
+from xarch.modules.review.application.logic.litmus_reading import with_litmus
 from xarch.modules.review.application.logic.masking import masked
 from xarch.modules.review.application.logic.placing import groups, held_as, marked, undoubted
 from xarch.modules.review.application.logic.placing import standing as placed
@@ -22,6 +23,7 @@ from xarch.modules.review.application.logic.questions import (
     FIRST,
     carried,
     characters,
+    entry_questions,
     named_orders,
     of_piece,
     piece_requests,
@@ -107,7 +109,10 @@ class ReviewService:
                                  tokens(sent), words.mask, sends, len(reordered(question)),
                                  piece.ask if cmd.pieces else "", cmd.context,
                                  in_order(idle + tuple(s for _, s, _ in evals), words.evals), words.never,
-                                 unmatched(found, words.never), groups(words.parts), len(record))
+                                 unmatched(found, words.never), groups(words.parts), len(record),
+                                 tuple((name, part.name, entry) for part in words.parts if entry_questions(part)
+                                       for (name, _), entry in zip(entry_questions(part), part.entries, strict=True)),
+                                 words.yes_line)
         if needs_key(kept + held + later, cmd.offline, sends.keyed):
             raise NoKey(sends.key)
         if unusable := unusable_key(kept + held + later, cmd.offline, sends):
@@ -116,16 +121,19 @@ class ReviewService:
         unasked: list[Unasked] = []
         for item, named in zip(requests, wanted, strict=True):
             got, going = answering.batch(going, item.text, named)
-            first = got[0]
+            first, own = got[0], len(entry_questions(parts[item.part]))
+            entered = got[1:1 + own]
             answers = [first]
             if first is not None and asked_again(first, parts[item.part], breaks[item.file]):
-                answers += got[1:]
-            if any(answer is None for answer in answers):
+                answers += got[1 + own:]
+            if any(answer is None for answer in (*answers, *entered)):
                 said = answering.refusal(going, item.text, tuple(asked for _, asked in named))
                 unasked.append(Unasked(item.file, why_unasked(bool(going.failure), said), said=said))
             else:
-                readings.append(reading(item, averaged(tuple(a for a in answers if a is not None)), parts[item.part],
-                                        len(answers), breaks[item.file]))
+                read = reading(item, averaged(tuple(a for a in answers if a is not None)), parts[item.part],
+                               len(answers), breaks[item.file])
+                readings.append(with_litmus(read, parts[item.part].entries if own else (),
+                                            tuple(a for a in entered if a is not None), words.yes_line))
         ranked_pieces: list[PiecesRead] = []
         for file, items, too_small in pieced:
             pieces: list[Answer | None] = []
@@ -158,13 +166,14 @@ class ReviewService:
 
     def _wanted(self, going: Run, item: Request, question: Choice, others: tuple[Choice, ...], part: PartText,
                 breaks: tuple[str, ...]) -> tuple[tuple[str, Choice], ...]:
-        """The questions the request about a file carries, each under its name: placement's in its first order; and,
+        """The questions the request about a file carries, each under its name: placement's in its first order; the
+        yes-or-no question of each entry of its part's litmus list, when it has two or more; and,
         when its first answer is not kept yet (so that how near its line it reads is not known) or is kept and near
         its line, the other orders, so that one request asks all that may be read. A dry run, which asks nothing of
         where else a file could lie, reads how near its line a kept answer is with no part ruled out."""
         first = self._answering.kept(going, item.text, question)
         near = first is None or asked_again(first, part, breaks)
-        return ((FIRST, question), *(named_orders(others) if near else ()))
+        return ((FIRST, question), *entry_questions(part), *(named_orders(others) if near else ()))
 
     def _carrying(self, going: Run, requests: tuple[Request, ...],
                   wanted: tuple[tuple[tuple[str, Choice], ...], ...]) -> tuple[Request, ...]:
