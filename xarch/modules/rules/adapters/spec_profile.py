@@ -87,7 +87,7 @@ class SpecProfiles:
                        private_imports=guards.private_imports,
                        framework=view.framework,
                        uses_never={p.name: p.uses_never for p in parts if p.uses_never},
-                       info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested) for p in parts},
+                       info={p.name: PartInfo(p.role, p.litmus, p.shown, p.untested, p.litmus_list) for p in parts},
                        excluded=view.excluded, hints=dict(view.hints), language=view.language,
                        reserved=dict(view.reserved),
                        approximate=view.approximate, written=dict(view.checks), default_tests=DEFAULT_TESTS,

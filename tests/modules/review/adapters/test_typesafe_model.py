@@ -146,3 +146,20 @@ def test_a_key_the_client_refuses_is_said_set_but_unusable_and_refused_when_aski
         model.ask("text", QUESTION)
     assert caught.value.reason == f"{KEY} cannot be used: {why}"
     assert "sk-wired" not in repr(model.sends()) + caught.value.reason
+
+
+OTHER_ORDER = Choice("Which part?", tuple(reversed(QUESTION.options)))
+
+
+def test_several_questions_go_in_one_request_under_their_names_the_tokens_said_once_on_the_first_answer():
+    client = Client(Response("jev-1.14.0", {"placement": ChoiceAnswer("main", 0.8, {"main": 0.9, "domain": 0.1}),
+                                            "placement.order-2": ChoiceAnswer("main", 0.6, {"main": 0.7, "domain": 0.3}),
+                                            "store.save": NoulAnswer(0.25)}, Usage(2400, 3)))
+    answers = model(client).ask_all("class A: ...\n", (("placement", QUESTION), ("placement.order-2", OTHER_ORDER),
+                                                       ("store.save", YES_OR_NO)))
+    assert answers == (Answer("jev-1.14.0", (("domain", 0.1), ("main", 0.9)), 2400, 3),
+                       Answer("jev-1.14.0", (("main", 0.7), ("domain", 0.3)), 0, 0),
+                       Answer("jev-1.14.0", (("yes", 0.25), ("no", 0.75)), 0, 0))
+    assert len(client.asked) == 1 and list(client.asked[0][1]) == ["placement", "placement.order-2", "store.save"]
+    body = json.loads(model(None).body_all("x", (("placement", QUESTION), ("store.save", YES_OR_NO))))
+    assert (body["state"], list(body["questions"])) == ("x", ["placement", "store.save"])

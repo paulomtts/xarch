@@ -7,11 +7,12 @@ from typing import Any
 
 from xarch.kernel.logic.placement import place_of, repeat_of, with_itself
 from xarch.kernel.placement import EACH, Place
-from xarch.modules.spec.domain.published import AcceptedPath, Counterpart, Eval, Held
+from xarch.modules.spec.domain.published import YES_LINE, AcceptedPath, Counterpart, Eval, Held
 from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.litmus import Litmus
 from xarch.profile_values.placement import AcceptedImport, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 
@@ -92,6 +93,8 @@ class Part:
     imports_accepted: the imports its imports.may does not allow that it accepts, each with why, in the order written
     optional: its folder or file need not be there (`optional: true`): structure requires it nowhere, and what the
         layout puts in it only where it is there
+    litmus_list: the entries of its litmus when it is written as a list, in the order written (litmus is then "");
+        empty when it is one text or none
     """
     name: str
     path: tuple[str, ...]
@@ -105,6 +108,7 @@ class Part:
     shared: int | None = None
     optional: bool = False
     imports_accepted: tuple[AcceptedImport, ...] = ()
+    litmus_list: tuple[Litmus, ...] = ()
 
     @property
     def in_instance(self) -> bool:
@@ -208,6 +212,7 @@ class Tier:
     name: e.g. "use case"
     subject: the parts it tests; every part is in some tier's subject or is `untested`
     litmus: its placement litmus test; the docs show it as one paragraph, whatever its line breaks
+    litmus_list: the entries of its litmus when it is written as a list, in the order written (litmus is then "")
     subject_text: the Subject cell as written, in place of the subject's parts
     data: where its test data comes from
     helpers: files its tests share (builders, a fixture), shown with {{tier_helpers}}
@@ -245,6 +250,7 @@ class Tier:
     plain_tables: bool = False
     imports_also: tuple[Target, ...] = ()
     accepted: tuple[AcceptedImport, ...] = ()
+    litmus_list: tuple[Litmus, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -406,6 +412,8 @@ class Architecture:
         parts by name in the order written: review reads a file of one on the sum of the group's probabilities
     structure_accepted: the findings of the layout the profile accepts (`structure.accepted`), in the order written
     counterparts: what the profile says lies with what (`counterparts`), in the order written
+    yes_line: the line at or above which review reads an entry of a litmus list as answering yes
+        (`evals.placement.yes_line`, else YES_LINE: a placeholder, not measured)
     """
     name: str
     layout: Layout
@@ -440,6 +448,7 @@ class Architecture:
     alike: tuple[tuple[str, ...], ...] = ()
     structure_accepted: tuple[AcceptedPath, ...] = ()
     counterparts: tuple[Counterpart, ...] = ()
+    yes_line: float = YES_LINE
 
     @property
     def entry(self) -> Part | None:

@@ -40,7 +40,31 @@ class AnsweringService:
         except Unanswered as e:
             return None, replace(run, failure=e.reason)
         self._answers.put(run.folder, key, answer)
-        return answer, replace(run, asked=(*run.asked, answer))
+        return answer, replace(run, asked=(*run.asked, answer), requests=run.requests + 1)
+
+    def batch(self, run: Run, text: str,
+              questions: tuple[tuple[str, Choice], ...]) -> tuple[tuple[Answer | None, ...], Run]:
+        """The answer to each question about the text, each under its name, in order: each kept is read, and those not
+        kept are asked of the decision model in one request that sends the text once, each answer kept under its own
+        key, as answer keeps one; None for a question with none (offline, the decision model refused the request, or
+        it failed now or before)."""
+        found = [self.kept(run, text, question) for _, question in questions]
+        run = replace(run, reused=(*run.reused, *(answer for answer in found if answer is not None)))
+        missing = tuple(i for i, answer in enumerate(found) if answer is None)
+        if not missing or not asks(None, run.offline, bool(run.failure)):
+            return tuple(found), run
+        model = self._model.sends().model
+        keys = tuple(request_key(model, text, questions[i][1]) for i in missing)
+        try:
+            answers = self._model.ask_all(text, tuple(questions[i] for i in missing))
+        except NotAccepted as e:
+            return tuple(found), replace(run, refused=(*run.refused, *((key, e.reason) for key in keys)))
+        except Unanswered as e:
+            return tuple(found), replace(run, failure=e.reason)
+        for i, key, answer in zip(missing, keys, answers, strict=True):
+            self._answers.put(run.folder, key, answer)
+            found[i] = answer
+        return tuple(found), replace(run, asked=(*run.asked, *answers), requests=run.requests + 1)
 
     def refusal(self, run: Run, text: str, questions: tuple[Choice, ...]) -> str:
         """What the decision model said of the first of the questions about the text that it refused alone in the run;

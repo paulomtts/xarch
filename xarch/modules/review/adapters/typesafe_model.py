@@ -58,23 +58,31 @@ class TypeSafeModel:
             return Sender(SERVICE, self._at, self._model, KEY, True, UNUSABLE)
 
     def body(self, text: str, question: Choice) -> str:
-        return self._writer.json(build_request(self._model, text, {NAME: _question(question)}))
+        return self.body_all(text, ((NAME, question),))
 
     def ask(self, text: str, question: Choice) -> Answer:
+        return self.ask_all(text, ((NAME, question),))[0]
+
+    def body_all(self, text: str, questions: tuple[tuple[str, Choice], ...]) -> str:
+        return self._writer.json(build_request(self._model, text, {name: _question(q) for name, q in questions}))
+
+    def ask_all(self, text: str, questions: tuple[tuple[str, Choice], ...]) -> tuple[Answer, ...]:
         """A request TypeSafe refuses as its own fault raises NotAccepted, any other failure of the client Unanswered,
         each with the client's message, which holds no key."""
         client = self._client()
         if client is None:
             raise NoKey(KEY)
         try:
-            response = client.ask(text, {NAME: _question(question)})
+            response: Response = client.ask(text, {name: _question(question) for name, question in questions})
         except InvalidRequestError as e:
             if e.status in ONE_REQUEST:
                 raise NotAccepted(str(e)) from None
             raise Unanswered(str(e)) from None
         except TypeSafeError as e:
             raise Unanswered(str(e)) from None
-        return _answer(response, question.options)
+        spent = _tokens(response.usage)
+        return tuple(Answer(response.model, _distribution(response.answers[name], question.options),
+                            *(spent if i == 0 else (0, 0))) for i, (name, question) in enumerate(questions))
 
 
     def _client(self) -> TypeSafe | None:
@@ -93,10 +101,6 @@ def _question(question: Choice) -> Question:
     if question.form == SCORE:
         return ScoreQuestion([option.description for option in question.options], question.ask)
     return ChoiceQuestion({option.name: option.description for option in question.options}, question.ask)
-
-
-def _answer(response: Response, options: tuple[Option, ...]) -> Answer:
-    return Answer(response.model, _distribution(response.answers[NAME], options), *_tokens(response.usage))
 
 
 def _distribution(answer: NoulAnswer | ChoiceAnswer | ScoreAnswer,

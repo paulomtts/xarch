@@ -394,11 +394,42 @@ keys:
   parts.<part>.litmus:
     meaning: the question that tells code belongs here
     accepts: >-
-      text, ideally a yes-or-no question. A part the bundled profile this one is compared with gives a litmus, redefined
-      here without one, is listed as looser, and fails `check --strict`
+      text, ideally a yes-or-no question; or a list of entries, each a text or a map {ask, label, mode}. An `any`
+      entry is an alternative, an `all` entry a condition: code belongs when at least one `any` entry answers yes (when
+      there is any) and every `all` entry answers yes. A part the bundled profile this one is compared with gives a
+      litmus, redefined here without one, or without any entry of the litmus it gives, is listed as looser, and fails
+      `check --strict`
     example: |
       <<part>>
           litmus: Does it save or load a document?
+  parts.<part>.litmus[].ask:
+    meaning: the question of one entry of a litmus written as a list
+    accepts: text, ideally a yes-or-no question; an entry written as a text alone is its ask
+    example: |
+      <<part>>
+          litmus:
+            - Does it save a document?
+            - {ask: "Does it load a document?", label: load}
+  parts.<part>.litmus[].label:
+    meaning: the short name of one entry of a litmus written as a list
+    accepts: >-
+      one line of text, its own among the part's entries; without it, the entry's position in the list counted from 1
+    example: |
+      <<part>>
+          litmus:
+            - {ask: "Does it save a document?", label: save}
+            - {ask: "Does it load a document?", label: load}
+  parts.<part>.litmus[].mode:
+    meaning: whether one entry of a litmus written as a list is an alternative or a condition
+    accepts: >-
+      `any` (the default), an alternative: code belongs when at least one `any` entry answers yes; or `all`, a
+      condition every piece of code that belongs must meet
+    example: |
+      <<part>>
+          litmus:
+            - Does it save a document?
+            - Does it load a document?
+            - {ask: "Does it reach the database through the store's own session?", label: session, mode: all}
   parts.<part>.imports:
     meaning: what the part may and must import, and its outside packages
     accepts: >-
@@ -666,12 +697,46 @@ keys:
       <<tiered-part>>
   tiers.<tier>.litmus:
     meaning: the question that tells a test belongs to the tier
-    accepts: text, ideally a yes-or-no question
+    accepts: >-
+      text, ideally a yes-or-no question; or a list of entries, each a text or a map {ask, label, mode}, read as the
+      entries of a part's litmus are
     example: |
       <<testing>>
       tiers:
         unit:
           litmus: Does it call one rule directly and check its answer?
+      <<tiered-part>>
+  tiers.<tier>.litmus[].ask:
+    meaning: the question of one entry of a tier's litmus written as a list
+    accepts: text, ideally a yes-or-no question; an entry written as a text alone is its ask
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          litmus:
+            - Does it call one rule directly and check its answer?
+            - {ask: "Does it build its own data?", label: data, mode: all}
+      <<tiered-part>>
+  tiers.<tier>.litmus[].label:
+    meaning: the short name of one entry of a tier's litmus written as a list
+    accepts: one line of text, its own among the tier's entries; without it, the entry's position counted from 1
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          litmus:
+            - {ask: "Does it call one rule directly?", label: direct}
+      <<tiered-part>>
+  tiers.<tier>.litmus[].mode:
+    meaning: whether one entry of a tier's litmus written as a list is an alternative or a condition
+    accepts: "`any` (the default), an alternative, or `all`, a condition, as for a part's litmus"
+    example: |
+      <<testing>>
+      tiers:
+        unit:
+          litmus:
+            - Does it call one rule directly?
+            - {ask: "Does it build its own data?", mode: all}
       <<tiered-part>>
   tiers.<tier>.uses:
     meaning: what its tests keep to of the part they mirror
@@ -1628,6 +1693,19 @@ keys:
       evals:
         placement:
           lines: {documents: 0.2}
+  evals.placement.yes_line:
+    meaning: the line at or above which an entry of a litmus list answers yes
+    accepts: >-
+      a number above 0 and below 1, 0.5 unless written. A file of a part whose litmus is a list of two entries or more
+      is asked each entry as a yes-or-no question of its own, in the same request as placement's question; an entry
+      answers yes when its probability of yes is at or above this line, and the part's litmus holds when at least one
+      `any` entry (when there is any) and every `all` entry answers yes; a file whose part's litmus does not hold reads
+      as doubtful there. The default is a placeholder, never measured: measure it before relying on what the entries
+      say
+    example: |
+      evals:
+        placement:
+          yes_line: 0.6
   evals.placement.alike:
     meaning: the groups of parts one file cannot tell apart
     accepts: >-

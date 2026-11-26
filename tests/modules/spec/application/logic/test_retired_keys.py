@@ -417,7 +417,7 @@ def test_a_file_whose_only_unknown_keys_are_retired_gives_no_joined_problem(monk
     pytest.param(EVAL, writing(layered(evals=an_eval()), "evals", "rule"),
                  f"evals.rule: unknown key 'banned': {RENAMED}; use {EVAL_USE}", id="an eval of the profile's own"),
     pytest.param(PLACEMENT, writing(layered(evals={"placement": {}}), "evals", "placement"),
-                 f"evals.placement: unknown key 'banned': {RENAMED}; use alike, examples, lines", id="evals.placement"),
+                 f"evals.placement: unknown key 'banned': {RENAMED}; use alike, examples, lines, yes_line", id="evals.placement"),
     pytest.param(REVIEW, writing(layered(review={}), "review"),
                  f"review: unknown key 'banned': {RENAMED}; use mask, never", id="review"),
     pytest.param(DOCS, writing(layered(docs={}), "docs"),

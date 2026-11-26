@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from xarch.profile_values.litmus import Litmus
 from xarch.profile_values.placement import AcceptedImport, Target
 
 
@@ -15,7 +16,8 @@ class CheckedTier:
     import of the app (None: no folder, and the tests import what the part they mirror may); the parts one of which
     each of its test files must reach; whether every table test of it holds no branch in its body; and what each of
     its tests may import of the app besides (a target in the repeating folder in the instance the test mirrors); and the
-    tiers findings it accepts (accepted, tiers.<tier>.accepted)."""
+    tiers findings it accepts (accepted, tiers.<tier>.accepted); and the entries of its litmus when it is written as a
+    list (litmus is then "")."""
     name: str
     subject: tuple[Target, ...]
     folder: tuple[str, ...] | None = None
@@ -30,3 +32,4 @@ class CheckedTier:
     plain_tables: bool = False
     imports_also: tuple[Target, ...] = ()
     accepted: tuple[AcceptedImport, ...] = ()
+    litmus_list: tuple[Litmus, ...] = ()

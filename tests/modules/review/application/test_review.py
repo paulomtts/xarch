@@ -30,6 +30,7 @@ from xarch.modules.review.contract import (
     Choice,
     KeyMissing,
     LeftOut,
+    LitmusRead,
     NothingChosen,
     Option,
     PartRead,
@@ -48,6 +49,7 @@ from xarch.modules.review.contract import (
 )
 from xarch.modules.review.contract import GONE as GONE_FILE
 from xarch.modules.review.domain.values import AcceptedFile, Answer, CodeFile, Found, PartText, Span, Words
+from xarch.profile_values.litmus import ALL, Litmus
 
 CWD, APP = Path("/src"), Path("/src/app")
 FOLDER = Path("/src/.xarch/cache/review")
@@ -67,7 +69,7 @@ ASKED = len(PLACEMENT) + sum(len(o.name) + len(o.description) for o in QUESTION.
 SENDS = Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", True)
 UNKEYED = Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", False)
 BODY_SENT = f"{PLACEMENT} 2 {SENT}"
-REQUEST = Request(DOCUMENT.file, "domain", len(SENT), SENT, False, BODY_SENT)
+REQUEST = Request(DOCUMENT.file, "domain", len(SENT), SENT, False, BODY_SENT, questions=("placement",))
 CHARACTERS = len(SENT) + ASKED
 WORDS = {"p": Words(PARTS), "kept": Words(PARTS, ("modules/*/domain/document.py",), ("Doc*", "title"))}
 HIDDEN = "from <masked> import <masked>\nfrom dataclasses import dataclass\n" + BODY.replace("Document", "<masked>").replace(
@@ -122,7 +124,7 @@ def run(world: World, when: Review):
                  id="a dry run says what each file judged would send, masked, and why the others are left out"),
     pytest.param(World(earlier={SENT: LOW}, keyed=False), review("app/x.py", dry_run=True),
                  ReviewPlanned((BY_PATHS,), 1, (Request(DOCUMENT.file, "domain", len(SENT), SENT, True,
-                                                        BODY_SENT),), (), QUESTION, ("main",), CHARACTERS,
+                                                        BODY_SENT, questions=("placement",)),), (), QUESTION, ("main",), CHARACTERS,
                                -(-CHARACTERS // 4), (), UNKEYED, 1),
                  id="a dry run says which request is in the cache already, and needs no key"),
     pytest.param(World(), review("app/modules/documents/domain", dry_run=True, profile="kept"),
@@ -138,23 +140,23 @@ def run(world: World, when: Review):
                  id="a file held back is held back however it is chosen"),
     pytest.param(World(answers={SENT: LOW}), review("app/modules/documents/domain"),
                  ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 1, 0,
-                               100, 5, "", ("main",), read(1, 1), answered_by=("m-1.0.1",)),
+                               100, 5, "", ("main",), read(1, 1), answered_by=("m-1.0.1",), requests_sent=1),
                  id="a file whose part holds less than the line is doubtful there, asked of the decision model"),
     pytest.param(World(answers={SENT: LOW, SENT_OTHER: HIGH}), review("app/two"),
                  ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 2, 0, 190, 9, "", ("main",), read(2, 1),
-                               answered_by=("m-1.0.0", "m-1.0.1")),
+                               answered_by=("m-1.0.0", "m-1.0.1"), requests_sent=2),
                  id="the readings are ranked, the most doubtful first"),
     pytest.param(World(earlier={SENT: HIGH}, keyed=False), review("app/x.py"),
                  ReviewReading((BY_PATHS,), 1, (PLACED_HERE,), (), (), UNKEYED, 0, 1, 0, 0, "", ("main",), read(1, 0),
-                               answered_by=("m-1.0.0",)),
+                               answered_by=("m-1.0.0",), requests_sent=0),
                  id="an answer kept is read, not asked again, and needs no key"),
     pytest.param(World(earlier={SENT: LOW}), review("app/two", offline=True),
                  ReviewReading((BY_PATHS,), 2, (DOUBTFUL,), (), (Unasked(OTHER.file, NOT_CACHED),), SENDS, 0, 1, 0, 0,
-                               "", ("main",), read(1, 1), answered_by=("m-1.0.1",)),
+                               "", ("main",), read(1, 1), answered_by=("m-1.0.1",), requests_sent=0),
                  id="offline, a file whose answer is not kept is unanswered and nothing is sent"),
     pytest.param(World(answers={SENT_OTHER: HIGH}), review("app/two"),
                  ReviewReading((BY_PATHS,), 2, (), (), (Unasked(DOCUMENT.file, FAILED), Unasked(OTHER.file, FAILED)),
-                               SENDS, 0, 0, 0, 0, "the decision model failed", ("main",)),
+                               SENDS, 0, 0, 0, 0, "the decision model failed", ("main",), requests_sent=0),
                  id="when the decision model fails, the files left to ask are unanswered and nothing more is sent"),
     pytest.param(World(keyed=False), review("app/x.py"), KeyMissing("MODEL_KEY"),
                  id="a review that would send with no key set is refused before anything is sent"),
@@ -256,6 +258,7 @@ def _kept(again: Answer | None) -> FakeAnswers:
 
 
 def test_a_file_whose_first_answer_is_near_its_line_is_asked_again_in_the_other_order_and_read_on_the_mean():
+    """The other orders are asked in a second request, once the first answer puts the file near its line."""
     model = FakeDecisionModel({SENT: NEAR}, by_order={(SENT, "main"): NEAR_AGAIN})
     answers = FakeAnswers()
     found = _review(model, answers, review("app/x.py"))
@@ -264,7 +267,42 @@ def test_a_file_whose_first_answer_is_near_its_line_is_asked_again_in_the_other_
     assert (read.probability, read.doubtful, read.orders, read.model) == (0.25, True, 2, "m-1.0.1")
     assert dict(read.distribution) == {"domain": 0.25, "main": 0.75}
     assert (found.sent, found.cached, found.input_tokens, found.output_tokens) == (2, 0, 210, 11)
-    assert len(model.asked) == 2 and len(answers.kept) == 2
+    assert model.requests == [(SENT, ("placement",)), (SENT, ("placement.order-2",))] and found.calls == 2
+    assert len(answers.kept) == 2
+
+
+def _first_only() -> FakeAnswers:
+    """The answers a review of app/x.py kept before its request carried the other orders: NEAR, in the first order
+    alone, under the key of that question (the answer in the other order taken out)."""
+    answers = _kept(NEAR_AGAIN)
+    answers.kept = {key: answer for key, answer in answers.kept.items() if answer == NEAR}
+    assert list(answers.kept.values()) == [NEAR]
+    return answers
+
+
+def test_each_question_of_a_request_reads_its_own_answer_kept_and_only_those_not_kept_are_sent():
+    model = FakeDecisionModel({}, by_order={(SENT, "main"): NEAR_AGAIN})
+    answers = _first_only()
+    found = _review(model, answers, review("app/x.py"))
+    assert isinstance(found, ReviewReading) and found.readings[0].orders == 2
+    assert model.requests == [(SENT, ("placement.order-2",))]
+    assert (found.sent, found.cached, found.calls) == (1, 1, 1) and len(answers.kept) == 2
+    again = FakeDecisionModel({}, keyed=False)
+    assert _review(again, answers, review("app/x.py", offline=True)).readings[0].orders == 2
+    assert again.requests == []
+
+
+def test_offline_the_first_order_kept_alone_near_its_line_leaves_the_file_unanswered():
+    found = _review(FakeDecisionModel({}, keyed=False), _first_only(), review("app/x.py", offline=True))
+    assert isinstance(found, ReviewReading)
+    assert (found.readings, found.unasked) == ((), (Unasked(DOCUMENT.file, NOT_CACHED),))
+
+
+def test_a_dry_run_names_the_questions_a_request_carries_and_leaves_out_those_kept():
+    planned = _review(FakeDecisionModel({}), _first_only(), review("app/x.py", dry_run=True))
+    assert isinstance(planned, ReviewPlanned)
+    assert [(item.questions, item.cached) for item in planned.requests] == [(("placement.order-2",), False)]
+    assert planned.characters == CHARACTERS
 
 
 def test_a_file_far_from_its_line_is_asked_once():
@@ -554,18 +592,18 @@ def alike(given: Alike, when: Review):
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(Alike(answers={SENT: SPLIT}), review("app/x.py"),
                  ReviewReading((BY_PATHS,), 1, (SUMMED,), (), (), SENDS, 1, 0, 100, 5, "", ("main",), read(1, 0),
-                               answered_by=("m-1.0.1",)),
+                               answered_by=("m-1.0.1",), requests_sent=1),
                  id="a file of a part read alike is read on its group's sum, far from its line, and asked once"),
     pytest.param(Alike(earlier={SENT: SPLIT}), review("app/x.py", offline=True),
                  ReviewReading((BY_PATHS,), 1, (SUMMED,), (), (), SENDS, 0, 1, 0, 0, "", ("main",), read(1, 0),
-                               answered_by=("m-1.0.1",)),
+                               answered_by=("m-1.0.1",), requests_sent=0),
                  id="offline, the answer kept is read on the group's sum alike"),
     pytest.param(Alike(answers={SENT: SPLIT}), review(every=True),
                  ReviewReading((BY_ALL,), 1, (SUMMED,), (), (), SENDS, 1, 0, 100, 5, "", ("main",), read(1, 0),
-                               answered_by=("m-1.0.1",)),
+                               answered_by=("m-1.0.1",), requests_sent=1),
                  id="every file of the app is read on its group's sum alike"),
     pytest.param(Alike(), review("app/x.py", dry_run=True),
-                 ReviewPlanned((BY_PATHS,), 1, (replace(REQUEST, body=f"{PLACEMENT} 3 {SENT}"),), (),
+                 ReviewPlanned((BY_PATHS,), 1, (replace(REQUEST, body=f"{PLACEMENT} 3 {SENT}", questions=("placement",)),), (),
                                replace(QUESTION, options=(*QUESTION.options, Option("kernel", KERNEL.litmus))),
                                ("main",), CHARACTERS + len("kernel") + len(KERNEL.litmus),
                                -(-(CHARACTERS + len("kernel") + len(KERNEL.litmus)) // 4), (), SENDS, 2,
@@ -668,3 +706,90 @@ def test_a_record_of_accepted_files_that_cannot_be_read_refuses_the_review_befor
     found = controller(FakeCode(FOUND), FakeProfile(WORDS), model, FakeAnswers(), acceptances=acceptances).review(
         review("app/x.py"))
     assert found == ReviewRefused("the record of accepted files cannot be read") and model.asked == []
+
+
+SAVES = Litmus("Does it save a record?", "save")
+LOADS = Litmus("Does it load a record?", "load")
+KEEPS = Litmus("Does it reach the store's own session?", "session", ALL)
+LISTED_PARTS = (replace(PARTS[0], litmus="", entries=(SAVES, LOADS, KEEPS)), PARTS[1])
+LISTED_WORDS = {"listed": Words(LISTED_PARTS)}
+ENTRY_NAMES = ("litmus.domain.save", "litmus.domain.load", "litmus.domain.session")
+"""The names of the yes-or-no questions a file of domain is asked, its litmus being a list of three entries."""
+
+
+def yes(probability: float) -> Answer:
+    return Answer("m-1.0.1", (("yes", probability), ("no", round(1 - probability, 9))), 0, 0)
+
+
+def listed(model: FakeDecisionModel, answers: FakeAnswers, **changes):
+    return controller(FakeCode(FOUND), FakeProfile(LISTED_WORDS), model, answers).review(
+        review("app/x.py", profile="listed", **changes))
+
+
+def entries(save: float, load: float, session: float) -> dict:
+    return {(SENT, SAVES.ask): yes(save), (SENT, LOADS.ask): yes(load), (SENT, KEEPS.ask): yes(session)}
+
+
+def test_a_file_of_a_part_whose_litmus_is_a_list_is_asked_each_entry_as_a_yes_or_no_in_the_one_request():
+    """Far from its line, the file costs that one request: its other orders are never asked."""
+    model = FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.7, 0.9))
+    found = listed(model, FakeAnswers())
+    assert isinstance(found, ReviewReading)
+    assert model.requests == [(SENT, ("placement", *ENTRY_NAMES))]
+    (read,) = found.readings
+    assert read.litmus == (LitmusRead("save", "any", 0.2, False), LitmusRead("load", "any", 0.7, True),
+                           LitmusRead("session", "all", 0.9, True))
+    assert (read.litmus_holds, read.yes_line, read.doubtful, read.probability) == (True, 0.5, False, 0.8)
+
+
+def test_a_condition_of_the_list_that_does_not_hold_makes_the_file_doubtful_though_placement_puts_it_there():
+    found = listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.9, 0.9, 0.1)), FakeAnswers())
+    assert isinstance(found, ReviewReading)
+    (read,) = found.readings
+    assert (read.litmus_holds, read.doubtful, read.probability) == (False, True, 0.8)
+
+
+def test_the_answer_of_each_entry_is_kept_under_its_own_key_and_read_offline():
+    answers = FakeAnswers()
+    listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.7, 0.9)), answers)
+    assert len(answers.kept) == 4
+    again = FakeDecisionModel({}, keyed=False)
+    found = listed(again, answers, offline=True)
+    assert isinstance(found, ReviewReading) and again.requests == [] and found.readings[0].litmus_holds is True
+
+
+def test_offline_a_file_whose_entries_are_not_kept_is_unanswered():
+    answers = FakeAnswers()
+    listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.2, 0.2)), answers)
+    answers.kept = {key: answer for key, answer in answers.kept.items() if "yes" not in dict(answer.probabilities)}
+    found = listed(FakeDecisionModel({}, keyed=False), answers, offline=True)
+    assert isinstance(found, ReviewReading)
+    assert (found.readings, found.unasked) == ((), (Unasked(DOCUMENT.file, NOT_CACHED),))
+
+
+def test_with_the_choice_kept_only_the_entries_not_kept_are_sent_in_one_request():
+    answers = FakeAnswers()
+    listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.2, 0.2)), answers)
+    answers.kept = {key: answer for key, answer in answers.kept.items() if "yes" not in dict(answer.probabilities)}
+    model = FakeDecisionModel({}, by_ask=entries(0.9, 0.1, 0.9))
+    found = listed(model, answers)
+    assert model.requests == [(SENT, ENTRY_NAMES)]
+    assert isinstance(found, ReviewReading) and found.readings[0].litmus_holds is True
+
+
+def test_a_dry_run_names_the_entry_questions_each_request_carries_and_says_each_entry_s_question():
+    planned = listed(FakeDecisionModel({}), FakeAnswers(), dry_run=True)
+    assert isinstance(planned, ReviewPlanned)
+    assert planned.requests[0].questions == ("placement", *ENTRY_NAMES)
+    assert planned.litmus == tuple((name, "domain", entry) for name, entry in zip(ENTRY_NAMES, (SAVES, LOADS, KEEPS),
+                                                                                  strict=True))
+    assert planned.yes_line == 0.5
+    assert planned.question.options[0].description == (
+        "Does it save a record? Or: Does it load a record? And in every case: Does it reach the store's own session?")
+
+
+def test_a_file_of_a_listed_part_near_its_line_is_asked_its_other_orders_in_a_second_request_alone():
+    model = FakeDecisionModel({SENT: NEAR}, by_order={(SENT, "main"): NEAR_AGAIN}, by_ask=entries(0.9, 0.9, 0.9))
+    found = listed(model, FakeAnswers())
+    assert isinstance(found, ReviewReading) and found.readings[0].orders == 2 and found.calls == 2
+    assert model.requests == [(SENT, ("placement", *ENTRY_NAMES)), (SENT, ("placement.order-2",))]

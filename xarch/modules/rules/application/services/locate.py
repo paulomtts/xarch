@@ -70,7 +70,8 @@ def _where(found: Placed) -> WhereAnswer:
 
 
 def _part(place: Place, info: PartInfo, singular: str) -> PartShown:
-    return PartShown(place.part or "", info.shown, place.instance or "", singular, info.role, info.litmus)
+    return PartShown(place.part or "", info.shown, place.instance or "", singular, info.role, info.litmus,
+                     info.litmus_list)
 
 
 def _reaches(reaches: tuple[PartAt, ...]) -> tuple[ReachView, ...]:
@@ -82,7 +83,7 @@ def _nearest(nearest: tuple[PartAt, ...]) -> tuple[NearestView, ...]:
 
 
 def _tier(tier: CheckedTier) -> TierInfoView:
-    return TierInfoView(tier.name, tier.proves, tier.may_touch, tier.litmus)
+    return TierInfoView(tier.name, tier.proves, tier.may_touch, tier.litmus, tier.litmus_list)
 
 
 def _tested(found: PartPlace) -> CoveringTest | Untested | None:

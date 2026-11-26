@@ -9,6 +9,7 @@ from xarch.profile_values.capabilities import Shortfall
 from xarch.profile_values.checks import Condition, Scope, WrittenCheck
 from xarch.profile_values.excluded import Excluded
 from xarch.profile_values.language import CheckedLanguage
+from xarch.profile_values.litmus import Litmus
 from xarch.profile_values.placement import AcceptedImport, Repeat, Target
 from xarch.profile_values.testing import Fakes, Framework, ScenarioCoverage, StandIns
 from xarch.profile_values.tiers import CheckedTier
@@ -20,11 +21,13 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class PartInfo:
     """What the profile says of a part in words: its role and litmus test, its name as the docs show it (a path below
-    the instance for an instance's part, ending in `/` for a folder) and, for a part no tier tests, why."""
+    the instance for an instance's part, ending in `/` for a folder), for a part no tier tests, why, and the entries
+    of its litmus when it is written as a list (litmus is then "")."""
     role: str = ""
     litmus: str = ""
     shown: str = ""
     untested: str = ""
+    litmus_list: tuple[Litmus, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -40,11 +40,13 @@ class SpecWords:
         others of its group; placement's examples are written for spec's example app. A profile spec refuses raises
         Refused with spec's reason."""
         match self._spec.profile(profile):
-            case ProfileView(parts=parts, never=never, mask=mask, lines=lines, evals=evals, alike=alike):
+            case ProfileView(parts=parts, never=never, mask=mask, lines=lines, evals=evals, alike=alike,
+                             yes_line=yes_line):
                 others = {name: tuple(other for other in group if other != name) for group in alike for name in group}
                 return Words(tuple(PartText(part.name, part.shown, part.litmus, part.role, lines.get(part.name, LINE),
-                                            part.name in lines, others.get(part.name, ())) for part in parts), never,
-                             mask, tuple(_eval(name, asked) for name, asked in evals.items()), EXAMPLE_APP)
+                                            part.name in lines, others.get(part.name, ()), part.litmus_list)
+                                   for part in parts), never,
+                             mask, tuple(_eval(name, asked) for name, asked in evals.items()), EXAMPLE_APP, yes_line)
             case ProfileRefused(reason):
                 raise Refused(reason)
 

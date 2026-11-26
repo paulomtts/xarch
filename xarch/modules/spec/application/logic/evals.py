@@ -33,7 +33,7 @@ from xarch.modules.spec.application.logic import profile_checks as ck
 from xarch.modules.spec.application.logic.key_lookup import names_of
 from xarch.modules.spec.application.logic.written_checks import filters, scope
 from xarch.modules.spec.domain.profile_keys import EVAL, PLACEMENT
-from xarch.modules.spec.domain.published import CHOICE, READS, SCORE, YES_NO, Eval
+from xarch.modules.spec.domain.published import CHOICE, READS, SCORE, YES_LINE, YES_NO, Eval
 from xarch.modules.spec.domain.values import Language
 from xarch.profile_values.checks import STRUCTURE, Scope
 
@@ -65,14 +65,16 @@ _RULED = ("uses.never", "holds")
 
 
 def evals(value: Any, declared: Collection[str], language: Language, problems: list[str], *,
-          words: Collection[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval], Groups]:
+          words: Collection[str]) -> tuple[dict[str, float], tuple[Examples, Examples], dict[str, Eval], Groups,
+                                           float]:
     """The line of each part the profile writes one for, by part; placement's own flagged and clean examples; every
-    eval of the profile's own, by id; and the groups of parts placement reads alike; each in the order of the file, an
-    eval or a group with a problem left out. words are the profile's, which a part these name never takes."""
+    eval of the profile's own, by id; the groups of parts placement reads alike; each in the order of the file, an
+    eval or a group with a problem left out; and the yes line of an entry of a litmus list (YES_LINE unless written).
+    words are the profile's, which a part these name never takes."""
     if not isinstance(value, Mapping):
         problems.append("evals: must be a mapping of the evals review asks, by id, such as "
                         "{placement: {lines: {documents: 0.2}}}")
-        return {}, ((), ()), {}, ()
+        return {}, ((), ()), {}, (), YES_LINE
     own: dict[str, Eval] = {}
     for name, body in value.items():
         if name == BUILT_IN:
@@ -86,7 +88,19 @@ def evals(value: Any, declared: Collection[str], language: Language, problems: l
         if found is not None and len(problems) == count:
             own[name] = found
     lines, examples, alike = _placement(value.get(BUILT_IN), declared, language, problems, words)
-    return lines, examples, own, alike
+    return lines, examples, own, alike, _yes_line(value.get(BUILT_IN), problems)
+
+
+def _yes_line(placement: Any, problems: list[str]) -> float:
+    """The yes line `evals.placement.yes_line` writes, else YES_LINE; one that is no number above 0 and below 1 is
+    refused, and reads as YES_LINE."""
+    if not isinstance(placement, Mapping) or "yes_line" not in placement:
+        return YES_LINE
+    if not _line(placement["yes_line"]):
+        problems.append(f"evals.placement.yes_line: {placement['yes_line']!r} is not a line: write a number above 0 and "
+                        "below 1, such as 0.5")
+        return YES_LINE
+    return float(placement["yes_line"])
 
 
 def _placement(placement: Any, declared: Collection[str], language: Language, problems: list[str],

@@ -6,11 +6,14 @@ from typing import Any
 from xarch.cli.reports.document import document
 from xarch.kernel.placement import EVERYTHING
 from xarch.modules.rules.contract import (
+    ALL,
+    ANY,
     CoveringTest,
     Fake,
     InPart,
     InStructure,
     InTests,
+    Litmus,
     NearestView,
     PartShown,
     ReachView,
@@ -56,7 +59,8 @@ def _none_lines(kind: str, nearest: tuple[NearestView, ...]) -> list[str]:
 
 
 def _part_lines(where: InPart) -> list[str]:
-    lines = [_line("part", _part(where.part)), _line("role", where.part.role), _line("litmus", where.part.litmus or "none"),
+    lines = [_line("part", _part(where.part)), _line("role", where.part.role),
+             *_litmus_lines("litmus", where.part.litmus or "none", where.part.litmus_list),
              _line("may import", where.may_import_text), _line("libraries", _libraries(where.libraries))]
     if where.uses_never:
         lines.append(_line("never uses", ", ".join(where.uses_never)))
@@ -82,8 +86,26 @@ def _test_lines(where: InTests) -> list[str]:
     if where.tier is not None:
         lines.append(_line("fakes", f"may import {where.fakes_path}" if where.may_use_fakes else "may not import them"))
         lines += [_line("tier proves", where.tier.proves), _line("tier may touch", where.tier.may_touch),
-                  _line("tier litmus", where.tier.litmus), _line("test code", _code_from(where))]
+                  *_litmus_lines("tier litmus", where.tier.litmus, where.tier.litmus_list),
+                  _line("test code", _code_from(where))]
     return lines
+
+
+def _litmus_lines(label: str, text: str, entries: tuple[Litmus, ...]) -> list[str]:
+    """A litmus of one text on its line; a list as what makes code belong on its line, then one line per entry, its
+    label and mode before its question, its lines joined."""
+    if not entries:
+        return [_line(label, text)]
+    modes = {entry.mode for entry in entries}
+    said = ("at least one `any` entry and every `all` entry answers yes:" if modes == {ANY, ALL}
+            else "at least one of these answers yes:" if modes == {ANY} else "each of these answers yes:")
+    return [_line(label, said), *(" " * LABEL + f"{entry.label} ({entry.mode}): " + " ".join(entry.ask.split())
+                                  for entry in entries)]
+
+
+def _litmus_document(text: str, entries: tuple[Litmus, ...]) -> str | list[dict[str, str]]:
+    """A litmus in the JSON: its one text, else each entry of its list, {ask, label, mode}."""
+    return [{"ask": entry.ask, "label": entry.label, "mode": entry.mode} for entry in entries] if entries else text
 
 
 def _code_from(where: InTests) -> str:
@@ -148,9 +170,9 @@ def where_document(profile: str, where: WhereAnswer) -> str:
     return document(shown)
 
 
-def _part_document(part: PartShown) -> dict[str, str]:
+def _part_document(part: PartShown) -> dict[str, Any]:
     return {"name": part.name, "folder": part.folder, "instance": part.instance, "singular": part.singular,
-            "role": part.role, "litmus": part.litmus}
+            "role": part.role, "litmus": _litmus_document(part.litmus, part.litmus_list)}
 
 
 def _reach(reach: ReachView) -> dict[str, str]:
@@ -161,8 +183,9 @@ def _near(near: NearestView) -> dict[str, str]:
     return {"part": near.part, "folder": near.folder, "path": near.path}
 
 
-def _tier(tier: TierInfoView) -> dict[str, str]:
-    return {"name": tier.name, "proves": tier.proves, "may_touch": tier.may_touch, "litmus": tier.litmus}
+def _tier(tier: TierInfoView) -> dict[str, Any]:
+    return {"name": tier.name, "proves": tier.proves, "may_touch": tier.may_touch,
+            "litmus": _litmus_document(tier.litmus, tier.litmus_list)}
 
 
 def _list(values: tuple[str, ...] | None) -> list[str] | None:

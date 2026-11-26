@@ -306,3 +306,39 @@ def test_an_eval_s_own_examples_are_sent_with_their_comments_cut_in_a_calibratio
     sent = [body["state"] for body in served.received]
     assert set(sent) == set(shown) and not any("NOTE-" in text for text in shown + sent)
     assert any("# kept: a string" in text for text in sent)
+
+
+def _services(node: dict) -> dict | None:
+    """The map of the services/ folder in a profile's tree of parts."""
+    for key, value in node.items():
+        if key == "services/":
+            return value
+        found = _services(value) if isinstance(value, dict) else None
+        if found is not None:
+            return found
+    return None
+
+
+def test_a_part_whose_litmus_is_a_list_has_each_entry_asked_as_a_yes_or_no_in_the_request_of_placement(
+        served, tmp_path):
+    document = yaml.safe_load((tmp_path / COPY).read_text())
+    _services(document["parts"])["litmus"] = [
+        "Does it run one use case of this module as steps?",
+        {"ask": "Does it publish a document?", "label": "publish"},
+        {"ask": "Does it leave the rules of a title to the document?", "label": "title", "mode": "all"}]
+    (tmp_path / COPY).write_text(yaml.safe_dump(document, sort_keys=False))
+    result = xarch("review", SERVICE, "--format", "json", url=served.url)
+    assert result.exit_code == 0, result.output
+    bodies = [body for body in served.received if "PublishingService" in body["state"]]
+    assert len(bodies) == 1
+    named = list(bodies[0]["questions"])
+    assert named[:4] == ["placement", "litmus.services.1", "litmus.services.publish", "litmus.services.title"]
+    assert len(named) == 4
+    assert bodies[0]["questions"]["litmus.services.publish"]["type"] == "noul"
+    (read,) = json.loads(result.output)["placement"]["files"]
+    assert read["litmus"] == {"holds": True, "yes_line": 0.5, "measured": False, "entries": [
+        {"label": "1", "mode": "any", "yes": 0.9, "answered_yes": True},
+        {"label": "publish", "mode": "any", "yes": 0.9, "answered_yes": True},
+        {"label": "title", "mode": "all", "yes": 0.9, "answered_yes": True}]}
+    offline = xarch("review", SERVICE, "--offline", "--format", "json", key=None)
+    assert offline.exit_code == 0 and json.loads(offline.output)["placement"]["files"][0]["litmus"]["holds"] is True

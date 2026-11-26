@@ -433,3 +433,20 @@ def test_a_profile_with_no_part_has_no_placement_order_and_is_told_to_write_its_
     assert problems("{{placement}}", {"name": "layered", "parts": {}}) == [
         "layered.md: {{placement}}: the architecture has no placement order: write its parts under `parts`, whose "
         "reading order is the order the litmus tests run"]
+
+
+def test_a_litmus_list_is_a_tip_of_its_alternatives_then_its_conditions_each_by_its_label():
+    document = layered()
+    part_of(document, "store")["litmus"] = ["Does it save?", {"ask": "Does it\nload?", "label": "load"},
+                                            {"ask": "Is it the store's session?", "label": "session", "mode": "all"}]
+    assert fill("{{litmus:store}}", parsed(document, folders=EXAMPLES), "layered.md", TEXTS, file_types=FILE_TYPES) == (
+        "> [!TIP]\n> **Litmus tests.** Code belongs here when at least one of these answers yes:\n"
+        "> - **1.** Does it save?\n> - **load.** Does it load?\n>\n> and when each of these answers yes:\n"
+        "> - **session.** Is it the store's session?")
+
+
+def test_a_litmus_list_of_conditions_only_says_each_must_answer_yes():
+    document = layered()
+    part_of(document, "store")["litmus"] = [{"ask": "Is it pure?", "mode": "all"}]
+    assert fill("{{litmus:store}}", parsed(document, folders=EXAMPLES), "layered.md", TEXTS, file_types=FILE_TYPES) == (
+        "> [!TIP]\n> **Litmus tests.** Code belongs here when each of these answers yes:\n> - **1.** Is it pure?")

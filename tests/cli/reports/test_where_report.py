@@ -3,7 +3,7 @@ import json
 from dataclasses import replace
 
 from xarch.cli.reports.where_report import where_document, where_lines
-from xarch.modules.rules.contract import InPart, InTests, PartShown, TierInfoView, Ungoverned, Untested
+from xarch.modules.rules.contract import ALL, InPart, InTests, Litmus, PartShown, TierInfoView, Ungoverned, Untested
 
 PART = InPart("app/cli/app.py", True, PartShown("cli", "cli", role="the commands", litmus="Is it a command?"), (),
               "contract", ("typer",), (), Untested("a shim"))
@@ -63,3 +63,32 @@ def test_a_test_with_no_shared_test_code_is_shown_as_before():
     test = InTests("tests/unit/test_app.py", True, None, (), "", (), (), TIER, False, "", "tests/unit/", "")
     assert "test code:      from tests/unit/ only" in where_lines(test)
     assert "shared" not in json.loads(where_document("custom", test))["test"]
+
+
+LISTED = (Litmus("Does it parse\nthe arguments?", "1"), Litmus("Does it print?", "print"),
+          Litmus("Is it thin?", "thin", ALL))
+
+
+def test_a_litmus_list_is_said_on_its_line_then_one_line_per_entry_and_listed_in_the_document():
+    listed = replace(PART, part=replace(PART.part, litmus="", litmus_list=LISTED))
+    assert where_lines(listed)[3:7] == [
+        "litmus:         at least one `any` entry and every `all` entry answers yes:",
+        "                1 (any): Does it parse the arguments?", "                print (any): Does it print?",
+        "                thin (all): Is it thin?"]
+    assert json.loads(where_document("custom", listed))["part"]["litmus"] == [
+        {"ask": "Does it parse\nthe arguments?", "label": "1", "mode": "any"},
+        {"ask": "Does it print?", "label": "print", "mode": "any"}, {"ask": "Is it thin?", "label": "thin", "mode": "all"}]
+
+
+def test_a_litmus_of_one_text_stays_a_text_in_the_document():
+    assert json.loads(where_document("custom", PART))["part"]["litmus"] == "Is it a command?"
+
+
+def test_a_tier_s_litmus_list_is_said_as_a_part_s_is():
+    tier = replace(TIER, litmus="", litmus_list=LISTED[1:2])
+    test = InTests("tests/unit/test_app.py", True, None, (), "", (), (), tier, False, "", "tests/unit/", "")
+    lines = where_lines(test)
+    at = lines.index("tier litmus:    at least one of these answers yes:")
+    assert lines[at + 1] == "                print (any): Does it print?"
+    assert json.loads(where_document("custom", test))["tier"]["litmus"] == [
+        {"ask": "Does it print?", "label": "print", "mode": "any"}]

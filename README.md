@@ -121,12 +121,12 @@ and a key left out means off):
 ```
 name*  based_on  language  hints  excluded  reserved
 testing:  <preset> | {preset, beside, shared} | {files*, declared*, globals, skips, tables, mocks, beside, shared}
-parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus, imports: {may, must, libraries, accepted}, uses: {never},
+parts*:   {<folder>/ | <file>: {<folder>/ | <file>, name, role*, litmus: <text> | [<text> | {ask*, label, mode}, ...], imports: {may, must, libraries, accepted}, uses: {never},
                               tests | untested, package_only, shared, optional,
                               holds: {classes: {names, immutable, built_by}, functions: {names},
                                       records: {names, immutable}, exceptions: {names}}}}
 never:    {<list>: [<dotted name> | .<method>() | <list>, ...]}  layers: {<chain>: [<part>, ...] | {parts*, types_only}}
-tiers:    {<tier>: {proves, litmus, uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
+tiers:    {<tier>: {proves, litmus: <text> | [...], uses: {apply_never}, plain_tables, folder, imports: {may, also, must, types_only},
                     accepted: [{file*, import, why*}, ...], docs}}
 fakes:    {folder*, for*, prefix | [prefix, ...], tiers}     structure: {accepted: [{path*, why*}, ...]}
 guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates, no-twins, dead-code,
@@ -135,9 +135,33 @@ files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, nam
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_not_reach | must_be_reached | at_most |
                   at_least*, except, accepted, mode, message*, fix*, once_per, per_line, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
-evals:    {placement: {lines, alike, examples}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
+evals:    {placement: {lines, alike, examples, yes_line}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
 ```
+
+A part's `litmus` (and a tier's) is one text, the question that tells code belongs there, or a list of entries when
+one question is not enough. Each entry is a text or a map `{ask, label, mode}`: `ask` the question; `label` a short
+name, its own among the entries (without it, the entry's position counted from 1: `1`, `2`, ...); `mode` `any` (the
+default) or `all`. An `any` entry is an alternative, an `all` entry a condition, and the two combine with and: code
+belongs when **at least one `any` entry answers yes (when the list has any `any` entry) and every `all` entry answers
+yes**. A list of `all` entries alone needs every one; a list of `any` entries alone needs one. An entry is refused at
+its address (`parts.store.litmus[1].label`) for an empty text, a label another entry has, a mode that is neither, or
+a key that is none of the three. One text reads exactly as before, and a list of one entry reads as that one text.
+
+```yaml
+parts:
+  store/:
+    role: saves and loads documents
+    litmus:
+      - Does it save a document?
+      - {ask: "Does it load a document?", label: load}
+      - {ask: "Does it reach the database through the store's own session?", label: session, mode: all}
+```
+
+The generated docs show a list as its alternatives, then its conditions, each by its label; `xarch where` says how
+the entries combine on the `litmus` line and lists each entry under it, and its JSON gives `litmus` as a list of
+`{ask, label, mode}` only when the profile writes a list (one text stays a text). For `xarch review`, see
+[A part's litmus as a list](#a-parts-litmus-as-a-list-a-yes-or-no-question-per-entry).
 
 A tier's `accepted` lists `tiers` findings it accepts one by one, each with a reason: `file` a test of the tier, or
 one in no tier (`tests/<path>`), and, if need be, `import`, what it imports, written as `imports.accepted` writes it (a
@@ -382,7 +406,9 @@ and the ones that exist are named. `pyproject.toml` is never edited: it prints t
 `check` loads the profile (every problem at once, which includes every file it points to existing), runs the
 example-import check (the examples' imports obey the profile's own rules), holds each check the profile writes itself
 to its examples, and shows how it differs from the profile it is compared with, as information (but for a part left
-without the litmus that profile gives it, which fails `check --strict`). That profile is the one `--against NAME|FILE`
+without the litmus that profile gives it, or keeping none of its entries, which fails `check --strict`: a part keeps
+a litmus of one text with any litmus of its own, reworded or not, and a list when its own litmus holds an entry of one
+of that list's labels, a litmus of one text counting as the entry labelled `1`). That profile is the one `--against NAME|FILE`
 names for the run (a bundled name, or a path to a profile file read from the working folder; one that does not load
 refuses the run, exit 2), else the one its `based_on` names, else the bundled one of highest match. `based_on` is a
 bundled name or the path of a profile file (`based_on: ../team.yaml`), read from the folder of the file that writes
@@ -951,7 +977,8 @@ be added, an existing one keeps its name and meaning. A field that does not appl
   app folder; `exists` says whether it is there now.
 - `part`: for `part`, the part the path lies in; for a `test`, the part it mirrors; else null. `instance` is empty when the part is not in a
   repeating folder; `singular` is the word of the folder the part lies in (for a part outside them, the profile's word
-  when it has only one).
+  when it has only one). Its `litmus`, and the tier's, is the text the profile writes, or, for a litmus written as a
+  list, the list of its entries, each `{"ask", "label", "mode"}`.
 - `may_import`: one item per target of the part's rule (for a test: of the part it mirrors and of what that may import):
   `scope` is `own` (the same instance), `any` (any instance) or `none`; `folder` is the part as the docs name it, `path`
   its folder below the project root, with `<module>` (the word in the profile's paths) for an instance that is not fixed.
@@ -992,9 +1019,13 @@ answer (below); the JSON gives the probability on every part.
 
 The order of the options moves a probability only near the line, so a file whose first answer falls within 0.15 of its
 part's line is asked again in two other orders (the options rotated by a third and by two thirds; one other order for
-a profile of two parts) and read on the mean, which the reading says ("the mean of 3 orders of the options"). Each
-order is its own question, kept in the cache on its own; offline, a file whose other orders are not all kept is
-unanswered. Whether a file needs them is known from the answers kept before anything is sent.
+a profile of two parts) and read on the mean, which the reading says ("the mean of 3 orders of the options"). The
+other orders are asked together in one second request, each a named question of its own (`placement.order-2`,
+`placement.order-3`), the text sent once: a file far from its line costs one request, a file near it two (they were
+three). Each order keeps its answer in the cache on its own, under the key it always had, and only the questions not
+kept are sent; offline, a file near its line whose other orders are not all kept is unanswered. Whether a file needs
+them is known from the first answer. The header says the answers asked ("Asked 3") and the requests sent ("Sent 2
+request(s)") apart.
 
 A file judged under 2,000 characters is marked `small`: small files read lower for being small (in trials a tenth of
 the smallest quarter of files read as doubtful, a fiftieth of the largest). Every reading ends with the parts read:
@@ -1122,6 +1153,35 @@ file it links to. A file chosen that one matches is left out of every run,
 
 `profile check` lists, as looser, an entry of either that the profile it is compared with holds and this one does not:
 it sends more. `xarch profile explain review.never` (or `review.mask`) says each in full.
+
+### A part's litmus as a list: a yes-or-no question per entry
+
+A part whose `litmus` is a list of two entries or more is described in placement's question by its entries joined
+(its `any` questions joined by "Or:", then its `all` questions after "And in every case:"), so the question across
+parts stays one choice; a part of one text, or of a list of one entry, is described exactly as before, so the
+answers kept and the records of placement held to its examples stay valid for every profile that writes no list.
+Besides, a file of such a part is asked each entry of its own part's list as a yes-or-no question of its own, named
+`litmus.<part>.<label>`, about the same masked text and in the same request as placement's question (the text sent
+once; the entries are never merged into one question). Each answer is kept in the cache under its own key, and offline
+a file whose entries are not all kept is unanswered.
+
+An entry answers yes when its probability of yes is at or above the yes line, and the part's litmus holds by the rule
+above: at least one `any` entry (when there is any) and every `all` entry answers yes. A file whose litmus does not
+hold reads as doubtful here, whatever placement's question puts on its part; the reading says each entry, its mode,
+its probability of yes and whether it answered yes.
+
+```yaml
+evals:
+  placement:
+    yes_line: 0.5
+```
+
+**The yes line is a placeholder, not calibrated.** 0.5 is half way, chosen without any measure; nothing has held the
+entries' answers to labelled files yet, so how often a well-placed file fails its litmus at this line, or a misplaced
+one passes it, is unknown. Measure it before relying on what the entries say; until then read a file doubtful only by
+its entries as a prompt to read it against them. `xarch review calibrate` holds placement's question to its examples,
+not the entries. A value is a number above 0 and below 1; `xarch profile explain evals.placement.yes_line` says it in
+full.
 
 ### A part's line: `evals.placement.lines`
 
@@ -1304,26 +1364,31 @@ and when it was not, what to run.
 
 `--format json` prints one document. A dry run: `{"ok", "advisory", "profile", "dry_run": true, "sent": false,
 "selection": {"by", "found", "judged", "left_out": [{"file", "why", "chars", "pattern"}]}, "question": {"ask",
-"role_only", "options": [{"name", "description"}]}, "requests": [{"file", "part", "chars", "cached", "text", "body",
-"piece", "kind", "first", "last", "eval"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
+"role_only", "options": [{"name", "description"}], "litmus": {"yes_line", "measured", "questions": [{"name", "part",
+"label", "mode", "ask"}]}}, "requests": [{"file", "part", "chars", "cached", "text", "body",
+"piece", "kind", "first", "last", "eval", "questions"}], "pieces", "piece_question", "context", "characters", "tokens", "reorders",
 "masked", "mask", "never": [{"path", "matched"}], "alike", "ruled_out_by", "evals", "sends": {"name", "at", "model", "key", "keyed", "unusable"}}`: `body` the request as the decision model's service would receive it
 (JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
 many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
-without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders a file near its line is asked
-again in; `sends.key` the name of the variable the key is read from (never the key), `keyed` whether it is set, and
+without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders of the question a file near
+its line is asked again in, in one more request; `questions` of a request of placement the names of the questions it would send (those whose
+answers are not kept; null for a piece or an eval); `question.litmus` the yes-or-no question of each entry of a part's
+litmus list, by its name, with `yes_line` and `measured` (always false: the line is a placeholder), null when no part
+writes a list of two entries or more; `sends.key` the name of the variable the key is read from (never the key), `keyed` whether it is set, and
 `unusable` why the key set cannot be used (null when it can, or none is set).
 
 A review: `{"ok", "advisory", "profile", "dry_run": false, "complete", "model", "answered_by", "selection", "placement":
 {"calibration": {"state", "evidence", "examples": {"state", "why", "parts": [{"part", "verdict", "crossed",
 "examples"}]}}, "role_only", "files": [{"file", "part", "probability", "line", "line_by_hand", "doubtful", "chars",
 "small", "orders", "model", "alike", "distribution", "ruled_out": [{"part", "by", "probability"}], "accepted":
-{"why", "reads_as"}, "accepted_before": {"why", "reads_as"}}], "accepted": {"recorded", "stale": [{"file", "part",
+{"why", "reads_as"}, "accepted_before": {"why", "reads_as"}, "litmus": {"holds", "yes_line", "measured", "entries":
+[{"label", "mode", "yes", "answered_yes"}]}}], "accepted": {"recorded", "stale": [{"file", "part",
 "why", "now"}]}, "parts": [{"part", "read", "doubtful", "line", "line_by_hand",
 "summed", "litmus_note", "examples"}]}, "pieces": [{"file", "part", "judged", "too_small", "context", "answered", "alike", "lowest":
 [{"rank", "kind", "name", "first", "last", "chars", "probability", "distribution"}]}], "evals": [{"id", "state", "why",
 "run", "line", "ask", "form", "examples": {"flagged", "clean"}, "model", "asked", "readings": [{"file", "line", "name",
-"value", "message", "fix"}]}], "sends", "sent": {"calls", "cached", "input_tokens", "output_tokens"}, "unanswered":
+"value", "message", "fix"}]}], "sends", "sent": {"calls", "answers", "cached", "input_tokens", "output_tokens"}, "unanswered":
 [{"file", "why", "piece", "eval", "said"}], "failure"}`: `answered_by` the model versions that gave the answers read, asked
 or kept, each once (the text header names them when they are not the model asked alone); the files
 ranked from the lowest probability; `line_by_hand` whether the profile sets the part's line; `small` whether the file
@@ -1333,7 +1398,10 @@ with its own (empty when its part is in no group; also for a file's pieces), and
 `distribution` the probability on each part by name, as answered (also for a piece); `ruled_out` each part ruled out
 of the file's answer, `by` the rule that rules it out (`holds`) and `probability` what the answer put on it (empty
 when none), `probability` being read on what remains; a dry run's `ruled_out_by` the rules that rule parts out;
-`accepted` of a file what was said when it was accepted, its code as it was then (null otherwise), `accepted_before`
+`litmus` of a file, for a part whose litmus is a list of two entries or more, whether it `holds`, the `yes_line` each
+entry was read against (`measured` false: a placeholder) and each entry's probability of `yes` and whether it
+`answered_yes` (null for a file of any other part); `sent.calls` the requests sent and `sent.answers` the answers
+asked, one request carrying several questions; `accepted` of a file what was said when it was accepted, its code as it was then (null otherwise), `accepted_before`
 the same once its code changed since; `accepted` of placement how many files `.xarch/accepted.json` names
 (`recorded`, also `accepted` of a dry run) and each stale, `why` `gone`, `moved`, `not-doubtful` or `not-judged`, `now`
 the part a moved file lies in now (null for none) or why a file is not judged; `parts` each part read, `summed` whether 3 or more of its files were read and `litmus_note` whether the note

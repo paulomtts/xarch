@@ -159,7 +159,7 @@ def test_answers_kept_are_read_back_offline_with_no_key_and_nothing_is_sent(serv
     offline = review(SERVICE, VALUES, "--offline", "--format", "json", key=None, url=served.url)
     assert offline.exit_code == 0, offline.output
     document = json.loads(offline.output)
-    assert (document["complete"], document["sent"]) == (True, {"calls": 0, "cached": 2, "input_tokens": 0,
+    assert (document["complete"], document["sent"]) == (True, {"calls": 0, "answers": 0, "cached": 2, "input_tokens": 0,
                                                               "output_tokens": 0})
     assert [(item["file"], item["doubtful"]) for item in document["placement"]["files"]] == [(VALUES, True),
                                                                                            (SERVICE, False)]
@@ -390,8 +390,9 @@ def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_agains
     assert result.exit_code == 0, result.output
     assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {VALUES_SENT:,} chars, small   the mean "
             "of 3 orders of the options") in result.output.splitlines()
-    orders = [list(body["questions"]["placement"]["criteria"]) for _, _, body in served.received
-              if "Value0" in body["state"]]
+    bodies = [body for _, _, body in served.received if "Value0" in body["state"]]
+    assert [list(body["questions"]) for body in bodies] == [["placement"], ["placement.order-2", "placement.order-3"]]
+    orders = [list(question["criteria"]) for body in bodies for question in body["questions"].values()]
     assert len(orders) == 3 and len({tuple(order) for order in orders}) == 3
     assert all(sorted(order) == sorted(orders[0]) for order in orders)
     assert "  no file judged reads as doubtful here" in result.output.splitlines()

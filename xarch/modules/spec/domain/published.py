@@ -17,6 +17,8 @@ just as spec holds it, so there is nothing to reshape. Everything else spec hand
     DocFile      a project doc and the text it starts with, which the module that scaffolds writes
     LINE         the line of a part no `evals.placement.lines` writes one for, which the module that reviews reads a
                  file's answer against
+    YES_LINE     the line of the yes of an entry of a litmus list no `evals.placement.yes_line` writes, which the
+                 module that reviews reads each entry's answer against: a placeholder, not measured
     Eval         an eval of the profile's own, which the module that reviews asks and the checking module holds to its
                  examples statically; YES_NO, SCORE and CHOICE its answer forms, READS what one question may be asked
                  of
@@ -45,6 +47,12 @@ LINE = 0.3
 """The line of a part the profile writes none for under `evals.placement.lines`: below it, the probability review's
 decision model puts on the part a file sits in reads as doubtful there. In the trials it caught about nine in ten
 plainly misplaced files and doubted about one well-placed file in ten."""
+
+
+YES_LINE = 0.5
+"""The line at or above which review reads the yes of one entry of a litmus written as a list as yes, the profile
+writing none under `evals.placement.yes_line`: a placeholder, half way, never measured; it must be measured before a
+reading of the entries is relied on."""
 
 
 KINDS = ("classes", "functions", "records", "exceptions")
@@ -118,7 +126,9 @@ class Loosened:
         uses.never      part no longer forbids what
         untested        part is newly marked untested
         litmus          part has no litmus, though the bundled profile gives it one (LITMUS); with what, though
-                        what, the anchor --strict rests on, gives the part it pairs with one
+                        what, the anchor --strict rests on, gives the part it pairs with one; with what starting
+                        `entries: `, part keeps no entry of the litmus list the bundled profile gives it, whose labels
+                        follow
         imports.types_only
                         the tests of tier part may now call what
         imports.also    the tests of tier part may also import what (a target as a reference: parts.<part> or <word>.<part>)

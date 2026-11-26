@@ -95,6 +95,8 @@ CONTEXTS = {NO_CONTEXT: "nothing: the piece alone",
             IMPORTS: "the file's opening lines (those before its first piece), masked: numbers read so never compare "
                      "with numbers read without them"}
 
+UNMEASURED = "a line not yet measured"
+"""What is said of the yes line of the entries of a litmus list: a placeholder, which nothing measured."""
 
 def _what_leaves(sends: Sender, pieced: bool = False) -> str:
     """What leaves the machine in a review that sends, to whom, and that the key alone allows it."""
@@ -119,6 +121,11 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
              f"  options: {len(planned.question.options)} parts, each described by its litmus test"
              + (f" (by its role only: {', '.join(planned.role_only)})" if planned.role_only else "")]
     lines += [f"    {option.name}: {option.description}" for option in planned.question.options]
+    if planned.litmus:
+        lines += [f"the yes-or-no questions of the parts whose litmus is a list, each asked of a file of its part in the "
+                  f"request of placement's question, an entry answering yes at {planned.yes_line:.2f} or above "
+                  f"({UNMEASURED}):",
+                  *(f"  {name} ({entry.mode}): {entry.ask}" for name, _, entry in planned.litmus)]
     if planned.piece_ask:
         lines += [f"  a request of a piece of a file asks instead: {planned.piece_ask}",
                   f"  sent before each piece: {CONTEXTS[planned.context]}"]
@@ -133,7 +140,7 @@ def plan_lines(planned: ReviewPlanned) -> list[str]:
                 if item.asked and item.piece else f"eval {item.asked}: the file whole (" if item.asked
                 else f"piece {item.piece} ({item.kind}, lines {item.lines[0]}-{item.lines[1]}, " if item.piece else "(")
         lines += ["", f"request {number} of {asked}: {item.file} {what}{item.part}, {item.chars:,} characters{kept})",
-                  *_quoted(item)]
+                  *([f"  questions: {', '.join(item.questions)}"] if len(item.questions) > 1 else []), *_quoted(item)]
     lines += eval_plan_lines(planned.evals)
     if planned.left_out:
         lines += ["", "left out:", *(f"  {item.file}: {_why(item)}" for item in planned.left_out)]
@@ -145,7 +152,8 @@ def _reasked(reorders: int) -> list[str]:
     if not reorders:
         return []
     return [f"A file whose answer falls within {BAND:.2f} of its part's line is asked again in {reorders} other "
-            f"order(s) of the options and read on the mean: up to {reorders} more request(s) for each such file."]
+            f"order(s) of the options, all in one more request, and read on the mean: up to 1 more request for each "
+            "such file."]
 
 
 def plan_document(profile: str, planned: ReviewPlanned) -> str:
@@ -155,11 +163,14 @@ def plan_document(profile: str, planned: ReviewPlanned) -> str:
         "selection": {"by": list(planned.by), "found": planned.found, "judged": len(planned.requests),
                       "left_out": [_left_out(item) for item in planned.left_out]},
         "question": {"ask": planned.question.ask, "role_only": list(planned.role_only),
-                     "options": [{"name": o.name, "description": o.description} for o in planned.question.options]},
+                     "options": [{"name": o.name, "description": o.description} for o in planned.question.options],
+                     "litmus": {"yes_line": planned.yes_line, "measured": False, "questions": [
+                         {"name": name, "part": part, "label": entry.label, "mode": entry.mode, "ask": entry.ask}
+                         for name, part, entry in planned.litmus]} if planned.litmus else None},
         "requests": [{"file": r.file, "part": r.part, "chars": r.chars, "cached": r.cached, "text": r.text,
                       "body": r.body, "piece": r.piece or None, "kind": r.kind or None,
                       "first": r.lines[0] if r.piece else None, "last": r.lines[1] if r.piece else None,
-                      "eval": r.asked or None}
+                      "eval": r.asked or None, "questions": list(r.questions) or None}
                      for r in planned.requests],
         "evals": eval_documents(planned.evals),
         "pieces": bool(planned.piece_ask), "piece_question": planned.piece_ask or None, "context": planned.context,
@@ -180,7 +191,7 @@ def reading_lines(read: ReviewReading) -> list[str]:
              f"{model_said(read.sends.model, read.answered_by)}. {read.found} file(s) found ({', '.join(WAYS[way] for way in read.by)}), "
              f"{judged} judged, {len(read.left_out)} left out. Asked {read.sent}, from cache {read.cached}."]
     if read.sent:
-        lines.append(f"Sent {read.sent} request(s) to {read.sends.service} ({read.sends.at}): "
+        lines.append(f"Sent {read.calls} request(s) to {read.sends.service} ({read.sends.at}): "
                      f"{read.input_tokens:,} input tokens, {read.output_tokens:,} output tokens.")
     disagreeing = {part.part for part in read.calibration.parts if part.verdict == DISAGREE}
     doubtful = [item for item in read.readings if item.doubtful]
@@ -253,7 +264,7 @@ def reading_document(profile: str, read: ReviewReading) -> str:
         "pieces": [_pieces_read(pieces) for pieces in read.pieces],
         "evals": eval_documents(read.evals),
         "sends": sends_of(read.sends),
-        "sent": {"calls": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
+        "sent": {"calls": read.calls, "answers": read.sent, "cached": read.cached, "input_tokens": read.input_tokens,
                  "output_tokens": read.output_tokens},
         "unanswered": [_unasked(item) for item in read.unasked], "failure": read.failure or None}
     return document(content)
@@ -307,7 +318,17 @@ def _reading(item: Reading) -> list[str]:
              + ", ".join(f"{out.part} {out.probability:.2f}" for out in item.ruled_out if out.by == rule)
              for rule in dict.fromkeys(out.by for out in item.ruled_out)]
     return [f"  {item.file}   {item.part}   {item.probability:.2f} ({line})   {item.chars:,} chars{small}{alike}{orders}",
-            *ruled]
+            *_litmus(item), *ruled]
+
+
+def _litmus(item: Reading) -> list[str]:
+    """What the entries of the litmus list of a file's part read, on a line under its reading; none for any other."""
+    if item.litmus_holds is None:
+        return []
+    said = "holds" if item.litmus_holds else "does not hold"
+    return [f"      litmus: {said} (an entry answers yes at {item.yes_line:.2f} or above, {UNMEASURED}): "
+            + ", ".join(f"{entry.label} ({entry.mode}) {entry.yes:.2f} {'yes' if entry.said_yes else 'no'}"
+                        for entry in item.litmus)]
 
 
 def _pieces(read: PiecesRead) -> list[str]:
@@ -355,7 +376,11 @@ def _file(item: Reading) -> dict[str, Any]:
             "orders": item.orders, "model": item.model, "alike": list(item.alike),
             "distribution": dict(item.distribution),
             "ruled_out": [{"part": out.part, "by": out.by, "probability": out.probability} for out in item.ruled_out],
-            "accepted": _acceptance(item.accepted), "accepted_before": _acceptance(item.accepted_before)}
+            "accepted": _acceptance(item.accepted), "accepted_before": _acceptance(item.accepted_before),
+            "litmus": None if item.litmus_holds is None else {
+                "holds": item.litmus_holds, "yes_line": item.yes_line, "measured": False,
+                "entries": [{"label": entry.label, "mode": entry.mode, "yes": entry.yes, "answered_yes": entry.said_yes}
+                            for entry in item.litmus]}}
 
 
 def _acceptance(said: Acceptance | None) -> dict[str, str] | None:

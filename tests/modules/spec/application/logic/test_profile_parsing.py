@@ -152,7 +152,9 @@ def test_a_part_s_own_folders_follow_the_parts_in_the_layout_as_today():
 
 @pytest.mark.parametrize("parts, expected", [
     pytest.param({"x/": {"role": 3, "litmus": 4}},
-                 ["layered.yaml: parts.x.role: must be a string", "layered.yaml: parts.x.litmus: must be a string"],
+                 ["layered.yaml: parts.x.role: must be a string",
+                  "layered.yaml: parts.x.litmus: must be a string, or a list of entries, each a text or {ask, label, "
+                  "mode}"],
                  id="texts that are no strings"),
     pytest.param({"x/": {"role": "r", "package_only": "yes"}},
                  ["layered.yaml: parts.x.package_only: must be true or false"], id="package_only that is no boolean"),

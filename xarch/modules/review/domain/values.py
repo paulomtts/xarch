@@ -9,6 +9,7 @@ from pathlib import Path
 
 from xarch.kernel.source import CommentSpan, Import, Unparsable
 from xarch.modules.review.domain.published import Choice, LeftOut
+from xarch.profile_values.litmus import Litmus
 
 
 @dataclass(frozen=True)
@@ -16,7 +17,8 @@ class PartText:
     """A part as placement offers it: its name, its folder as the docs show it, its litmus test ("" for none), its
     role, the line below which a file reads as doubtful there, whether the profile sets that line by hand, and the
     other parts of the group one file cannot tell it apart from (`evals.placement.alike`), in the group's order (none
-    when it is in no group), whose probabilities a file of it is read on with its own."""
+    when it is in no group), whose probabilities a file of it is read on with its own; and the entries of its litmus
+    when it is written as a list (litmus is then "")."""
     name: str
     folder: str
     litmus: str
@@ -24,6 +26,7 @@ class PartText:
     line: float
     by_hand: bool = False
     alike: tuple[str, ...] = ()
+    entries: tuple[Litmus, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -48,12 +51,14 @@ class EvalText:
 class Words:
     """What review reads of a profile: its parts, in its order; the paths below the app of the files review never
     sends; the texts it hides before it sends, each as the profile writes it; the evals of its own, in its order; and
-    the import name of the app the code of placement's examples is written for ("" for the project's own)."""
+    the import name of the app the code of placement's examples is written for ("" for the project's own); and the
+    line at or above which an entry of a litmus list answers yes (a placeholder, not measured, unless written)."""
     parts: tuple[PartText, ...]
     never: tuple[str, ...] = ()
     mask: tuple[str, ...] = ()
     evals: tuple[EvalText, ...] = ()
     examples_root: str = ""
+    yes_line: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -152,13 +157,15 @@ class Run:
     """The questions of one run so far: the folder the answers are kept in; whether the run may send nothing; the
     answers the decision model gave and those read from the folder, in order; the decision model's words when it
     failed ("" while it has not), after which nothing more is sent; and each question it refused alone, by the key its
-    answer would be kept under, with its words, after which the rest is still sent."""
+    answer would be kept under, with its words, after which the rest is still sent; and how many requests the
+    decision model answered, one of which may carry several questions."""
     folder: Path
     offline: bool
     asked: tuple[Answer, ...] = ()
     reused: tuple[Answer, ...] = ()
     failure: str = ""
     refused: tuple[tuple[str, str], ...] = ()
+    requests: int = 0
 
 
 @dataclass(frozen=True)

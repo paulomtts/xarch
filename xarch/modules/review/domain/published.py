@@ -9,6 +9,7 @@ as review holds it, so there is nothing to reshape.
     Sender   what review sends to, as the decision model's adapter says it: the service, where it answers, the model
              asked, the variable its key is read from and whether the key is set
     Reading  what the decision model read of one file: the probability on the part it sits in, against that part's line
+    LitmusRead  what the decision model read of one entry of the litmus list of a file's part
     RuledOut a part ruled out of a file's answer by a rule of the profile, with the probability the answer put on it
     Acceptance  what a person said of a doubtful file they read and found fine, and what it read as then
     StaleAcceptance  a file the record of accepted files names that is gone, moved, no longer doubtful or not judged
@@ -142,7 +143,9 @@ class Request:
     apart); and, for a piece, its name, its kind and the lines it spans ("" and (0, 0) for a whole file); and, for a
     question of an eval of the profile's own, its id ("" for placement's), the piece being what it reads (a whole file
     named ""), and, for one about an example of the eval, FLAGGED or CLEAN, the kind of example ("" for a file of the
-    app)."""
+    app); and, for a request of placement about a whole file, the names of the questions it carries, in order (its
+    first: the question in its first order, then the entries of a litmus list; its second: the other orders; none
+    for any other request, which carries one)."""
     file: str
     part: str
     chars: int
@@ -154,6 +157,7 @@ class Request:
     lines: tuple[int, int] = (0, 0)
     asked: str = ""
     example: str = ""
+    questions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -199,6 +203,17 @@ class StaleAcceptance:
 
 
 @dataclass(frozen=True)
+class LitmusRead:
+    """What the decision model read of one entry of the litmus list of a file's part, asked as a yes or no of its own:
+    the entry's label and mode (`any` or `all`), the probability of yes, and whether that is at or above the yes
+    line, so that the entry answers yes."""
+    label: str
+    mode: str
+    yes: float
+    said_yes: bool
+
+
+@dataclass(frozen=True)
 class Reading:
     """What the decision model read of one file: the file, as `check` shows it; the part it sits in; how many
     characters it holds; the probability on that part; the line below which it is doubtful there; whether it is; the
@@ -209,7 +224,9 @@ class Reading:
     and the parts ruled out of the answer, in the profile's order: the probability on its part, and so whether it is
     doubtful, is read on what remains, made to sum to 1 again, while the distribution stays as answered; and, for a
     doubtful file a person accepted, what they said: accepted when its code is the same as then (the file is then not
-    doubtful), accepted_before when its code changed since (it is doubtful again), None otherwise."""
+    doubtful), accepted_before when its code changed since (it is doubtful again), None otherwise; and, for a file of
+    a part whose litmus is a list of two entries or more, each entry as read, whether the litmus holds (None for any
+    other file) and the yes line each entry was read against: a file whose litmus does not hold is doubtful."""
     file: str
     part: str
     chars: int
@@ -225,6 +242,9 @@ class Reading:
     ruled_out: tuple[RuledOut, ...] = ()
     accepted: Acceptance | None = None
     accepted_before: Acceptance | None = None
+    litmus: tuple[LitmusRead, ...] = ()
+    litmus_holds: bool | None = None
+    yes_line: float = 0.0
 
 
 @dataclass(frozen=True)

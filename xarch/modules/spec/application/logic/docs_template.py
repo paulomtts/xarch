@@ -9,7 +9,8 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
                            the part may import (its own part is implied, so it is not listed)
     {{layers:<name>}}      the chain `layers.<name>` as `a/` → `b/` → ..., each part by its path
     {{placement}}          the order of `parts` as `a` → `b` → ..., each part by its name
-    {{litmus:<part>}}      the part's litmus test, as a "> [!TIP]" block
+    {{litmus:<part>}}      the part's litmus test, as a "> [!TIP]" block; a litmus written as a list shows its
+                           `any` entries, then its `all` entries, each "> - **<label>.** <ask>"
     {{naming}}             the `naming` rows as a table
     {{entry}}              the entry point's path, e.g. web
     {{docs_tree}}          the `docs` of the architecture as the contents of the project docs folder, one line per
@@ -25,7 +26,7 @@ architecture. Prose, diagrams and code examples stay as the author wrote them; o
     {{untested}}           one paragraph per part marked `untested`: "`<part>/` gets no tier of its own: <reason>."
     {{tier_index:<n>}}     the index entries of {{tier_litmus:<n>}}, one per tier, indented as a subsection of section <n>
     {{tier_litmus:<n>}}    each tier as a subsection of section <n>, "### <n>.<i> <tier>", holding its litmus test as
-                           a "> [!TIP]" block, its lines joined into one
+                           a "> [!TIP]" block, its lines joined into one (a list shown as the part's is)
     {{tier_files}}         each tier's `one_file_per` and `cases_from`, as a table
     {{tier_data}}          each tier's `data`, as a table
     {{tier_helpers}}       the helper files of all tiers in one block, each under its header line, `# <path>` (its
@@ -80,6 +81,7 @@ from xarch.modules.spec.domain.values import (
     Subject,
     Tier,
 )
+from xarch.profile_values.litmus import ALL, ANY, Litmus
 from xarch.profile_values.placement import Repeat, Target
 from xarch.profile_values.testing import ScenarioCoverage, SpecEntry, StandIns, TableForm
 
@@ -219,9 +221,28 @@ def _placement(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: boo
 
 def _litmus(architecture: Architecture, name: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
     part = _part(architecture, name)
+    if part.litmus_list:
+        return _entries_tip(part.litmus_list, "Code")
     if not part.litmus:
         raise _Missing(f"part '{name}' has no litmus test")
     return f"> [!TIP]\n> **Litmus test.** {part.litmus}"
+
+
+def _entries_tip(entries: tuple[Litmus, ...], subject: str) -> str:
+    """A litmus written as a list as a "> [!TIP]" block: its `any` entries, the alternatives, then its `all` entries,
+    the conditions, each its label in bold and its question as one line."""
+    alternatives = [entry for entry in entries if entry.mode == ANY]
+    conditions = [entry for entry in entries if entry.mode == ALL]
+    lines = [f"> [!TIP]\n> **Litmus tests.** {subject} belongs here when "
+             + ("at least one of these answers yes:" if alternatives else "each of these answers yes:")]
+    lines += [_entry_line(entry) for entry in alternatives or conditions]
+    if alternatives and conditions:
+        lines += [">", "> and when each of these answers yes:", *(_entry_line(entry) for entry in conditions)]
+    return "\n".join(lines)
+
+
+def _entry_line(entry: Litmus) -> str:
+    return f"> - **{entry.label}.** " + " ".join(line.strip() for line in entry.ask.splitlines())
 
 
 def _naming(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
@@ -307,9 +328,10 @@ def _tier_index(architecture: Architecture, section: str, _q: Texts, _t: Texts, 
 
 
 def _tier_litmus(architecture: Architecture, section: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:
-    return "\n\n".join(f"### {section}.{i} {tier.name}\n\n> [!TIP]\n> **Litmus test.** "
-                        + " ".join(line.strip() for line in tier.litmus.splitlines())
-                        for i, tier in enumerate(_tiers_of(architecture), 1))
+    return "\n\n".join(f"### {section}.{i} {tier.name}\n\n" + (
+        _entries_tip(tier.litmus_list, "A test") if tier.litmus_list else
+        "> [!TIP]\n> **Litmus test.** " + " ".join(line.strip() for line in tier.litmus.splitlines()))
+        for i, tier in enumerate(_tiers_of(architecture), 1))
 
 
 def _tier_files(architecture: Architecture, _: str, _q: Texts, _t: Texts, _f: bool, _k: FileTypes) -> str:

@@ -70,7 +70,7 @@ class PublishingService:
         parts = tuple(PartView(name, patterns[name], architecture.rules.get(name, ()), part.role, part.litmus,
                                docs_name(architecture, part), part.untested, architecture.uses_never.get(name, ()),
                                part.imports_must, part.holds, part.imports_types_only, part.shared,
-                               part.imports_accepted)
+                               part.imports_accepted, part.litmus_list)
                       for name, part in architecture.parts.items())
         return ProfileView(
             parts=parts, folders=folders(architecture.layout),
@@ -81,7 +81,8 @@ class PublishingService:
             hints=dict(architecture.hints), language=architecture.language.checked,
             reserved=dict(architecture.reserved), approximate=architecture.approximate,
             checks=dict(architecture.checks), never=architecture.never, mask=architecture.mask,
-            lines=dict(architecture.lines), evals=dict(architecture.evals), alike=architecture.alike)
+            lines=dict(architecture.lines), evals=dict(architecture.evals), alike=architecture.alike,
+            yes_line=architecture.yes_line)
 
     def examples(self, profile: str) -> ExamplesRead:
         """The files placement is held to, each with its part, imports and comments."""

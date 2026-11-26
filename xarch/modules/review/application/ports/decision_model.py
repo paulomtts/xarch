@@ -23,3 +23,14 @@ class DecisionModel(Protocol):
         used, NotAccepted when the service refuses this request alone as its own fault, Unanswered when it fails
         otherwise, its reason holding no key."""
         ...
+
+    def body_all(self, text: str, questions: tuple[tuple[str, Choice], ...]) -> str:
+        """The body the service would receive for the questions about the text, each under its name, in one request,
+        the text sent once, as JSON text, the key left out."""
+        ...
+
+    def ask_all(self, text: str, questions: tuple[tuple[str, Choice], ...]) -> tuple[Answer, ...]:
+        """The answer to each question about the text, each under its name, in order, asked in one request that sends
+        the text once: the tokens the request cost on the first answer, none on the others; raises as ask does, for
+        the request whole."""
+        ...
