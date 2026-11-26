@@ -30,8 +30,8 @@ def explain(given: FakeProfiles):
 
 
 APPLIES = ("syntax-error", "file", "names-mentioned", "import", "imported-name", "use", "method-call", "call",
-           "construction", "function-reference", "import-into-app", "import-into-tests", "comment", "class", "function",
-           "callback")
+           "construction", "function-reference", "import-into-app", "import-to-definition", "import-into-tests", "comment",
+           "class", "function", "callback")
 """Every kind of fact, which a quantifier applies to."""
 WORKED = ("no-todo: reads comment\nno-todo.flagged: documents/notes: ' TODO: split this file\\n'\n"
           "no-todo.clean: documents/notes: ' split by kind\\n'\n")

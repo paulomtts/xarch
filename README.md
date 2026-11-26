@@ -471,7 +471,17 @@ lead to however far, is a finding at the line of its first step, and `{chain}` s
 to as a dotted name, then what matched (`app.store -> app.store.sql -> sqlalchemy`), the shortest found. An import of
 a name from a package file reaches that package file (`import-into-app` follows a name to its own file only when the
 name is a file), and the way then goes on through every file the package file imports, so a name the package only
-re-exports is followed, and so is anything else the package file imports. The kind `function` (a method too) carries
+re-exports is followed, and so is anything else the package file imports. The kind `import-to-definition` reads each
+import as `import-into-app` does, but follows a name to the file that defines it: a name taken from a package file
+that takes it by an import of its own (`from .sql import Repo`, or `from .names import Title as Name`, the fact
+`import.aliases`) is followed to that module, and on through each package file that passes it on in turn, each
+followed once (two package files that pass a name to each other stop where the way comes back); it ends at the file
+the name then is, or at the module that defines it. A name the package file defines itself, an import of every name
+(`*`), and any other import are read as `import-into-app` reads them, and a module that is no package file is never
+followed. So `read: import`, `must_not_reach: {targets: [{package: [sqlalchemy]}], through: import-to-definition}`
+finds `from app.store import Repo` by `app.store.sql -> sqlalchemy` when the package only passes `Repo` on, and a
+file that takes another name from the same package reaches nothing through `sql.py`; the may-import rules read
+`import-into-app`, so a package file that is a part's way in keeps standing for its folder there. The kind `function` (a method too) carries
 its `parameters`, in the order its signature declares them, each with its name, its annotation as written and whether
 it has a default, and its `returns`, the return annotation as written (the facts `function.parameters` and
 `function.return_annotation`; an annotation is empty where the code writes none, or in a language that writes none,

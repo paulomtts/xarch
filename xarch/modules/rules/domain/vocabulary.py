@@ -242,6 +242,13 @@ KINDS: tuple[Kind, ...] = (
                             "one, else the file or package it takes the name from)",
          ("line", "reaches", "type-only"), {"name": "takes-a-name", "place": "target-placed"},
          needs=("import", "import.relative"), field_needs={"type-only": ("import.type_only",)}, verb="import"),
+    Kind("import-to-definition", "each import of a file or package of the app, as import-into-app reads it, but for a "
+                                 "name a package file only passes on (it takes the name by an import of its own, under "
+                                 "that name or another), the file that defines the name, followed through every "
+                                 "package file that passes it on, each once",
+         ("line", "reaches", "type-only"), {"name": "takes-a-name", "place": "target-placed"},
+         needs=("import", "import.relative", "import.aliases"), field_needs={"type-only": ("import.type_only",)},
+         verb="import"),
     Kind("import-into-tests", "each import of a test file of a file of the tests, as the file or package it reaches",
          ("line", "reaches"), side=TESTS_SIDE, needs=("import", "import.relative"), verb="import"),
     Kind("comment", "each comment, its text as written", ("line", "text", "marker", "doc"), needs=("comment",),

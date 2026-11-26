@@ -7,6 +7,12 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The kind `import-to-definition` reads each import of the app as `import-into-app` does, but a name taken from a
+  package file that only passes it on (takes it by an import of its own, under its name or another) is followed to the
+  module that defines it, through each package file that passes it on, each once, so `must_not_reach` and
+  `must_reach` (`through: import-to-definition`) can say a name defined in a file rather than in its package; a name
+  the package file defines itself is read as before. The language's reader supplies the name an import binds each
+  name it takes to (`import.aliases`, exact in Python). `import-into-app`, and so the bundled profiles, read as before.
 - `counterparts: {<id>: {for, has, when, accepted, message, fix}}` says what lies with what, path by path: each match
   of `for` (a folder ending in `/`, else a file, below the app or `tests/<path>` below the tests), where every path of
   `when` matches too, with no match of `has` is a new `counterpart` finding at it. `<word>` binds the text of a step or

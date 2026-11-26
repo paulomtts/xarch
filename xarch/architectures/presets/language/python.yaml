@@ -86,6 +86,7 @@ supplies:
   import.relative: exact
   import.standard: exact
   import.type_only: exact
+  import.aliases: exact
   import.resolved: exact
   import.mentioned: exact
   comment: exact

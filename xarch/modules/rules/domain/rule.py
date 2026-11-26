@@ -581,13 +581,16 @@ class Defined:
     name); its classes that are records, by their dotted path (the root first); and the bases of every class the
     project defines at the top level of a file, of the app or of the tests, by its dotted path (its side's root first),
     each base as a dotted path: through the import that binds it, a class of its own file below that root, else its
-    name alone."""
+    name alone; and the names each package file of the app, by its steps below the root, takes by an import of the
+    app and so passes on, each by the name it binds, with the module below the root it takes it from and the name it
+    takes there."""
     root: str
     classes: dict[tuple[str, ...], Place | None]
     functions: dict[tuple[str, ...], frozenset[str]]
     exceptions: frozenset[tuple[tuple[str, ...], str]] = frozenset()
     records: frozenset[tuple[str, ...]] = frozenset()
     bases: dict[tuple[str, ...], tuple[tuple[str, ...], ...]] = field(default_factory=dict)
+    passed: dict[tuple[str, ...], dict[str, tuple[tuple[str, ...], str]]] = field(default_factory=dict)
 
 
 class Found(NamedTuple):

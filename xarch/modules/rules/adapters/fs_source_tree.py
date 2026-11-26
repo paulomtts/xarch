@@ -462,7 +462,8 @@ def _imports(tree: ast.AST, standard: frozenset[str], private: str, where: _Wher
                                 "." * node.level + (node.module or ""), any(a.name == "*" for a in node.names),
                                 _last(node), _from(node, where) is None,
                                 frozenset(a.name for a in node.names if is_private_name(a.name, private)),
-                                id(node) in typing))
+                                id(node) in typing,
+                                tuple((a.name, a.asname) for a in node.names if a.asname and a.asname != a.name)))
     return found
 
 

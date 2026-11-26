@@ -275,3 +275,36 @@ def test_an_import_into_the_app_carries_whether_it_is_made_only_for_the_type_che
     assert found(tmp_path, {"store-blind": STORE_BLIND, "store-never-sql": STORE_NEVER_SQL}, files) == [
         ("app/store/a.py", 1, "app/store/a.py imports the ui at line 1 when its code runs"),
         ("app/store/a.py", 1, "app/store/a.py reaches sqlalchemy at line 1: app.ui.page -> sqlalchemy")]
+
+
+STORE_PACKAGE = ("from app.store.sql import Repo\nfrom .names import Title as Name\nfrom .inner import Deep\n"
+                 "Local = 1\n")
+NEVER_SQL_BY_DEFINITION = {
+    "read": "import", "in": {"part": "ui"}, "must_not_reach": {
+        "targets": [{"package": ["sqlalchemy"]}], "through": "import-to-definition"},
+    "message": "{file} reaches sqlalchemy at line {line}: {chain}", "fix": "take what it needs through a port",
+    "examples": {"flagged": {"ui/page.py": "from app.store import Repo\n", "store/__init__.py": STORE_PACKAGE,
+                             "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n"},
+                 "clean": {"ui/page.py": "from app.store import Name\n", "store/__init__.py": STORE_PACKAGE,
+                           "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n",
+                           "store/names.py": "class Title: ...\n"}}}
+
+
+def test_import_to_definition_follows_a_name_a_package_file_passes_on_to_the_file_that_defines_it(tmp_path):
+    """Repo is taken from the package, which takes it from sql.py: the chain skips the package. Name is Title, passed
+    on under another name from names.py, which reaches no sqlalchemy; Deep is passed on by two package files; Local is
+    the package's own, so the package is reached as before, and every file it imports with it."""
+    files = {"ui/page.py": "from app.store import Repo\n", "ui/plain.py": "from app.store import Name\n",
+             "ui/deep.py": "from app.store import Deep\n", "ui/own.py": "from app.store import Local\n",
+             "store/__init__.py": STORE_PACKAGE, "store/sql.py": "import sqlalchemy\n\nclass Repo: ...\n",
+             "store/names.py": "class Title: ...\n", "store/inner/__init__.py": "from .deep import Deep\n",
+             "store/inner/deep.py": "class Deep: ...\n"}
+    assert found(tmp_path, {"ui-never-sql": NEVER_SQL_BY_DEFINITION}, files) == [
+        ("app/ui/own.py", 1, "app/ui/own.py reaches sqlalchemy at line 1: app.store -> app.store.sql -> sqlalchemy"),
+        ("app/ui/page.py", 1, "app/ui/page.py reaches sqlalchemy at line 1: app.store.sql -> sqlalchemy")]
+
+
+def test_import_to_definition_stops_where_package_files_pass_a_name_on_to_each_other(tmp_path):
+    files = {"ui/page.py": "from app.store import Repo\n", "store/__init__.py": "from app.ui import Repo\n",
+             "ui/__init__.py": "from app.store import Repo\nimport sqlalchemy\n"}
+    assert [line for _, line, _ in found(tmp_path, {"ui-never-sql": NEVER_SQL_BY_DEFINITION}, files)] == [2, 1]

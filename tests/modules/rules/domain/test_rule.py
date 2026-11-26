@@ -48,7 +48,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "own message"], id="a case with no condition"),
     pytest.param({"keep": c("target-placed"), "targets": EXISTING},
                  ["keep: target-placed does not apply to import: it reads place, which it does not carry; it applies to "
-                  "call, construction, function-reference and import-into-app"],
+                  "call, construction, function-reference, import-into-app and import-to-definition"],
                  id="(audit) a filter on a kind that lacks its field"),
     pytest.param({"quantifier": MAY_ONLY, "targets": EXISTING},
                  ["may_only: exist matches every fact, so nothing could be a finding under may_only: write it under "
@@ -68,7 +68,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                  id="(audit) a variable that crashed on a kind with no path"),
     pytest.param({"facts": ("comment",), "targets": EXISTING, "sayings": say("{verb}")},
                  ["message: {verb} prints nothing for comment: it applies to import, imported-name, use, method-call, "
-                  "call, construction, function-reference, import-into-app, import-into-tests and callback"],
+                  "call, construction, function-reference, import-into-app, import-to-definition, import-into-tests and "
+                  "callback"],
                  id="(audit) the verb of a kind that names nothing"),
     pytest.param({"facts": ("function",), "targets": EXISTING, "sayings": say("{function}")},
                  ["message: {function} prints nothing for function: it reads function; it applies to callback"],
@@ -81,7 +82,7 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                   "(`in: {files: app}`)"], id="a variable of the app in a scope of both"),
     pytest.param({"scope": Scope(APP), "quantifier": MUST_REACH, "links": ("use",), "sayings": say("{file}")},
                  ["must_reach.through: use leads nowhere: write a kind that leads to a file or to names, one of "
-                  "function-reference, import-into-app, import-into-tests"],
+                  "function-reference, import-into-app, import-to-definition, import-into-tests"],
                  id="(audit) a link that reaches nothing"),
     pytest.param({"facts": ("use",), "quantifier": MUST_BE_REACHED, "targets": EXISTING, "links": ("names-mentioned",),
                   "roots": Scope(TESTS), "sayings": say("{line}")},
@@ -174,7 +175,8 @@ REACHED = {"quantifier": MUST_BE_REACHED, "targets": EXISTING, "facts": ("class"
                                            "root onwards, such as names-mentioned or import-into-app"], id="a reach through nothing"),
     pytest.param(REACHED | {"spread": ("use",)},
                  ["must_be_reached.then_through: use leads nowhere: write a kind that leads to a file or to names, one of "
-                  "names-mentioned, function-reference, import-into-app, import-into-tests, class"], id="then_through through nothing"),
+                  "names-mentioned, function-reference, import-into-app, import-to-definition, import-into-tests, class"],
+                 id="then_through through nothing"),
     pytest.param({"quantifier": MUST_REACH, "links": ("import-into-app",), "exempt": c("relative"), "sayings": say()},
                  ["except: relative does not apply to file: it reads relative, which it does not carry; it applies to "
                   "import and imported-name"], id="an exception of a reach to targets excuses a file"),
