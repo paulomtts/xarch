@@ -12,6 +12,7 @@ from tests.modules.review.builders import PARTS, found
 from xarch.kernel.source import CommentSpan
 from xarch.modules.review.contract import (
     CALIBRATED,
+    CHOOSE,
     DISAGREE,
     FAILED_EXAMPLES,
     NOT_CACHED,
@@ -194,3 +195,75 @@ def test_what_an_eval_reads_in_a_file_judged_is_sent_with_the_file_s_comments_cu
                         FakeCalibrations({RECORD: {"rule": HELD}})).review(command)
     assert isinstance(result, ReviewReading) and result.evals[0].readings[0].value == 0.83
     assert not any("rule lives" in text or "title is needed" in text for text in model.asked)
+
+
+PICK = Choice("What does it let its caller do?", (Option("reads", "finds"), Option("writes", "saves"),
+                                                 Option("sends", "sends out")), CHOOSE)
+SENDING = EvalText("sending", PICK, ("sends",), 0.6, "{name} ({value})", "read it",
+                   (("domain/a.py", "a\n"), ("domain/b.py", "b\n")), (("domain/c.py", "c\n"), ("domain/d.py", "d\n")))
+
+
+def pick(sends: float) -> Answer:
+    rest = (1 - sends) / 2
+    return Answer("m-1.2", (("reads", rest), ("writes", rest), ("sends", sends)))
+
+
+def held_sending() -> Calibration:
+    """The record of SENDING held to its examples, read in both orders: every flagged one above every clean one."""
+    held = FakeCalibrations()
+    model = FakeDecisionModel({}, by_order={(text, first): pick(0.9 if text in ("a\n", "b\n") else 0.1)
+                                            for text in ("a\n", "b\n", "c\n", "d\n") for first in ("reads", "sends")})
+    controller(FakeCode({}), FakeProfile({"p": Words(PARTS, evals=(SENDING,))}), model, FakeAnswers(), held).calibrate(
+        Calibrate(CWD, APP, "p"))
+    return held.kept[RECORD]["sending"]
+
+
+def review_sending(first: float | None, again: float | None, dry_run: bool = False,
+                   answers: FakeAnswers | None = None, offline: bool = False):
+    """A review of FILE with SENDING calibrated, what it reads in FILE answered first in the order written (first)
+    and then reversed (again)."""
+    code = FakeCode({"app/x.py": Found((FILE,))}, reads={("sending", TEXT): (Read((2, 4), "Doc.publish"),)})
+    by_order = {(PUBLISH, name): pick(found) for name, found in (("reads", first), ("sends", again)) if found is not None}
+    model = FakeDecisionModel({TEXT: PLACED}, by_order=by_order)
+    command = Review((Path("app/x.py"),), (), False, CWD, APP, "p", None, dry_run, None, offline)
+    result = controller(code, FakeProfile({"p": Words(PARTS, evals=(SENDING,))}), model, answers or FakeAnswers(),
+                        FakeCalibrations({RECORD: {"sending": held_sending()}})).review(command)
+    return result, model
+
+
+def sent_about(model: FakeDecisionModel, text: str) -> list[tuple[str, ...]]:
+    return [names for asked, names in model.requests if asked == text]
+
+
+def test_a_choice_eval_far_from_its_line_is_asked_its_first_order_alone_in_one_request():
+    result, model = review_sending(0.95, None)
+    assert isinstance(result, ReviewReading) and result.complete
+    assert sent_about(model, PUBLISH) == [("sending",)]
+    assert result.evals[0].readings[0].value == 0.95
+
+
+def test_a_choice_eval_near_its_line_is_asked_its_other_orders_in_one_second_request_and_read_on_their_mean():
+    result, model = review_sending(0.7, 0.3)
+    assert isinstance(result, ReviewReading) and result.complete
+    assert sent_about(model, PUBLISH) == [("sending",), ("sending.order-2",)]
+    assert result.evals[0].readings == ()
+
+
+def test_the_orders_of_a_choice_eval_are_kept_under_their_own_keys_and_read_offline():
+    answers = FakeAnswers()
+    review_sending(0.7, 0.3, answers=answers)
+    again, model = review_sending(None, None, answers=answers, offline=True)
+    assert isinstance(again, ReviewReading) and again.complete and sent_about(model, PUBLISH) == []
+    assert again.evals[0].readings == ()
+
+
+def test_a_dry_run_shows_a_choice_eval_s_first_order_and_its_other_orders_once_a_first_answer_near_its_line_is_kept():
+    planned, _ = review_sending(None, None, dry_run=True)
+    assert isinstance(planned, ReviewPlanned)
+    assert [item.questions for item in planned.requests if item.asked == "sending"] == [("sending",)]
+    answers = FakeAnswers()
+    review_sending(0.7, None, answers=answers)
+    near, _ = review_sending(None, None, dry_run=True, answers=answers)
+    assert isinstance(near, ReviewPlanned)
+    assert [(item.questions, item.cached) for item in near.requests if item.asked == "sending"] == [
+        (("sending.order-2",), False)]

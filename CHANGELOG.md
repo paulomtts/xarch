@@ -176,6 +176,11 @@ All notable changes to this project are written here. The format follows
 
 ### Fixed
 
+- An eval of the profile's own whose answer is a choice no longer sends each order of its options as a request of
+  its own: calibration asks an example both orders in one request, and a review asks what it reads the first order
+  alone and the reversed one, in one more request, only when the first answer reads within 0.15 of the eval's line,
+  as placement does; each answer is kept under the key it had, and a dry run names the orders each request carries
+  (JSON `requests[].questions`).
 - `never-use` follows a plain rebinding in the same file: after `from datetime import datetime as D` and
   `clock = D` (one bare name assigned to another, at module or function level, and nothing else binding `clock`
   there), `clock.now()` is a use of `datetime.datetime.now`. Nothing cleverer is followed.

@@ -152,7 +152,9 @@ def test_calibrate_holds_each_eval_to_its_examples_records_the_verdicts_and_revi
     assert lines[-1] == "recorded in .xarch/calibration.json: commit it, so that every review reads the same verdicts"
     record = (tmp_path / ".xarch" / "calibration.json").read_text()
     assert "PublishingService" not in record and "Does this method" not in record and KEY not in record
-    assert {body["questions"]["placement"]["type"] for body in served.received} == {"noul", "score", "choice"}
+    assert {question["type"] for body in served.received for question in body["questions"].values()} == {
+        "noul", "score", "choice"}
+    assert ("document-sender", "document-sender.order-2") in {tuple(body["questions"]) for body in served.received}
     sent = xarch("review", SERVICE, url=served.url)
     assert sent.exit_code == 0 and "PublishingService.publish may decide a rule of a document itself (0.90)" in sent.output
     read = xarch("review", SERVICE, "--offline", "--format", "json", key=None)

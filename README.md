@@ -1320,7 +1320,11 @@ evals:
 - `answer`: `yes-no` (read as the probability of yes; `yes` and `no` say what each means, sent with the question);
   `{score: [<level 0>, ..., <level 4>], flagged_from: <1 to 4>}` (five levels, the worst last, read as the expected
   level over 4); or `{choice: {<option>: <description>, ...}, flagged: [<option>, ...]}` (three options or more, read
-  as the probability of those flagged, the mean of two orders of the options; two options are refused: write yes-no).
+  as the probability of those flagged, the mean of two orders of the options, as written and reversed; two options
+  are refused: write yes-no). Calibration asks an example both orders in one request; a review asks what it reads
+  the first order alone, and the reversed one, in a second request, only when the first answer reads within 0.15 of
+  the eval's line (as placement asks a file near its line again), reading on the mean of the orders asked. Each
+  answer is kept under the key it had before, so a cache kept before is read as it was.
 - `reads`: `file`, `class` (each at the top level) or `function` (a method included), as the check vocabulary's kinds;
   `in`: `{part, where}` as a check's (the app's files only); `keep`: filters of the vocabulary, such as `[public]`.
 - `line`: the value from which a reading is listed (above 0, below 1); left out, calibration sets it.
@@ -1382,7 +1386,8 @@ many characters the text sent holds, masked; `piece`, `kind`, `first` and `last`
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
 without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders of the question a file near
 its line is asked again in, in one more request; `questions` of a request of placement the names of the questions it would send (those whose
-answers are not kept; null for a piece or an eval); `question.litmus` the yes-or-no question of each entry of a part's
+answers are not kept; null for a piece), and of a request of an eval the names of the orders it carries (the
+eval's id for the first, `<id>.order-2` for the reversed one); `question.litmus` the yes-or-no question of each entry of a part's
 litmus list, by its name, with `advisory` (always true: the answers are a note and never make a file doubtful),
 `yes_line` and `measured` (always false: the line is a placeholder), null when no part
 writes a list of two entries or more; `sends.key` the name of the variable the key is read from (never the key), `keyed` whether it is set, and

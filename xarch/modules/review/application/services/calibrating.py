@@ -4,11 +4,12 @@ from dataclasses import replace
 
 from xarch.modules.review.application.logic.answers import cache_folder, record_file, versions
 from xarch.modules.review.application.logic.evaluation import floor, held_as, orders, verdict
+from xarch.modules.review.application.logic.evaluation import named as eval_named
 from xarch.modules.review.application.logic.judging import asked_of, example_value, unasked_of
 from xarch.modules.review.application.logic.masking import masked
 from xarch.modules.review.application.logic.placing import groups, verdicts
 from xarch.modules.review.application.logic.placing import held_as as held_as_placed
-from xarch.modules.review.application.logic.questions import characters, placement, request, tokens
+from xarch.modules.review.application.logic.questions import carried, placement, request, tokens
 from xarch.modules.review.application.logic.ruling import ruled
 from xarch.modules.review.application.logic.sending import needs_key, unusable_key, why_unasked
 from xarch.modules.review.application.logic.withholding import examples_held, files_held, kept_examples, kept_files, too_few
@@ -24,6 +25,7 @@ from xarch.modules.review.domain.published import (
     FEWEST_EXAMPLES,
     FLAGGED,
     PLACEMENT,
+    Choice,
     EvalHeld,
     ExampleRead,
     PlacementHeld,
@@ -75,14 +77,13 @@ class CalibrationService:
         going, answering = Run(cache_folder(cmd.app, cmd.cache), cmd.offline), self._answering
         examples = tuple(example for asked in evals if not too_few(asked)
                          for example in self._examples(cmd, asked, words.mask))
-        each = tuple((item, order) for asked, _, _, items in examples for item in items
-                     for order in orders(asked.question))
-        each += tuple((replace(item, asked=PLACEMENT, example=side), question) for _, side, item in placed)
-        later = tuple(answering.kept(going, item.text, order) for item, order in each)
+        each = tuple((item, eval_named(asked)) for asked, _, _, items in examples for item in items)
+        each += tuple((replace(item, asked=PLACEMENT, example=side), ((PLACEMENT, question),)) for _, side, item in placed)
+        later = tuple(answering.kept(going, item.text, asked) for item, named in each for _, asked in named)
         if cmd.dry_run:
-            shown = tuple(replace(item, cached=kept is not None, body=self._model.body(item.text, order))
-                          for (item, order), kept in zip(each, later, strict=True))
-            sent = sum(characters((item,), order) for item, order in each)
+            shown = tuple(self._shown(going, item, named) for item, named in each)
+            sent = sum(carried(item, tuple(asked for _, asked in self._sending(going, item, named) or named))
+                       for item, named in each)
             return CalibrationPlanned(shown, (*((PLACEMENT,) if placed else ()), *(asked.asked for asked in evals)),
                                       sent, tokens(sent), words.mask, sends, withheld, short,
                                       groups(words.parts) if placed else ())
@@ -108,8 +109,8 @@ class CalibrationService:
                     continue
                 each_answer: list[tuple[Answer, ...] | None] = []
                 for item in items:
-                    found_answers, going = answering.all(going, item.text, orders(asked.question))
-                    each_answer.append(found_answers)
+                    got, going = answering.batch(going, item.text, eval_named(asked))
+                    each_answer.append(None if any(answer is None for answer in got) else tuple(a for a in got if a))
                 answered = tuple(each_answer)
                 unasked += unasked_of(asked, items, answered, bool(going.failure),
                                       tuple(answering.refusal(going, item.text, orders(asked.question)) for item in items))
@@ -156,6 +157,18 @@ class CalibrationService:
                           sends, len(going.asked), len(going.reused), sum(a.input_tokens for a in going.asked),
                           sum(a.output_tokens for a in going.asked), going.failure, held_placement,
                           versions(*going.asked, *going.reused), withheld)
+
+    def _sending(self, going: Run, item: Request,
+                 named: tuple[tuple[str, Choice], ...]) -> tuple[tuple[str, Choice], ...]:
+        """The questions of a request whose answers are not kept: those it would send."""
+        return tuple((name, asked) for name, asked in named if self._answering.kept(going, item.text, asked) is None)
+
+    def _shown(self, going: Run, item: Request, named: tuple[tuple[str, Choice], ...]) -> Request:
+        """A request as a dry run shows it: whether its answers are all kept, and the body it would send (with every
+        question when none is to be sent); the names of its questions when it carries several orders of an eval's."""
+        sending = self._sending(going, item, named)
+        return replace(item, cached=not sending, body=self._model.body_all(item.text, sending or named),
+                       questions=tuple(name for name, _ in sending or named) if len(named) > 1 else ())
 
     def _breaks(self, cmd: Calibrate, words: Words, examples: tuple[CodeFile, ...]) -> tuple[tuple[str, ...], ...]:
         """The parts whose `holds` each example of placement would break were it to lie there, read as a small project
