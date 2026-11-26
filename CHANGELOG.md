@@ -7,6 +7,14 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- The quantifier `unique: <field> | {field: name | path | text, per: file | part | instance | all}`: a kept fact whose
+  field a kept fact before it has, in the files compared together (grouped as `at_most`'s `per` groups them, `all`
+  the default), in the order of the files and then of the facts, is a finding at its own line, and the new variable
+  `{first}` says where the first is (`<file>:<line>`), so a check can say that class names are unique across the
+  instances of a repeating folder or the app. Its findings are accepted by `checks.<id>.accepted` as any other. An
+  unknown field, a field a kind read does not carry, an unknown key, a map with no `field`, and `{first}` in a check
+  under another quantifier are refused at their address. `xarch profile explain quantifiers.unique` shows it with a
+  worked example. The lists of slots and of quantifiers a refusal names now end with `unique`.
 - `at_most` and `at_least` take a map `{count: <n>, per: file | part | instance | all}` besides a number, which counts
   the files of the scope together: each alone (`file`, the default, as a number counts), the files of each part (a test
   those of the parts its folder mirrors), of each instance of a repeating folder (a file in no instance with the files

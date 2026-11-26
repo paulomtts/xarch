@@ -128,6 +128,7 @@ ALSO = replace(PROFILE, tiers=tuple(replace(tier, imports_also=(Target("web"),))
     pytest.param("parameters", DOMAIN, "function", RULE, PROFILE, None, ["title, actor", "", ""], id="parameters"),
     pytest.param("returns", DOMAIN, "function", RULE, PROFILE, None, ["Shown", "", ""], id="returns"),
     pytest.param("chain", DOMAIN, "file", RULE, PROFILE, None, [""], id="chain: none for a file no way is worked out of"),
+    pytest.param("first", DOMAIN, "file", RULE, PROFILE, None, [""], id="first: none for a fact nothing came before"),
 ])
 def test_a_variable_prints_what_it_says_of_each_finding(name, file, kind, rule, profile, hit, printed):
     assert [value(name, f, FACTS, profile) for f in found(file, kind, rule, hit)] == printed

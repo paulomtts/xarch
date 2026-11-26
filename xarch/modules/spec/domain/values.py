@@ -39,7 +39,7 @@ FILE_TYPES = f"{FORMAT}/file_types.yaml"
 """The data file of the kinds of file the docs quote besides the language of the app (see file_types)."""
 
 SLOTS = ("read", "in", "keep", "may_not", "may_only", "must_reach", "must_not_reach", "must_be_reached", "at_most",
-         "at_least", "except", "accepted", "mode", "message", "fix", "once_per", "per_line", "cases", "examples")
+         "at_least", "unique", "except", "accepted", "mode", "message", "fix", "once_per", "per_line", "cases", "examples")
 """Every slot of a check a profile writes under `checks`, in the order a check is written: spec reads them, and writes
 a check with them."""
 SCOPE_SLOTS = ("files", "part", "tier", "where")
@@ -50,6 +50,10 @@ REACH_SLOTS = {"must_reach": ("targets", "through", "through_only"),
 """The slots of a quantifier of reach, in the order they are written."""
 COUNT_KEYS = ("count", "per")
 """The keys of a quantifier that counts written as a map."""
+UNIQUE_SLOT = "unique"
+"""The quantifier under which a kept fact may not have the field of one before it."""
+UNIQUE_KEYS = ("field", "per")
+"""The keys of `unique` written as a map."""
 CASE_SLOTS = ("when", "message", "fix", "once_per", "per_line")
 """The slots of a case."""
 ACCEPTED_SLOTS = ("file", "why")

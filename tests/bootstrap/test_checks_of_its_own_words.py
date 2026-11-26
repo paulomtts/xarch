@@ -132,6 +132,62 @@ def test_a_count_written_as_a_map_is_written_back_as_one(tmp_path):
     assert "at_most: {count: 1, per: part}" in shown.output, shown.output
 
 
+UNIQUE_NAMES = {
+    "read": "class", "unique": {"field": "name", "per": "all"},
+    "message": "{name} at line {line} is declared already, at {first}", "fix": "rename one of the two",
+    "examples": {"flagged": {"store/a.py": "class Title: ...\n", "ui/b.py": "class Title: ...\n"},
+                 "clean": {"store/a.py": "class Title: ...\n", "ui/b.py": "class Draft: ...\n"}}}
+
+
+def test_unique_finds_a_class_named_as_one_before_it_naming_where_the_first_is_and_an_entry_accepts_it(tmp_path):
+    files = {"store/a.py": "class Title: ...\nclass Draft: ...\n", "ui/b.py": "class Title: ...\n",
+             "ui/c.py": "class Draft: ...\n"}
+    assert found(tmp_path, {"unique-names": UNIQUE_NAMES}, files) == [
+        ("app/ui/b.py", 1, "Title at line 1 is declared already, at app/store/a.py:1"),
+        ("app/ui/c.py", 1, "Draft at line 1 is declared already, at app/store/a.py:2")]
+    accepted = {**UNIQUE_NAMES, "accepted": [{"file": "ui/c.py", "name": "Draft", "why": "the ui keeps its own draft"}]}
+    assert found(tmp_path, {"unique-names": accepted}, files) == [
+        ("app/ui/b.py", 1, "Title at line 1 is declared already, at app/store/a.py:1")]
+
+
+def test_unique_written_as_a_field_alone_compares_every_file_of_the_scope(tmp_path):
+    files = {"store/a.py": "class Title: ...\n", "ui/b.py": "class Title: ...\n"}
+    assert found(tmp_path, {"unique-names": {**UNIQUE_NAMES, "unique": "name"}}, files) == [
+        ("app/ui/b.py", 1, "Title at line 1 is declared already, at app/store/a.py:1")]
+
+
+@pytest.mark.parametrize("unique, written", [
+    pytest.param({"field": "name", "per": "instance"}, "unique: {field: name, per: instance}", id="a map"),
+    pytest.param({"field": "name"}, "unique: name", id="every file compared together"),
+])
+def test_unique_is_written_back_as_it_was_written(tmp_path, unique, written):
+    project(tmp_path, {"unique-names": {**UNIQUE_NAMES, "unique": unique}}, {})
+    shown = runner.invoke(app, ["profile", "explain", "checks.unique-names", "--rule"])
+    assert written in shown.output, shown.output
+
+
+@pytest.mark.parametrize("unique, said", [
+    pytest.param({"field": "colour"}, "checks.x.unique.field: compares no field 'colour': write one of name, path, text",
+                 id="an unknown field"),
+    pytest.param({"field": "text"}, "checks.x.unique.field: text is not carried by class: read a kind that carries it",
+                 id="a field the kind does not carry"),
+    pytest.param({"field": "name", "by": "all"}, "checks.x.unique: unknown key `by`: use field, per", id="an unknown key"),
+    pytest.param({"per": "all"}, "checks.x.unique: missing `field`", id="no field"),
+])
+def test_unique_written_wrong_is_refused_at_its_address(tmp_path, unique, said):
+    project(tmp_path, {"x": {**UNIQUE_NAMES, "unique": unique}}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1 and said in checked.output, checked.output
+
+
+def test_first_is_said_only_by_a_check_under_unique(tmp_path):
+    project(tmp_path, {"x": {**LONG, "message": "{file} again, first at {first}"}}, {})
+    checked = runner.invoke(app, ["profile", "check"])
+    assert checked.exit_code == 1
+    assert ("checks.x.message: {first} is where the first fact of the same value is, which only a check under unique "
+            "finds") in checked.output
+
+
 LONG = {
     "read": "file", "in": {"part": "store"}, "keep": [{"longer-than": 3}], "may_not": "exist",
     "message": "{file} holds {lines} lines", "fix": "split it",

@@ -35,8 +35,10 @@ NAMES, PACKAGES, PATTERNS, PARTS, PLACES = "dotted names", "package names", "pat
 `*` for any text, names of parts, or places written as an entry of `imports.may` writes a target."""
 
 HIT, KEY_OF_RULE, SCOPE_PART, VALUES, COUNTED, CHAINED = "hit", "key", "scope part", "values", "counted", "chained"
+FIRST_SITE = "first site"
 """What a variable needs of its rule besides fields: a target matched (may_not), the key the rule expands from, a part
-its scope names, targets that list values, a quantifier that counts (at_most, at_least), or must_not_reach."""
+its scope names, targets that list values, a quantifier that counts (at_most, at_least), must_not_reach, or unique
+(FIRST_SITE)."""
 
 RENAMED_VARIABLES = {"part": "where"}
 """The variables that were called otherwise: a check that writes the old name is told the new one."""
@@ -404,6 +406,9 @@ QUANTIFIERS: tuple[Quantifier, ...] = (
     Quantifier("at_least", "a file of the scope that keeps fewer facts than the number is a finding, its file fact the "
                            "fact said, counted in that file alone (or, with `per`, a group of files counted together, its "
                            "first file's file fact the fact said)"),
+    Quantifier("unique", "a kept fact whose field (`field`: name, path or text) a kept fact before it has, in the "
+                         "files compared together (`per`: file, part, instance or all, the default), is a finding, "
+                         "and `{first}` says where the first is"),
 )
 """What a check does with what it keeps."""
 
@@ -475,6 +480,8 @@ VARIABLES: tuple[Variable, ...] = (
     Variable("returns", "a function's return annotation as written", ("returns",)),
     Variable("chain", "the way a file reaches a target under must_not_reach: each file its links lead through, as a "
                       "dotted name, then what the fact that matched names, joined by ` -> `", needs=CHAINED),
+    Variable("first", "where the first fact of the same value is, under unique: its file and line, <file>:<line>",
+             needs=FIRST_SITE),
 )
 """Every variable of a message or a fix."""
 
@@ -510,6 +517,8 @@ SLOTS: tuple[Slot, ...] = (
          "<number> or {count: <number>, per: file | part | instance | all}"),
     Slot("at_least", "a file (the files `per` counts together) that keeps fewer kept facts is a finding",
          "as at_most"),
+    Slot("unique", "a kept fact whose field one before it in the files `per` compares has is a finding",
+         "<field> or {field: name | path | text, per: file | part | instance | all}"),
     Slot("except", "the filters of which any one excuses a finding", "[<filter>, ...]", "filters"),
     Slot("accepted", "findings accepted one by one",
          "[{file, <variable>: <value>, why}]", "variables"),

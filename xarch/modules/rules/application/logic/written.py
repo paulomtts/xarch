@@ -10,7 +10,7 @@ from collections.abc import Iterable, Mapping
 
 from xarch.kernel.logic.names import outside_text
 from xarch.kernel.logic.targets import written_target
-from xarch.modules.rules.domain.rule import COUNTS, MUST_BE_REACHED, Match, OwnCheck, Rule
+from xarch.modules.rules.domain.rule import COUNTS, MUST_BE_REACHED, UNIQUE, Match, OwnCheck, Rule
 from xarch.modules.rules.domain.vocabulary import TARGETS
 from xarch.profile_values.checks import Quantified, WrittenCheck, WrittenTarget
 from xarch.profile_values.language import CheckedLanguage
@@ -63,10 +63,10 @@ def check_of(rule: Rule, member: str, flagged: tuple[tuple[str, str], ...] = (),
     """The rule as the check a profile would write, with the examples given, an outside name joined with member, a place
     written as a reference with words (see written_target); raises ValueError for a place in the own instance of a part
     words gives no word."""
-    targets = () if rule.quantifier in (MUST_BE_REACHED, *COUNTS) else tuple(
+    targets = () if rule.quantifier in (MUST_BE_REACHED, *COUNTS, UNIQUE) else tuple(
         _target(match, member, words) for match in rule.targets)
     quantified = Quantified(rule.quantifier, targets, rule.links, rule.via, rule.roots, rule.spread, rule.elsewhere,
-                            rule.count, rule.per)
+                            rule.count, rule.per, rule.field)
     return WrittenCheck(rule.facts, rule.scope, quantified, rule.sayings, rule.keep, rule.exempt, rule.mode, flagged,
                         clean)
 

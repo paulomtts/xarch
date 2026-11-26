@@ -131,6 +131,7 @@ _VALUES: dict[str, Callable[[Found, Facts, Profile], str]] = {
     "verb": lambda found, facts, profile: _VERBS.get(found.fact.kind, ""),
     "function": lambda found, facts, profile: found.fact.path[0] if found.fact.path else "",
     "count": lambda found, facts, profile: str(_count(found, facts, profile)),
+    "first": lambda found, facts, profile: found.first,
     "lines": lambda found, facts, profile: str(found.fact.lines),
     "chain": lambda found, facts, profile: " -> ".join(found.fact.chain),
     "parameters": lambda found, facts, profile: ", ".join(name for name, _, _ in found.fact.parameters),

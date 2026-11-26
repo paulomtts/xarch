@@ -8,7 +8,7 @@ import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from xarch.modules.spec.domain.values import CASE_SLOTS, EXAMPLE_SLOTS, REACH_SLOTS, SCOPE_SLOTS, SLOTS, STRUCTURE_WORD
+from xarch.modules.spec.domain.values import CASE_SLOTS, EXAMPLE_SLOTS, REACH_SLOTS, SCOPE_SLOTS, SLOTS, STRUCTURE_WORD, UNIQUE_SLOT
 from xarch.platform.yaml_writer import YamlWriter
 from xarch.profile_values.checks import (
     ANY,
@@ -16,6 +16,7 @@ from xarch.profile_values.checks import (
     COUNT_SLOTS,
     FAIL,
     NEGATION,
+    PER_ALL,
     PER_FILE,
     STRUCTURE,
     Condition,
@@ -101,6 +102,10 @@ class YamlProfileFormat:
             if quantified.per != PER_FILE:
                 return [f"{quantified.slot}: {{count: {quantified.count}, per: {quantified.per}}}"]
             return [f"{quantified.slot}: {quantified.count}"]
+        if quantified.slot == UNIQUE_SLOT:
+            if quantified.per != PER_ALL:
+                return [f"{quantified.slot}: {{field: {quantified.field}, per: {quantified.per}}}"]
+            return [f"{quantified.slot}: {quantified.field}"]
         if quantified.slot not in REACH_SLOTS:
             return [f"{quantified.slot}: {self._targets(quantified.targets)}"]
         said = {"targets": [f"targets: {self._targets(quantified.targets)}"],

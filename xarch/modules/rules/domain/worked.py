@@ -9,8 +9,18 @@ their parts and tiers are those of the smallest profile with a test tier: a part
 it, and test files named check_* (the one beside the code, in a profile that says testing.beside)."""
 from __future__ import annotations
 
-from xarch.modules.rules.domain.rule import AT_LEAST, AT_MOST, EXISTING, MAY_NOT, MUST_NOT_REACH, Match, OwnCheck, Rule
-from xarch.profile_values.checks import APP, TESTS, Condition, Saying, Scope
+from xarch.modules.rules.domain.rule import (
+    AT_LEAST,
+    AT_MOST,
+    EXISTING,
+    MAY_NOT,
+    MUST_NOT_REACH,
+    UNIQUE,
+    Match,
+    OwnCheck,
+    Rule,
+)
+from xarch.profile_values.checks import APP, PER_ALL, TESTS, Condition, Saying, Scope
 
 TODO = (Match("text", words=("*TODO*",)),)
 SCREENS = ("documents/screens%extension%", "%subclass Screen Reactive%\n")
@@ -132,5 +142,13 @@ WORKED: tuple[OwnCheck, ...] = (
                   exempt=(Condition("passes", "guard"),), key="checks.stores-pass-a-guard"),
              (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store limit 3%\n"),),
              (("documents/rules%extension%", "%import app.documents.store Store%\n%keyword_call Store guard 1%\n"),)),
+    OwnCheck(Rule("class-names-once", Scope(APP, where=(Condition("placed"),)), ("class",), UNIQUE, EXISTING,
+                  (Saying("{name} is declared again at line {line}, first at {first}",
+                          "rename one of the two, or keep the one and import it"),),
+                  key="checks.class-names-once", field="name", per=PER_ALL),
+             (("documents/pages%extension%", "%subclass Title Plain%\n"),
+              ("documents/rules%extension%", "%subclass Title Plain%\n")),
+             (("documents/pages%extension%", "%subclass Title Plain%\n"),
+              ("documents/rules%extension%", "%subclass Draft Plain%\n"))),
 )
 """The worked checks, the first the example of how a check is written."""

@@ -133,7 +133,7 @@ guards:   {scenario-coverage, no-comments, stand-ins, closed-tree, no-duplicates
            pass-through, no-callbacks, private-imports}
 files:    {<path>: <from> | {from*, pinned, fill}}      docs: {entry, pages, naming, examples, example_notes}
 checks:   {<id>: {read*, in, keep, may_not | may_only | must_reach | must_not_reach | must_be_reached | at_most |
-                  at_least*, except, accepted, mode, message*, fix*, once_per, per_line, cases, examples*}}
+                  at_least | unique*, except, accepted, mode, message*, fix*, once_per, per_line, cases, examples*}}
 review:   {never, mask}                                 what `xarch review` may send; `check` never acts on it
 evals:    {placement: {lines, alike, examples, yes_line}, <id>: {ask*, answer*, yes, no, reads*, in, keep, line, message*,
           fix*, examples*}}                             what `xarch review` asks; `check` never acts on it
@@ -467,7 +467,13 @@ of a repeating folder (a file in no instance with the files of its part in none;
 every file of the scope. Under `at_most` each kept fact of a group after the n-th, in the order of the files and then
 of the facts, is a finding at its own line in its own file; under `at_least` a group that keeps fewer is one finding,
 at line 0 of the group's first file; `{count}` says how many the group keeps (`at_most: {count: 1, per: instance}`:
-one composition root in each module). The kind `file` carries `lines` (the fact `file.lines`), which the filter
+one composition root in each module). `unique: <field>` makes a kept fact whose field (`name`, `path` or `text`)
+a kept fact before it has a finding, at its own line, every file of the scope compared together; written as a map,
+`{field: <field>, per: file | part | instance | all}`, it compares the files of each group as the counts group them
+(`all` the default), in the order of the files and then of the facts, and `{first}` says where the first of the two
+is, as `<file>:<line>`: `read: class`, `in: {part: domain}`, `unique: {field: name, per: instance}` finds each class
+of a module's domain named as one before it in the same module, and `unique: name` each class named as one anywhere
+in the app. Its findings are accepted under `accepted` as any other (`{file, name, why}`). The kind `file` carries `lines` (the fact `file.lines`), which the filter
 `longer-than: <n>` and the variable `{lines}` read: `read: file`, `keep: [{longer-than: 700}]`, `may_not: exist` finds
 each file over 700 lines. `must_not_reach` is the negation of `must_reach`, written the same way (`targets`, `through`,
 `through_only`): a file of the scope that reaches a target, by a kept fact of its own or through the files its links

@@ -30,6 +30,10 @@ facts of the files of each such group together, in the order of the files and th
 one after its count is a finding, in its own file; under AT_LEAST a group that keeps fewer is one, the file fact of its
 first file the fact said.
 
+A rule under UNIQUE reads the kept facts of the files it compares together (per, as a rule that counts) in the order
+of the files and then of the facts: each one whose field a fact before it has is a finding, in its own file, with
+where the first of them is (first: its file and line); an exemption excuses a finding as any other.
+
 How many facts a rule reads at all is counted apart (read): a rule that reads none passes for want of anything to
 check.
 """
@@ -57,6 +61,7 @@ from xarch.modules.rules.domain.rule import (
     MUST_BE_REACHED,
     MUST_NOT_REACH,
     MUST_REACH,
+    UNIQUE,
     Fact,
     Facts,
     Found,
@@ -95,11 +100,12 @@ def standing(rules: Iterable[Rule], facts: Facts, profile: Profile) -> list[Stan
     ways = {index: _ways(rule, facts, profile) for index, rule in enumerate(rules) if rule.quantifier == MUST_NOT_REACH}
     grouped = {index: _grouped(rule, facts, profile) for index, rule in enumerate(rules)
                if rule.quantifier in COUNTS and rule.per != PER_FILE}
+    grouped |= {index: _repeated(rule, facts, profile) for index, rule in enumerate(rules) if rule.quantifier == UNIQUE}
     found: list[Stands] = []
     for position, read in enumerate(facts.files):
         for index, rule in enumerate(rules):
             if in_scope(rule.scope, read, facts, profile):
-                if rule.quantifier not in COUNTS and index not in ways and index not in reached:
+                if rule.quantifier not in (*COUNTS, UNIQUE) and index not in ways and index not in reached:
                     found += _file(rule, read, facts, profile)
                     continue
                 if index in grouped:
@@ -309,12 +315,8 @@ def _grouped(rule: Rule, facts: Facts, profile: Profile) -> dict[int, list[Said]
     is said in: under AT_MOST the kept facts of a group after the count, each in its file; under AT_LEAST the file fact
     of a group's first file when the group keeps fewer than the count; those an exemption excuses dropped."""
     keep, exempt = _questions(rule.keep), _questions(rule.exempt)
-    groups: dict[Hashable, list[int]] = {}
-    for position, read in enumerate(facts.files):
-        if in_scope(rule.scope, read, facts, profile):
-            groups.setdefault(group(rule.per, read, profile), []).append(position)
     subjects: list[tuple[int, Fact]] = []
-    for positions in groups.values():
+    for positions in _groups(rule, facts, profile):
         held = [(position, fact) for position in positions for kind in rule.facts
                 for fact in facts.files[position].facts.get(kind, ())
                 if _all(keep, Found(rule, facts.files[position], fact), facts, profile)]
@@ -330,6 +332,47 @@ def _grouped(rule: Rule, facts: Facts, profile: Profile) -> dict[int, list[Said]
         said_here = _said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile)
         found.setdefault(position, []).append((said_here, candidate))
     return found
+
+
+def _groups(rule: Rule, facts: Facts, profile: Profile) -> list[list[int]]:
+    """The places in the run of the files of the rule's scope, by the groups its per compares together."""
+    groups: dict[Hashable, list[int]] = {}
+    for position, read in enumerate(facts.files):
+        if in_scope(rule.scope, read, facts, profile):
+            groups.setdefault(group(rule.per, read, profile), []).append(position)
+    return list(groups.values())
+
+
+def _repeated(rule: Rule, facts: Facts, profile: Profile) -> dict[int, list[Said]]:
+    """The findings of a rule under UNIQUE, by the place in the run of the file each is said in: each kept fact whose
+    field a kept fact before it in its group has, with where the first is; those an exemption excuses dropped."""
+    keep, exempt = _questions(rule.keep), _questions(rule.exempt)
+    found: dict[int, list[Said]] = {}
+    for positions in _groups(rule, facts, profile):
+        first: dict[str, str] = {}
+        for position in positions:
+            read = facts.files[position]
+            for kind in rule.facts:
+                for fact in read.facts.get(kind, ()):
+                    if not _all(keep, Found(rule, read, fact), facts, profile):
+                        continue
+                    value = _field(rule.field, fact)
+                    if value not in first:
+                        first[value] = f"{read.file.name}:{fact.line}"
+                        continue
+                    candidate = Found(rule, read, fact, first=first[value])
+                    if exempt and _any(exempt, candidate, facts, profile):
+                        continue
+                    said_here = _said(rule, _saying(rule, candidate, facts, profile)[1], candidate, facts, profile)
+                    found.setdefault(position, []).append((said_here, candidate))
+    return found
+
+
+def _field(name: str, fact: Fact) -> str:
+    """The field of a fact a rule under UNIQUE compares, as text: its name, its dotted path, or its text."""
+    if name == "path":
+        return ".".join(fact.path)
+    return (fact.name or "") if name == "name" else fact.text
 
 
 def _saying(rule: Rule, found: Found, facts: Facts, profile: Profile):

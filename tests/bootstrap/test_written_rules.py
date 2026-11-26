@@ -39,7 +39,8 @@ NEW_WORDS = {"filters.extends": "pages-never-reactive", "quantifiers.at_most": "
              "quantifiers.must_not_reach": "types-never-reach-the-store", "filters.has-parameter": "loads-take-no-actor",
              "filters.parameter-has-default": "actor-has-no-default",
              "filters.parameter-annotated": "rules-take-no-store", "filters.returns-annotated": "rules-return-no-rows",
-             "filters.passes-literal": "stores-take-no-literal-limit", "filters.passes": "stores-pass-a-guard"}
+             "filters.passes-literal": "stores-take-no-literal-limit", "filters.passes": "stores-pass-a-guard",
+             "quantifiers.unique": "class-names-once", "variables.first": "class-names-once"}
 """The words no bundled profile uses, each by its address, with the id of the check written for the explanation that
 shows it."""
 
