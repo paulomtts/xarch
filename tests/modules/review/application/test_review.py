@@ -69,13 +69,8 @@ ASKED = len(PLACEMENT) + sum(len(o.name) + len(o.description) for o in QUESTION.
 SENDS = Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", True)
 UNKEYED = Sender("Model", "https://model.example.test", "m-1", "MODEL_KEY", False)
 BODY_SENT = f"{PLACEMENT} 2 {SENT}"
-BOTH_ORDERS = ("placement", "placement.order-2")
-"""The names of the questions a request of a file whose answer is not kept carries: placement's in its two orders."""
-REQUEST = Request(DOCUMENT.file, "domain", len(SENT), SENT, False, f"placement,placement.order-2 {BODY_SENT}",
-                  questions=BOTH_ORDERS)
+REQUEST = Request(DOCUMENT.file, "domain", len(SENT), SENT, False, BODY_SENT, questions=("placement",))
 CHARACTERS = len(SENT) + ASKED
-CARRIED = len(SENT) + 2 * ASKED
-"""What a request carrying the question in both orders sends: the text once, and the question twice."""
 WORDS = {"p": Words(PARTS), "kept": Words(PARTS, ("modules/*/domain/document.py",), ("Doc*", "title"))}
 HIDDEN = "from <masked> import <masked>\nfrom dataclasses import dataclass\n" + BODY.replace("Document", "<masked>").replace(
     "title", "<masked>")
@@ -125,12 +120,11 @@ def run(world: World, when: Review):
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(World(), review("app/modules/documents/domain", dry_run=True),
                  ReviewPlanned((BY_PATHS,), 3, (REQUEST,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), QUESTION, ("main",),
-                               CARRIED, -(-CARRIED // 4), (), SENDS, 1),
+                               CHARACTERS, -(-CHARACTERS // 4), (), SENDS, 1),
                  id="a dry run says what each file judged would send, masked, and why the others are left out"),
     pytest.param(World(earlier={SENT: LOW}, keyed=False), review("app/x.py", dry_run=True),
                  ReviewPlanned((BY_PATHS,), 1, (Request(DOCUMENT.file, "domain", len(SENT), SENT, True,
-                                                        BODY_SENT, questions=("placement",)),), (), QUESTION,
-                               ("main",), CHARACTERS,
+                                                        BODY_SENT, questions=("placement",)),), (), QUESTION, ("main",), CHARACTERS,
                                -(-CHARACTERS // 4), (), UNKEYED, 1),
                  id="a dry run says which request is in the cache already, and needs no key"),
     pytest.param(World(), review("app/modules/documents/domain", dry_run=True, profile="kept"),
@@ -145,11 +139,11 @@ def run(world: World, when: Review):
                                ("Doc*", "title"), SENDS, 1, never=("modules/*/domain/document.py",)),
                  id="a file held back is held back however it is chosen"),
     pytest.param(World(answers={SENT: LOW}), review("app/modules/documents/domain"),
-                 ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 2, 0,
+                 ReviewReading((BY_PATHS,), 3, (DOUBTFUL,), (GONE, LeftOut(SMALL_FILE.file, SMALL, 6)), (), SENDS, 1, 0,
                                100, 5, "", ("main",), read(1, 1), answered_by=("m-1.0.1",), requests_sent=1),
                  id="a file whose part holds less than the line is doubtful there, asked of the decision model"),
     pytest.param(World(answers={SENT: LOW, SENT_OTHER: HIGH}), review("app/two"),
-                 ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 4, 0, 190, 9, "", ("main",), read(2, 1),
+                 ReviewReading((BY_PATHS,), 2, (DOUBTFUL, PLACED), (), (), SENDS, 2, 0, 190, 9, "", ("main",), read(2, 1),
                                answered_by=("m-1.0.0", "m-1.0.1"), requests_sent=2),
                  id="the readings are ranked, the most doubtful first"),
     pytest.param(World(earlier={SENT: HIGH}, keyed=False), review("app/x.py"),
@@ -181,14 +175,11 @@ def test_review(given, when, then):
 
 def test_each_answer_asked_is_kept_under_a_key_of_its_own_in_the_project_s_cache_or_the_one_given():
     _, model, answers = run(World(answers={SENT: LOW, SENT_OTHER: HIGH}), review("app/two"))
-    assert model.asked == [SENT, SENT_OTHER]
-    assert sorted(answers.kept.values(), key=lambda kept: (kept.model, -kept.input_tokens)) == [
-        HIGH, replace(HIGH, input_tokens=0, output_tokens=0), LOW, replace(LOW, input_tokens=0, output_tokens=0)]
-    assert {folder for folder, _ in answers.kept} == {FOLDER} and len({key for _, key in answers.kept}) == 4
+    assert (model.asked, sorted(answers.kept.values(), key=lambda kept: kept.model)) == ([SENT, SENT_OTHER], [HIGH, LOW])
+    assert {folder for folder, _ in answers.kept} == {FOLDER} and len({key for _, key in answers.kept}) == 2
     elsewhere = Path("/tmp/answers")
     _, _, answers = run(World(answers={SENT: LOW}), review("app/x.py", cache=elsewhere))
-    assert list(answers.kept.values()) == [LOW, replace(LOW, input_tokens=0, output_tokens=0)]
-    assert {folder for folder, _ in answers.kept} == {elsewhere}
+    assert list(answers.kept.values()) == [LOW] and {folder for folder, _ in answers.kept} == {elsewhere}
 
 
 def test_a_text_masked_otherwise_is_another_question_and_is_asked_again():
@@ -267,6 +258,7 @@ def _kept(again: Answer | None) -> FakeAnswers:
 
 
 def test_a_file_whose_first_answer_is_near_its_line_is_asked_again_in_the_other_order_and_read_on_the_mean():
+    """The other orders are asked in a second request, once the first answer puts the file near its line."""
     model = FakeDecisionModel({SENT: NEAR}, by_order={(SENT, "main"): NEAR_AGAIN})
     answers = FakeAnswers()
     found = _review(model, answers, review("app/x.py"))
@@ -274,15 +266,16 @@ def test_a_file_whose_first_answer_is_near_its_line_is_asked_again_in_the_other_
     (read,) = found.readings
     assert (read.probability, read.doubtful, read.orders, read.model) == (0.25, True, 2, "m-1.0.1")
     assert dict(read.distribution) == {"domain": 0.25, "main": 0.75}
-    assert (found.sent, found.calls, found.cached, found.input_tokens, found.output_tokens) == (2, 1, 0, 100, 5)
-    assert model.requests == [(SENT, BOTH_ORDERS)] and len(answers.kept) == 2
+    assert (found.sent, found.cached, found.input_tokens, found.output_tokens) == (2, 0, 210, 11)
+    assert model.requests == [(SENT, ("placement",)), (SENT, ("placement.order-2",))] and found.calls == 2
+    assert len(answers.kept) == 2
 
 
 def _first_only() -> FakeAnswers:
     """The answers a review of app/x.py kept before its request carried the other orders: NEAR, in the first order
-    alone, under the key of that question (the answer in the other order, which carries no tokens, taken out)."""
+    alone, under the key of that question (the answer in the other order taken out)."""
     answers = _kept(NEAR_AGAIN)
-    answers.kept = {key: answer for key, answer in answers.kept.items() if answer.input_tokens}
+    answers.kept = {key: answer for key, answer in answers.kept.items() if answer == NEAR}
     assert list(answers.kept.values()) == [NEAR]
     return answers
 
@@ -342,7 +335,7 @@ def test_when_the_other_order_fails_the_file_is_unanswered_and_nothing_more_is_s
     found = _review(model, FakeAnswers(), review("app/two"))
     assert isinstance(found, ReviewReading)
     assert found.unasked == (Unasked(DOCUMENT.file, FAILED), Unasked(OTHER.file, FAILED))
-    assert found.failure == "the decision model failed" and found.sent == 0 and model.requests == [(SENT, BOTH_ORDERS)]
+    assert found.failure == "the decision model failed" and found.sent == 1
 
 
 TOO_LARGE = "TypeSafe answered 413: the state is too large"
@@ -353,9 +346,9 @@ def test_a_request_refused_alone_leaves_its_file_unanswered_with_the_words_and_t
     answers = FakeAnswers()
     found = _review(model, answers, review("app/two"))
     assert isinstance(found, ReviewReading)
-    assert model.asked == [SENT, SENT_OTHER] and len(answers.kept) == 2
+    assert model.asked == [SENT, SENT_OTHER] and len(answers.kept) == 1
     assert (found.readings, found.unasked) == ((PLACED,), (Unasked(DOCUMENT.file, REFUSED, said=TOO_LARGE),))
-    assert (found.failure, found.sent, found.calls, found.complete) == ("", 2, 1, False)
+    assert (found.failure, found.sent, found.complete) == ("", 1, False)
 
 
 def test_a_refused_request_is_said_as_refused_and_a_failure_after_it_still_stops_the_sending():
@@ -414,7 +407,7 @@ def test_with_pieces_each_piece_judged_is_asked_with_the_piece_question_and_rank
     assert [(p.rank, p.name, p.kind, p.lines, p.probability) for p in read.lowest] == [
         (1, "second", "function", (124, 244), 0.05), (2, "first", "function", (3, 123), 0.5),
         (3, "third, Tiny", "function", (245, 367), 0.7)]
-    assert model.asked == [WHOLE, FIRST, SECOND, THIRD + TINY] and (found.sent, found.calls) == (5, 4)
+    assert model.asked == [WHOLE, FIRST, SECOND, THIRD + TINY] and found.sent == 4
 
 
 def test_with_context_each_piece_is_sent_after_the_file_s_opening_lines():
@@ -449,7 +442,7 @@ def test_a_dry_run_with_pieces_shows_each_piece_request_after_the_files_and_coun
                                                              ("third, Tiny", THIRD + TINY)]
     assert planned.requests[1].body.startswith(f"{PLACEMENT} This text is one piece of a larger file. 2 ")
     asked = ASKED + len(" This text is one piece of a larger file.")
-    assert planned.characters == len(WHOLE) + 2 * ASKED + len(FIRST + SECOND + THIRD + TINY) + 3 * asked
+    assert planned.characters == len(WHOLE) + ASKED + len(FIRST + SECOND + THIRD + TINY) + 3 * asked
 
 
 def test_with_no_key_a_piece_not_kept_is_refused_before_anything_is_sent():
@@ -545,7 +538,7 @@ def test_each_comment_of_a_file_is_cut_from_what_its_request_sends_and_its_chara
         review("app/n.py", dry_run=True))
     assert isinstance(planned, ReviewPlanned)
     assert [(item.text, item.chars) for item in planned.requests] == [(NOTED_SENT, len(NOTED_SENT))]
-    assert planned.characters == len(NOTED_SENT) + 2 * ASKED
+    assert planned.characters == len(NOTED_SENT) + ASKED
     model = FakeDecisionModel({NOTED_SENT: HIGH})
     assert isinstance(controller(code, FakeProfile(WORDS), model, FakeAnswers()).review(review("app/n.py")),
                       ReviewReading) and model.asked == [NOTED_SENT]
@@ -578,11 +571,6 @@ SUMMED = Reading(DOCUMENT.file, "domain", len(SENT), 0.75, 0.3, False, SPLIT.pro
                  alike=("kernel",))
 
 
-THREE_ORDERS = ("placement", "placement.order-2", "placement.order-3")
-CARRIED_THREE = len(SENT) + 3 * (ASKED + len("kernel") + len(KERNEL.litmus))
-"""What a request of a file of the profile reading domain and kernel alike carries: the question in its three orders."""
-
-
 @dataclass(frozen=True)
 class Alike:
     """What the fakes hold for a profile reading domain and kernel alike: the files found at each path; the answers a
@@ -603,7 +591,7 @@ def alike(given: Alike, when: Review):
 
 @pytest.mark.parametrize("given, when, then", [
     pytest.param(Alike(answers={SENT: SPLIT}), review("app/x.py"),
-                 ReviewReading((BY_PATHS,), 1, (SUMMED,), (), (), SENDS, 3, 0, 100, 5, "", ("main",), read(1, 0),
+                 ReviewReading((BY_PATHS,), 1, (SUMMED,), (), (), SENDS, 1, 0, 100, 5, "", ("main",), read(1, 0),
                                answered_by=("m-1.0.1",), requests_sent=1),
                  id="a file of a part read alike is read on its group's sum, far from its line, and asked once"),
     pytest.param(Alike(earlier={SENT: SPLIT}), review("app/x.py", offline=True),
@@ -611,14 +599,14 @@ def alike(given: Alike, when: Review):
                                answered_by=("m-1.0.1",), requests_sent=0),
                  id="offline, the answer kept is read on the group's sum alike"),
     pytest.param(Alike(answers={SENT: SPLIT}), review(every=True),
-                 ReviewReading((BY_ALL,), 1, (SUMMED,), (), (), SENDS, 3, 0, 100, 5, "", ("main",), read(1, 0),
+                 ReviewReading((BY_ALL,), 1, (SUMMED,), (), (), SENDS, 1, 0, 100, 5, "", ("main",), read(1, 0),
                                answered_by=("m-1.0.1",), requests_sent=1),
                  id="every file of the app is read on its group's sum alike"),
     pytest.param(Alike(), review("app/x.py", dry_run=True),
-                 ReviewPlanned((BY_PATHS,), 1, (replace(REQUEST, body=f"{','.join(THREE_ORDERS)} {PLACEMENT} 3 {SENT}",
-                                                        questions=THREE_ORDERS),), (),
+                 ReviewPlanned((BY_PATHS,), 1, (replace(REQUEST, body=f"{PLACEMENT} 3 {SENT}", questions=("placement",)),), (),
                                replace(QUESTION, options=(*QUESTION.options, Option("kernel", KERNEL.litmus))),
-                               ("main",), CARRIED_THREE, -(-CARRIED_THREE // 4), (), SENDS, 2,
+                               ("main",), CHARACTERS + len("kernel") + len(KERNEL.litmus),
+                               -(-(CHARACTERS + len("kernel") + len(KERNEL.litmus)) // 4), (), SENDS, 2,
                                alike=(("domain", "kernel"),)),
                  id="a dry run says the groups of parts read alike"),
 ])
@@ -743,10 +731,11 @@ def entries(save: float, load: float, session: float) -> dict:
 
 
 def test_a_file_of_a_part_whose_litmus_is_a_list_is_asked_each_entry_as_a_yes_or_no_in_the_one_request():
+    """Far from its line, the file costs that one request: its other orders are never asked."""
     model = FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.7, 0.9))
     found = listed(model, FakeAnswers())
     assert isinstance(found, ReviewReading)
-    assert model.requests == [(SENT, ("placement", *ENTRY_NAMES, "placement.order-2"))]
+    assert model.requests == [(SENT, ("placement", *ENTRY_NAMES))]
     (read,) = found.readings
     assert read.litmus == (LitmusRead("save", "any", 0.2, False), LitmusRead("load", "any", 0.7, True),
                            LitmusRead("session", "all", 0.9, True))
@@ -763,7 +752,7 @@ def test_a_condition_of_the_list_that_does_not_hold_makes_the_file_doubtful_thou
 def test_the_answer_of_each_entry_is_kept_under_its_own_key_and_read_offline():
     answers = FakeAnswers()
     listed(FakeDecisionModel({SENT: HIGH}, by_ask=entries(0.2, 0.7, 0.9)), answers)
-    assert len(answers.kept) == 5
+    assert len(answers.kept) == 4
     again = FakeDecisionModel({}, keyed=False)
     found = listed(again, answers, offline=True)
     assert isinstance(found, ReviewReading) and again.requests == [] and found.readings[0].litmus_holds is True
@@ -791,9 +780,16 @@ def test_with_the_choice_kept_only_the_entries_not_kept_are_sent_in_one_request(
 def test_a_dry_run_names_the_entry_questions_each_request_carries_and_says_each_entry_s_question():
     planned = listed(FakeDecisionModel({}), FakeAnswers(), dry_run=True)
     assert isinstance(planned, ReviewPlanned)
-    assert planned.requests[0].questions == ("placement", *ENTRY_NAMES, "placement.order-2")
+    assert planned.requests[0].questions == ("placement", *ENTRY_NAMES)
     assert planned.litmus == tuple((name, "domain", entry) for name, entry in zip(ENTRY_NAMES, (SAVES, LOADS, KEEPS),
                                                                                   strict=True))
     assert planned.yes_line == 0.5
     assert planned.question.options[0].description == (
         "Does it save a record? Or: Does it load a record? And in every case: Does it reach the store's own session?")
+
+
+def test_a_file_of_a_listed_part_near_its_line_is_asked_its_other_orders_in_a_second_request_alone():
+    model = FakeDecisionModel({SENT: NEAR}, by_order={(SENT, "main"): NEAR_AGAIN}, by_ask=entries(0.9, 0.9, 0.9))
+    found = listed(model, FakeAnswers())
+    assert isinstance(found, ReviewReading) and found.readings[0].orders == 2 and found.calls == 2
+    assert model.requests == [(SENT, ("placement", *ENTRY_NAMES)), (SENT, ("placement.order-2",))]

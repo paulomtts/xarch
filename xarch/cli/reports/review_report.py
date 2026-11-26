@@ -151,9 +151,9 @@ def _reasked(reorders: int) -> list[str]:
     """What a dry run cannot count: the questions asked again of a file whose answer is near its line."""
     if not reorders:
         return []
-    return [f"The request of a file whose answer is not in the cache carries the question in {reorders} other order(s) "
-            f"of the options too, each a question of its own, read on the mean only when its answer falls within "
-            f"{BAND:.2f} of its part's line."]
+    return [f"A file whose answer falls within {BAND:.2f} of its part's line is asked again in {reorders} other "
+            f"order(s) of the options, all in one more request, and read on the mean: up to 1 more request for each "
+            "such file."]
 
 
 def plan_document(profile: str, planned: ReviewPlanned) -> str:

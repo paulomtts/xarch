@@ -204,8 +204,8 @@ def test_a_file_asked_in_several_orders_says_its_number_is_their_mean_and_a_dry_
             "of the options") in reading_lines(again)
     assert json.loads(reading_document("cli", again))["placement"]["files"][0]["orders"] == 3
     assert plan_lines(replace(PLANNED, reorders=2))[4] == (
-        "The request of a file whose answer is not in the cache carries the question in 2 other order(s) of the options "
-        "too, each a question of its own, read on the mean only when its answer falls within 0.15 of its part's line.")
+        "A file whose answer falls within 0.15 of its part's line is asked again in 2 other order(s) of the options, all "
+        "in one more request, and read on the mean: up to 1 more request for each such file.")
     assert json.loads(plan_document("cli", replace(PLANNED, reorders=2)))["reorders"] == 2
 
 

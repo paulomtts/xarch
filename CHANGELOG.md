@@ -133,11 +133,10 @@ All notable changes to this project are written here. The format follows
 
 ### Changed
 
-- `xarch review` sends the other orders of placement's question in the same request as its first, each a named
-  question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it always had, so nothing
-  cached is lost: a file near its line costs one request instead of three, and a file whose first answer is not kept
-  is sent every order, read on their mean only near its line as before. Only the questions not kept are sent, and
-  offline reads what is kept. The header counts the answers asked and the requests sent apart, and JSON `sent.calls`
+- `xarch review` asks the other orders of placement's question of a file near its line together in one second
+  request, each a named question (`placement.order-2`, `placement.order-3`) keeping its answer under the key it
+  always had, so nothing cached is lost: a file near its line costs two requests instead of three, a file far from it
+  one, as before. Only the questions not kept are sent, and offline reads what is kept. The header counts the answers asked and the requests sent apart, and JSON `sent.calls`
   counts requests, `sent.answers` (new) the answers asked.
 - `may-import` reports one finding per import line and place: an import taking several names a part may not import
   is one finding whose message lists them (`not A, not B (pkg.mod.A, pkg.mod.B)` for a name pattern; the places

@@ -48,6 +48,9 @@ from xarch.modules.review.domain.published import CALIBRATED, Choice, EvalRead, 
 from xarch.modules.review.domain.values import Answer, CodeFile, EvalText, PartText, Run, Words
 
 Asking = tuple[EvalText, EvalRead, tuple[Request, ...]]
+Wanted = tuple[tuple[tuple[str, Choice], ...], tuple[tuple[str, Choice], ...]]
+"""The questions asked of a file, each under its name: those of its first request, and the other orders of
+placement's question when they are known to be asked (its first answer kept and near its line)."""
 """An eval of the profile's own that runs: the eval, how it stands, and one question about each thing it reads."""
 
 
@@ -87,8 +90,8 @@ class ReviewService:
         others, breaks = reordered(question), self._breaks(cmd, judging) if not cmd.dry_run else {}
         wanted = tuple(self._wanted(going, item, question, others, parts[item.part], breaks.get(item.file, ()))
                        for item in requests)
-        kept = tuple(answering.kept(going, item.text, asked) for item, named in zip(requests, wanted, strict=True)
-                     for _, asked in named)
+        kept = tuple(answering.kept(going, item.text, asked) for item, groups_of in zip(requests, wanted, strict=True)
+                     for named in groups_of for _, asked in named)
         pieced = tuple((file, *piece_requests(file, cmd.app.name, words.mask, cmd.context)) for file in judging
                        if cmd.pieces)
         piece = of_piece(question)
@@ -102,8 +105,8 @@ class ReviewService:
             shown = (self._carrying(going, requests, wanted)
                      + self._shown(asking, held, (piece,) * len(asking))
                      + self._shown(tuple(item for item, _ in each), later, tuple(order for _, order in each)))
-            sent = (sum(carried(item, tuple(asked for _, asked in self._missing(going, item, named) or named))
-                        for item, named in zip(requests, wanted, strict=True))
+            sent = (sum(carried(item, tuple(asked for _, asked in named)) for item in self._carrying(going, requests, wanted)
+                        for named in (self._named(item, wanted, requests),))
                     + characters(asking, piece) + sum(characters((item,), order) for item, order in each))
             return ReviewPlanned(by, total, shown, left_out(files), question, role_only(words.parts), sent,
                                  tokens(sent), words.mask, sends, len(reordered(question)),
@@ -119,20 +122,20 @@ class ReviewService:
             raise Refused(unusable)
         readings: list[Reading] = []
         unasked: list[Unasked] = []
-        for item, named in zip(requests, wanted, strict=True):
+        for item, (named, _) in zip(requests, wanted, strict=True):
             got, going = answering.batch(going, item.text, named)
-            first, own = got[0], len(entry_questions(parts[item.part]))
-            entered = got[1:1 + own]
+            first, entered = got[0], got[1:]
             answers = [first]
             if first is not None and asked_again(first, parts[item.part], breaks[item.file]):
-                answers += got[1 + own:]
+                again, going = answering.batch(going, item.text, named_orders(others))
+                answers += again
             if any(answer is None for answer in (*answers, *entered)):
-                said = answering.refusal(going, item.text, tuple(asked for _, asked in named))
+                said = answering.refusal(going, item.text, (*(asked for _, asked in named), *others))
                 unasked.append(Unasked(item.file, why_unasked(bool(going.failure), said), said=said))
             else:
                 read = reading(item, averaged(tuple(a for a in answers if a is not None)), parts[item.part],
                                len(answers), breaks[item.file])
-                readings.append(with_litmus(read, parts[item.part].entries if own else (),
+                readings.append(with_litmus(read, parts[item.part].entries if entered else (),
                                             tuple(a for a in entered if a is not None), words.yes_line))
         ranked_pieces: list[PiecesRead] = []
         for file, items, too_small in pieced:
@@ -165,28 +168,34 @@ class ReviewService:
                              going.requests)
 
     def _wanted(self, going: Run, item: Request, question: Choice, others: tuple[Choice, ...], part: PartText,
-                breaks: tuple[str, ...]) -> tuple[tuple[str, Choice], ...]:
-        """The questions the request about a file carries, each under its name: placement's in its first order; the
-        yes-or-no question of each entry of its part's litmus list, when it has two or more; and,
-        when its first answer is not kept yet (so that how near its line it reads is not known) or is kept and near
-        its line, the other orders, so that one request asks all that may be read. A dry run, which asks nothing of
-        where else a file could lie, reads how near its line a kept answer is with no part ruled out."""
+                breaks: tuple[str, ...]) -> Wanted:
+        """The questions asked of a file, each under its name, in two requests: the first, placement's question in its
+        first order with the yes-or-no question of each entry of its part's litmus list (when it has two or more);
+        the second, the other orders of placement's question, asked only of a file whose first answer is near its
+        line, so known here only when that answer is kept (none else: they are asked once the first answer comes). A
+        dry run, which asks nothing of where else a file could lie, reads how near its line a kept answer is with no
+        part ruled out."""
         first = self._answering.kept(going, item.text, question)
-        near = first is None or asked_again(first, part, breaks)
-        return ((FIRST, question), *entry_questions(part), *(named_orders(others) if near else ()))
+        near = first is not None and asked_again(first, part, breaks)
+        return ((FIRST, question), *entry_questions(part)), named_orders(others) if near else ()
 
-    def _carrying(self, going: Run, requests: tuple[Request, ...],
-                  wanted: tuple[tuple[tuple[str, Choice], ...], ...]) -> tuple[Request, ...]:
-        """The requests about the files as a dry run shows them: each with the names of the questions it would send,
-        those whose answers are not kept (all it carries when every one is, and nothing is sent), whether every answer
-        is kept, and the body it would send."""
+    def _carrying(self, going: Run, requests: tuple[Request, ...], wanted: tuple[Wanted, ...]) -> tuple[Request, ...]:
+        """The requests about the files as a dry run shows them: for each file, each of its two requests that would
+        send a question, with the names of those it would send (those whose answers are not kept) and the body it
+        would send; one request whose answers are all kept, marked so, when it would send none."""
         shown: list[Request] = []
-        for item, named in zip(requests, wanted, strict=True):
-            sent = self._missing(going, item, named)
-            carried_now = sent or named
-            shown.append(replace(item, questions=tuple(name for name, _ in carried_now), cached=not sent,
-                                 body=self._model.body_all(item.text, carried_now)))
+        for item, (first, again) in zip(requests, wanted, strict=True):
+            sending = [named for named in (self._missing(going, item, first), self._missing(going, item, again)) if named]
+            for named in sending or [first]:
+                shown.append(replace(item, questions=tuple(name for name, _ in named), cached=not sending,
+                                     body=self._model.body_all(item.text, named)))
         return tuple(shown)
+
+    def _named(self, shown: Request, wanted: tuple[Wanted, ...],
+               requests: tuple[Request, ...]) -> tuple[tuple[str, Choice], ...]:
+        """The questions a request a dry run shows carries, by the names it says."""
+        (first, again), = (pair for item, pair in zip(requests, wanted, strict=True) if item.file == shown.file)
+        return tuple(named for named in (*first, *again) if named[0] in shown.questions)
 
     def _missing(self, going: Run, item: Request,
                  named: tuple[tuple[str, Choice], ...]) -> tuple[tuple[str, Choice], ...]:

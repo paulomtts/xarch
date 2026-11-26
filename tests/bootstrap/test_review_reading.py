@@ -96,7 +96,7 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     result = review(SERVICE, VALUES, url=served.url)
     assert result.exit_code == 0, result.output
     lines = result.output.splitlines()
-    assert lines[1] == "Model jev-1.14.0. 2 file(s) found (paths), 2 judged, 0 left out. Asked 6, from cache 0."
+    assert lines[1] == "Model jev-1.14.0. 2 file(s) found (paths), 2 judged, 0 left out. Asked 2, from cache 0."
     assert lines[2] == f"Sent 2 request(s) to TypeSafe ({served.url}): 5,000 input tokens, 8 output tokens."
     assert lines[6:8] == [f"  {VALUES}   domain   0.12 (line 0.30)   {VALUES_SENT:,} chars, small",
                           f"      what to do: read it against the litmus of domain (`xarch where {VALUES}`). Some of "
@@ -113,7 +113,7 @@ def test_a_review_sends_the_masked_text_and_the_question_with_the_key_as_the_hea
     assert body["state"].startswith('"""Publishing documents."""\nfrom <masked> import Clock\n')
     assert SERVICE not in json.dumps(body) and KEY not in json.dumps(body)
     kept = sorted((tmp_path / ".xarch" / "cache" / "review").iterdir())
-    assert len(kept) == 6 and all(KEY not in file.read_text() and "DocumentService" not in file.read_text()
+    assert len(kept) == 2 and all(KEY not in file.read_text() and "DocumentService" not in file.read_text()
                                   for file in kept)
 
 
@@ -210,7 +210,7 @@ def test_offline_a_file_whose_answer_is_not_kept_is_unanswered_and_the_run_exits
 
 def test_a_cache_folder_given_is_the_one_written_and_read(served, tmp_path):
     assert review(SERVICE, "--cache", "kept", url=served.url).exit_code == 0
-    assert len(list((tmp_path / "kept").iterdir())) == 3 and not (tmp_path / ".xarch").exists()
+    assert len(list((tmp_path / "kept").iterdir())) == 1 and not (tmp_path / ".xarch").exists()
     assert review(SERVICE, "--cache", "kept", "--offline", key=None).exit_code == 0
 
 
@@ -366,16 +366,13 @@ def test_a_cache_that_is_a_file_or_a_list_that_is_not_utf8_is_refused_with_exit_
 
 def test_an_answer_kept_through_a_link_is_never_read_nor_written_through(served, tmp_path):
     assert review(SERVICE, url=served.url).exit_code == 0
-    kept = list((tmp_path / ".xarch" / "cache" / "review").iterdir())
-    assert len(kept) == 3
+    (kept,) = (tmp_path / ".xarch" / "cache" / "review").iterdir()
     victim = tmp_path / "victim.txt"
     victim.write_text("precious")
-    for each in kept:
-        each.unlink()
-        each.symlink_to(victim)
+    kept.unlink()
+    kept.symlink_to(victim)
     assert review(SERVICE, url=served.url).exit_code == 0
-    assert victim.read_text() == "precious" and not any(each.is_symlink() for each in kept)
-    assert len(served.received) == 2
+    assert victim.read_text() == "precious" and not kept.is_symlink() and len(served.received) == 2
 
 
 def test_an_unreachable_decision_model_leaves_the_files_unanswered_and_shows_no_key():
@@ -393,9 +390,9 @@ def test_a_line_the_profile_sets_for_a_part_is_the_one_its_files_are_read_agains
     assert result.exit_code == 0, result.output
     assert (f"  {VALUES}   domain   0.12 (line 0.10, set by the profile)   {VALUES_SENT:,} chars, small   the mean "
             "of 3 orders of the options") in result.output.splitlines()
-    orders = [list(question["criteria"]) for _, _, body in served.received if "Value0" in body["state"]
-              for name, question in body["questions"].items() if name.startswith("placement")]
-    assert len([body for _, _, body in served.received if "Value0" in body["state"]]) == 1
+    bodies = [body for _, _, body in served.received if "Value0" in body["state"]]
+    assert [list(body["questions"]) for body in bodies] == [["placement"], ["placement.order-2", "placement.order-3"]]
+    orders = [list(question["criteria"]) for body in bodies for question in body["questions"].values()]
     assert len(orders) == 3 and len({tuple(order) for order in orders}) == 3
     assert all(sorted(order) == sorted(orders[0]) for order in orders)
     assert "  no file judged reads as doubtful here" in result.output.splitlines()
@@ -516,7 +513,7 @@ def test_a_doubtful_file_accepted_reads_as_accepted_until_its_code_changes_and_i
     (tmp_path / VALUES).write_text(VALUES_BODY.replace("    text: str\n", "    text: str  # the text\n", 1) + "\n\n")
     quiet = review(SERVICE, VALUES, url=served.url)
     assert quiet.exit_code == 0, quiet.output
-    assert quiet.output.splitlines()[1].endswith("Asked 3, from cache 1.")
+    assert quiet.output.splitlines()[1].endswith("Asked 1, from cache 1.")
     assert "  no file judged reads as doubtful here" in quiet.output.splitlines()
     assert "      accepted: it read as platform then; why: the values of a document, read against the litmus" in (
         quiet.output.splitlines())

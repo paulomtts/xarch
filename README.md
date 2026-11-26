@@ -989,16 +989,14 @@ misplaced. The text output names no other part but those its part is read alike 
 answer (below); the JSON gives the probability on every part.
 
 The order of the options moves a probability only near the line, so a file whose first answer falls within 0.15 of its
-part's line is read on the mean of the question in two other orders too (the options rotated by a third and by two
-thirds; one other order for a profile of two parts), which the reading says ("the mean of 3 orders of the options").
-The other orders travel in the same request as the first, each a named question of its own (`placement`,
-`placement.order-2`, `placement.order-3`), the text sent once: a file whose first answer is not kept yet is sent all
-of them, since how near its line it reads is not known before the answer; they are read only when it is near the line,
-so a file far from its line reads as it did, and a file near it costs one request instead of three. Each order keeps
-its answer in the cache on its own, under the key it always had, and only the questions not kept are sent (a file
-whose first answer is kept and near its line is sent its other orders alone); offline, a file near its line whose
-other orders are not all kept is unanswered. The header says the answers asked ("Asked 6") and the requests sent
-("Sent 2 request(s)") apart.
+part's line is asked again in two other orders (the options rotated by a third and by two thirds; one other order for
+a profile of two parts) and read on the mean, which the reading says ("the mean of 3 orders of the options"). The
+other orders are asked together in one second request, each a named question of its own (`placement.order-2`,
+`placement.order-3`), the text sent once: a file far from its line costs one request, a file near it two (they were
+three). Each order keeps its answer in the cache on its own, under the key it always had, and only the questions not
+kept are sent; offline, a file near its line whose other orders are not all kept is unanswered. Whether a file needs
+them is known from the first answer. The header says the answers asked ("Asked 3") and the requests sent ("Sent 2
+request(s)") apart.
 
 A file judged under 2,000 characters is marked `small`: small files read lower for being small (in trials a tenth of
 the smallest quarter of files read as doubtful, a fiftieth of the largest). Every reading ends with the parts read:
@@ -1344,8 +1342,8 @@ and when it was not, what to run.
 (JSON text, formatted: the same JSON value the service receives, not the same bytes; the key left out); `chars` how
 many characters the text sent holds, masked; `piece`, `kind`, `first` and `last` the piece a request is about and the lines it spans
 (null for a whole file); `pieces` whether pieces are asked, `piece_question` the question each piece carries (null
-without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders of the question the request
-of a file carries; `questions` of a request of placement the names of the questions it would send (those whose
+without `--pieces`) and `context` `none` or `imports`; `reorders` how many other orders of the question a file near
+its line is asked again in, in one more request; `questions` of a request of placement the names of the questions it would send (those whose
 answers are not kept; null for a piece or an eval); `question.litmus` the yes-or-no question of each entry of a part's
 litmus list, by its name, with `yes_line` and `measured` (always false: the line is a placeholder), null when no part
 writes a list of two entries or more; `sends.key` the name of the variable the key is read from (never the key), `keyed` whether it is set, and
