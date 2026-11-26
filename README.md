@@ -616,7 +616,9 @@ at the app root are ignored unless the profile switches on `closed-tree`, as bot
 is declared under `excluded`, and then no check looks at it. Extra files and subfolders inside a known part belong to
 that part. A part written as a package file (`application/__init__.py`) is that one file: a file or folder beside it
 that the layout does not name belongs to the part around its folder, if there is one, else to no part, and
-`closed-tree` reports it.
+`closed-tree` reports it. Before 0.4.0 such a part took every loose file of its folder: a check on it that relied on
+them (`where: [not package-file]`) now keeps nothing, and its flagged example fails `xarch profile check`; drop the
+check, or rewrite it for the part that now holds those files.
 
 Every violation names its rule id, says what was found and, on a `fix:` line, what to do. The ids, with the profile key
 that switches or configures each (`-` for none: the rule is always on):
